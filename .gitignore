@@ -1,0 +1,73 @@
+# Build output
+*.pdb
+*.obj
+*.pch
+*.idb
+*.ilk
+*.log
+*.tlog
+*.lastbuildstate
+*.exe
+*.dll
+*.lib
+*.exp
+*.guard
+*.bak
+*.output
+
+# DB files
+*.mdf
+*.ldf
+*.bak
+
+# VS
+.vs/
+Debug/
+Release/
+x64/
+ipch/
+*.VC.db
+*.VC.opendb
+
+# Client binary data (too large for git)
+client/
+NEW_CLIENT/
+*.dxt
+*.n3chr
+*.n3mesh
+*.n3scene
+*.n3anim
+*.n3camera
+*.n3light
+*.n3fx
+*.n3pmesh
+*.wav
+*.mp3
+*.ogg
+*.avi
+*.bmp
+*.tga
+*.ksc
+*.rar
+*.zip
+
+# Server data
+server/
+myko_db/
+
+# Misc large
+misc/
+patch_staging/
+yedekler/
+db/myko_db_files/
+
+# Temp
+*.tmp
+Thumbs.db
+desktop.ini
+dc_debug.log
+__pycache__/
+*.pyc
+
+# Code_Myko (büyük .src dosyaları)
+src/Code_Myko/
