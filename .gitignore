@@ -1,0 +1,59 @@
+# Build output
+*.pdb
+*.obj
+*.pch
+*.idb
+*.ilk
+*.log
+*.tlog
+*.lastbuildstate
+*.exe
+*.dll
+*.lib
+*.exp
+*.guard
+*.bak
+*.output
+
+# DB files
+*.mdf
+*.ldf
+*.bak
+
+# VS
+.vs/
+Debug/
+Release/
+x64/
+ipch/
+*.VC.db
+*.VC.opendb
+
+# Client — ASLA GitHub'a gitme
+NEW_CLIENT/
+client/
+
+# Server — ASLA GitHub'a gitme
+server/
+
+# Binary dosyalar
+*.src
+*.dxt
+*.tlt
+*.dmp
+*.rar
+
+# Yedekler
+ALL SRC*/
+myko_db/
+
+# Setup output
+tools/setup/output/
+
+# Büyük dosyalar (100MB+ GitHub limiti)
+tools/cmdline-tools.zip
+db/DB_tables/
+*.zip
+
+# Misc binary
+*.uif
