@@ -1,4 +1,14 @@
-# Build output
+# ============================================
+# MYKO .gitignore — SADECE src/ PUSH EDILIR
+# Geri kalan HER SEY YASAK
+# ============================================
+
+# SADECE src/ IZINLI — geri kalan her sey engellenir
+/*
+!src/
+!.gitignore
+
+# src icindeki build output
 *.pdb
 *.obj
 *.pch
@@ -18,7 +28,6 @@
 # DB files
 *.mdf
 *.ldf
-*.bak
 
 # VS
 .vs/
@@ -29,31 +38,14 @@ ipch/
 *.VC.db
 *.VC.opendb
 
-# Client — ASLA GitHub'a gitme
-NEW_CLIENT/
-client/
-
-# Server — ASLA GitHub'a gitme
-server/
-
-# Binary dosyalar
+# Binary
 *.src
 *.dxt
 *.tlt
 *.dmp
 *.rar
-
-# Yedekler
-ALL SRC*/
-myko_db/
-
-# Setup output
-tools/setup/output/
-
-# Büyük dosyalar (100MB+ GitHub limiti)
-tools/cmdline-tools.zip
-db/DB_tables/
 *.zip
-
-# Misc binary
 *.uif
+*.db
+*.db-shm
+*.db-wal
