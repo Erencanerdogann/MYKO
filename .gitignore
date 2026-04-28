@@ -49,3 +49,14 @@ ipch/
 *.db
 *.db-shm
 *.db-wal
+
+# Hassas dosyalar (S84 marka temizlik)
+**/IP_TABLOSU.md
+**/hassas_bilgi/
+**/flarum_config.yaml
+**/.env
+**/.env.*
+**/secrets/
+*.pem
+*.key
+**/credentials.json
