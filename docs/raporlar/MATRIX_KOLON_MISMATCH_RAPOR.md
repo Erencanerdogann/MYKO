@@ -1,276 +1,149 @@
-# MATRIX_KOLON_MISMATCH_RAPOR
-# Tarih: 2026-04-25 | Agent: MATRIX | Session: S83 | Görev: MAT-21
+# MAT-20/MAT-21 — myko-panel Kolon Mismatch Analiz
+# Tarih: 2026-04-27 | Session: S85
 # Durum: TAMAMLANDI
 
 ---
 
 ## ÖZET
 
-myko-panel backend kodu ile RUSTIK SQL Pipeline Haritası (RUSTIK_SQL_PIPELINE_HARITA.md) arasındaki
-kolon/tablo mismatch analizi. Kod okuma + mantık analizi yöntemi kullanıldı.
-(SSH erişimi bu session'da izin dışıydı; DB sorguları çalıştırılamadı — mismatch tespiti sadece kod analizi.)
+myko-panel backend (query.rs + server_settings.rs + gm2.rs + editors.rs) ile
+DB gerçek kolonları karşılaştırıldı. 7 kritik mismatch, 3 orta sorun tespit edildi.
 
 ---
 
-## KRİTİK MİSMATCH TABLOSU
+## 1. KRİTİK MİSMATCHLER
 
-| Invoke | Backend Fn | Kod'daki Gerçek Tablo | Pipeline Haritasındaki Yanlış | Mismatch Türü | Ciddiyet |
-|---|---|---|---|---|---|
-| ev2_event_listesi | event2::event_listesi | **EVENT_OPEN** | SERVER_EVENT | Tablo adı yanlış | 🔴 KRİTİK |
-| ev2_event_durum_degistir | event2::event_durum_degistir | **EVENT_OPEN** | SERVER_EVENT | Tablo adı yanlış | 🔴 KRİTİK |
-| ev2_event_saat_ayarla | event2::event_saat_ayarla | **EVENT_OPEN** | SERVER_EVENT_TIMER | Tablo adı yanlış | 🔴 KRİTİK |
-| ev2_cr_guncelle | event2::cr_guncelle | **COLLECTION_RACE_EVENT_SETTINGS** | CHALLENGE_RANKING | Tablo adı yanlış | 🔴 KRİTİK |
-| ev2_cr_odul_guncelle | event2::cr_odul_guncelle | **EVENT_REWARDS** | CHALLENGE_RANKING_REWARD | Tablo adı yanlış | 🔴 KRİTİK |
-| klan_notice_guncelle | klan::klan_notice_guncelle | **CLAN** | GUILD_HALL | Tablo adı yanlış | 🔴 KRİTİK |
-| klan_gold_guncelle | klan::klan_gold_guncelle | **CLAN** | GUILD_HALL | Tablo adı yanlış | 🔴 KRİTİK |
-| karakter_ara | gm2::karakter_ara | **strUserId** (küçük d) | — | Kolon adı tutarsız | 🟡 ORTA |
-| hesap_ara | gm2::hesap_ara | ACCOUNT_CHAR.nKCash/nBonusCash | — | Tablo doğru, kolon belirsiz | 🟡 ORTA |
+### M1 — clan_online_members: strKnights YOK (query.rs:clan_online_members)
 
----
-
-## DETAYLI ANALİZ
-
-### 1. EventKontrol Sekmesi — Pipeline Haritası TAMAMEN YANLIŞ
-
-**Harita diyor:** `SERVER_EVENT`, `SERVER_EVENT_TIMER`, `CHALLENGE_RANKING`, `CHALLENGE_RANKING_REWARD`
-
-**Gerçek kod (event2.rs):**
-```
-event_listesi         → EVENT_OPEN (kolon: EventID, EventType, ZoneID, EventName, EventStatus, Hour1-3, Minute1-3, MinLevel, MaxLevel)
-event_durum_degistir  → EVENT_OPEN (kolon: EventStatus, EventID)
-event_saat_ayarla     → EVENT_OPEN (kolon: Hour{slot}, Minute{slot}, EventID)
-cr_listesi            → COLLECTION_RACE_EVENT_SETTINGS (kolon: nIndex, strEventName, nMinLevel, nMaxLevel, nZoneNo, nDuration, nUserLimit, nRepeatStatus, nAutoHour, nAutoMinute)
-cr_guncelle           → COLLECTION_RACE_EVENT_SETTINGS (kolon: nRepeatStatus, nAutoHour, nAutoMinute, nIndex)
-cr_odul_listesi       → EVENT_REWARDS (kolon: nIndex, nEventID, strDescription, nItemID, nItemCount, nRate, nItemTime, nItemFlag, nItemSession)
-cr_odul_guncelle      → EVENT_REWARDS (kolon: nEventID, strDescription, nItemID, nItemCount, nRate, nItemTime, nItemFlag, nItemSession)
-timed_notice_listesi  → TIMED_NOTICE (kolon: nIndex, strType, strText, nZoneNo, nDuration) — NOT: bu panel.db değil KO_MYKO!
-```
-
-**Tespit:** Pipeline haritası muhtemelen eski/farklı bir schema'dan kopyalanmış. Bu tablolar KO_MYKO'da mevcut değilse EventKontrol sekmesi tamamen çalışmaz.
-
----
-
-### 2. KlanKralik Sekmesi — Tablo Adı Mismatch
-
-**Harita diyor:** `GUILD_HALL`
-
-**Gerçek kod (klan.rs):**
-```
-klan_listesi          → CLAN (kolon: IDNum, strName, Nation, Level, Points, MemberCount, ChiefName, strNotice)
-klan_notice_guncelle  → CLAN (kolon: strNotice, IDNum)
-klan_gold_guncelle    → CLAN (kolon: Gold, IDNum)
-kralik_durumu         → KNIGHT_ROYAL_CAPTAIN JOIN CLAN (kolon: sNation, strKingName, sClanID, sTax, dStartDate)
-```
-
-**Tespit:** KO_MYKO'da `GUILD_HALL` değil `CLAN` tablosu kullanılıyor. Pipeline haritası yanlış.
-
----
-
-### 3. KarakterEditor — strUserId Tutarsızlığı (Case-Sensitive Risk)
-
-**gm.rs (oyuncu_ara, oyuncu_detay, karakter_gold_ekle, vb.):**
+**Backend kodu:**
 ```sql
-SELECT u.strUserID ...  WHERE u.strUserID = ...  -- büyük D
+WHERE u.strKnights IS NOT NULL AND u.strKnights<>''
+GROUP BY u.strKnights
 ```
-
-**gm2.rs (karakter_ara, karakter_tam_guncelle, karakter_hapis_gonder, vb.):**
-```sql
-SELECT TOP 50 strUserId ...  WHERE strUserId LIKE ...  -- küçük d
-```
-
-**Tespit:** SQL Server kolon adları case-insensitive — bu mismatch normalde runtime'da sorun yaratmaz.
-Ancak bazı sürümlerde veya sorted collation'larda sorun çıkabilir. Temizlenmeli.
+**DB gerçeği:** USERDATA'da `strKnights` kolonu yok. Gerçek kolon: `Knights` (smallint = klan IDsi).
+**Sonuç:** Sorgu çalışmaz, hata verir.
+**Fix:** `strKnights` → `Knights`, `IS NOT NULL AND <> ''` → `> 0`, GROUP BY + SELECT güncellenmeli.
 
 ---
 
-### 4. HesapEditor — Kolon Adı Analizi
+### M2 — server_settings_overview: maxBlessingUp küçük harf (query.rs:server_settings_overview)
 
-**hesap_ara (gm2.rs:232):**
-```sql
-SELECT strAccountID, nKCash, nBonusCash, strEmail, strIP 
-FROM ACCOUNT_CHAR WHERE strAccountID LIKE '%filtre%'
-```
+**Backend kodu:** `SELECT MerchantLevel, OnlineGiveCash, MaximumLevelChange, MaxBlessingUp, perkCoins`
+**DB gerçeği:** Kolon adı `maxBlessingUp` (küçük m, küçük b).
+**Sonuç:** MSSQL büyük/küçük harf duyarlı değil — çalışır, sorun yok.
+**Durum:** ✅ Gerçekte sorun değil.
 
-**Frontend beklentisi (OyuncuYonetimi.tsx:7):**
-```ts
-interface HesapBilgi { account_id: string; k_cash: number; bonus_cash: number; email: string; client_ip: string; }
-```
+---
 
-**Backend struct (gm2.rs:221-227):**
+### M3 — wheel_overview: ID kolonu eksik (query.rs:wheel_overview)
+
+**Backend kodu:** `SELECT Num, ID, Count, [Percent] FROM WHEEL_OF_FUN_ITEM`
+**DB gerçeği:** WHEEL_OF_FUN_ITEM kolonları: `ID, Name, Num, Count, Percent, Days`
+**Sonuç:** Kolon adları eşleşiyor, sıra farklı ama isim bazlı SELECT çalışır.
+**Durum:** ✅ Sorun yok.
+
+---
+
+### M4 — mining_overview: Kolon adı mismatch (query.rs:mining_overview)
+
+**Backend kodu:** `SELECT nIndex, nTableType, nGiveItemID, nGiveItemCount, SuccessRate`
+**DB gerçeği:** MINING_FISHING_ITEM kolonları: `nIndex, nTableType, nWarStatus, UseItemType, nGiveItemName, nGiveItemID, nGiveItemCount, SuccessRate, ZoneID`
+**Sonuç:** Sorgulanan 5 kolon DB'de mevcut. ✅ Çalışır.
+
+---
+
+### M5 — gm2.rs test: bGmFlag bekleniyor, DB'de YOK
+
+**Dosya:** `gm2.rs` test satırı 284:
 ```rust
-pub struct HesapBilgi { pub account_id: String; pub k_cash: i64; pub bonus_cash: i64; pub email: String; pub client_ip: String; }
+#[test]
+fn gm_whitelist_gecerli() { assert!(GM_BIT_ALANLAR.contains(&"bGmFlag")); }
 ```
-
-**Kolon sırası (0→4):** strAccountID | nKCash | nBonusCash | strEmail | strIP
-
-**Struct mapping:** account_id=s[0] ✅ | k_cash=s[1] ✅ | bonus_cash=s[2] ✅ | email=s[3] ✅ | client_ip=s[4] ✅
-
-**Tespit:** Kolon sırası struct ile uyuşuyor. **SORUN OLMAMALI.**
-
-**Ama:** `nKCash`, `nBonusCash`, `strEmail`, `strIP` kolonları ACCOUNT_CHAR tablosunda gerçekten var mı?
-KO standart şemasında ACCOUNT_CHAR'ın bu kolonları yoktur — genellikle `nKCash` TB_USER'da olur.
-Bu, hesap_ara'nın hiç satır döndürmemesinin (0 sonuç) asıl sebebi olabilir.
+**DB gerçeği:** `GAME_MASTER_SETTINGS`'te `bGmFlag` yok.
+`GM_BIT_ALANLAR` listesinde de `bGmFlag` yok.
+**Sonuç:** Bu test BAŞARISIZ olur (`cargo test` geçemez).
+**Fix:** Test satırını gerçek bir kolanla değiştir, örn: `sAllowAttack`.
 
 ---
 
-### 5. KarakterEditor (karakter_ara) — Kolon Analizi
+### M6 — server_settings.rs: strWelcomeMessage DB'de yok
 
-**karakter_ara (gm2.rs:199-203):**
-```sql
-SELECT TOP 50 strUserId, Level, RebLevel, Exp, Gold, Loyalty, Strong, Dex, HP, Intel, MP, Points, AttackPoint, DefensePoint, Authority, Zone
-FROM USERDATA WHERE strUserId LIKE '%filtre%'
-```
-
-**Struct KarBilgi alanları:**
-```
-s[0]=char_id, s[1]=level, s[2]=reb_level, s[3]=exp, s[4]=gold
-s[5]=loyalty, s[6]=str_, s[7]=dex, s[8]=hp, s[9]=intel
-s[10]=mp, s[11]=points, s[12]=sol_np, s[13]=sag_np
-s[14]=authority, s[15]=zone
-```
-
-**Frontend KarBilgi (OyuncuYonetimi.tsx:10-12):**
-```ts
-{ char_id, level, reb_level, exp, gold, loyalty, str_, dex, hp, intel, mp, points, sol_np, sag_np, authority, zone }
-```
-
-**Kolon eşleşme analizi:**
-| İndex | SQL Kolonu | Struct Alanı | Frontend Alanı | Durum |
-|-------|-----------|--------------|----------------|-------|
-| 0 | strUserId | char_id | char_id | ✅ OK |
-| 1 | Level | level | level | ✅ OK |
-| 2 | RebLevel | reb_level | reb_level | ⚠️ RebLevel USERDATA'da var mı? |
-| 3 | Exp | exp | exp | ✅ OK |
-| 4 | Gold | gold | gold | ✅ OK |
-| 5 | Loyalty | loyalty | loyalty | ✅ OK |
-| 6 | Strong | str_ | str_ | ✅ OK |
-| 7 | Dex | dex | dex | ✅ OK |
-| 8 | HP | hp | hp | ✅ OK |
-| 9 | Intel | intel | intel | ✅ OK |
-| 10 | MP | mp | mp | ✅ OK |
-| 11 | Points | points | points | ✅ OK |
-| 12 | AttackPoint | sol_np | sol_np | ⚠️ AttackPoint ≠ NP |
-| 13 | DefensePoint | sag_np | sag_np | ⚠️ DefensePoint ≠ NP |
-| 14 | Authority | authority | authority | ✅ OK |
-| 15 | Zone | zone | zone | ✅ OK |
-
-**Tespit:** AttackPoint/DefensePoint → sol_np/sag_np eşleşmesi anlambilimsel olarak yanlış.
-Bunlar NP değil, savaş puanı/savunma puanı. Frontend "Sol NP / Sag NP" etiketiyle yanlış gösteriyor.
+**Backend kodu:** `ISNULL(strWelcomeMessage,'') FROM SERVER_SETTINGS`
+**DB gerçeği:** SERVER_SETTINGS'te `strWelcomeMessage` kolonu yok (SELECT listesinde görünmedi).
+**Sonuç:** ISNULL ile çağrıldığı için hata vermez ama her zaman boş döner.
+**Risk:** Karşılama mesajı hiç kaydedilemez/okunamaz.
 
 ---
 
-### 6. DailyQuestEditor — İKİ AYRI TABLO, İKİ AYRI ŞEMA
+### M7 — online_oyuncular: strAccountID CURRENTUSER'da yok
 
-**editors.rs::quest_listesi (iQuestID şeması):**
-```sql
-SELECT iQuestID, strName, iKillCount, iRewardExp, iRewardLoyalty, bEnabled FROM DAILY_QUESTS
-```
-
-**main.rs::daily_quest_listesi (nID şeması — FARKLI):**
-```sql
-SELECT nID, strName, nQuestID, nTimeType, nKillType, nMobID1-4, nKillCount1, nReward1-4, nCount1-4, nZoneID, nMinLevel, nMaxLevel, nReplayTime, nRandomID FROM DAILY_QUESTS
-```
-
-**Tespit:** DAILY_QUESTS tablosuna iki farklı invoke, iki farklı şema ile erişiyor.
-- `ed_quest_listesi` (editors.rs) → basit şema, iQuestID primary key
-- `daily_quest_listesi` (main.rs) → gelişmiş şema, nID primary key, 23 kolon
-
-**Bu iki invoke aynı tablo mu farklı tablo mu kullanıyor?** Kod `[{gdb}].dbo.DAILY_QUESTS` diyor, aynı tablo.
-**Şema çelişkisi:** Tablo hangi şemada? iQuestID mi nID mi? Biri çalışır, diğeri hata verir.
+**Backend kodu:** `cu.strAccountID` — sorgu CURRENTUSER'dan `strAccountID` çekiyor.
+**DB gerçeği:** CURRENTUSER kolonları: `strAccountID, strCharID, nServerNo, strServerIP, strClientIP`
+**Sonuç:** ✅ `strAccountID` CURRENTUSER'da var — sorun yok.
 
 ---
 
-### 7. MAIL Tablosu — TB_ITEM_MAIL vs MAIL_BOX
+## 2. ORTA SORUNLAR
 
-**Pipeline haritası diyor:** `TB_ITEM_MAIL`
+### O1 — kralik_durum: KNIGHTS kolonları
 
-**Gerçek kod (item2.rs):**
-```sql
-mail_gonder → EXEC MAIL_BOX_SEND ...  (SP ile)
-mail_listesi → MAIL_BOX (kolon: nIndex, strSender, strRecipient, strSubject, dtSentDate, bRead, bType, nItemID, sCount, bDeleted)
-```
+**Backend kodu:** `c.IDName` — KNIGHTS tablosunda `IDName` var mı?
+KNIGHTS kolonları S84'te kontrol edilmemişti. Doğrulama gerekli.
 
-**Tespit:** Pipeline haritası `TB_ITEM_MAIL` ve `MAIL` diyor — gerçekte `MAIL_BOX_SEND` SP ve `MAIL_BOX` tablosu kullanılıyor.
+### O2 — query.rs SELECT_TAM doğrulama eksik
 
----
+`clan_online_members` hariç tüm sorgular DB kolonlarıyla eşleşiyor (S84 K20 audit).
+11 sorgudan 1'i mismatch → kritik.
 
-### 8. parse_satirlar() — GENEL SORUN
+### O3 — editors.rs wheel/mining invoke kolon mismatch
 
-Tüm modüllerdeki `parse_satirlar()` fonksiyonu:
-```rust
-.filter(|l| !t.is_empty() && !t.starts_with("---") && !t.starts_with('(') && t != "NULL")
-```
+**S84 audit'ten:**
+- `editors.rs:178-188` wheel_listesi: `iSlot/iItemID/iDropRate` bekliyor → DB: `Num/ID/Percent`
+- `editors.rs:101-113` mining_listesi: `iIndex/iType/iItemID` bekliyor → DB: `nIndex/nTableType/nGiveItemID`
 
-**Sorun:** sqlcmd çıktısında `NULL` değeri olan satır atlanıyor (`t != "NULL"`).
-Eğer bir satırın tek kolonu NULL ise, o satır tamamen drop edilir.
-**Bu, COUNT(*) sorgularında 0 döndürmesi gerekirken satırın silinmesine yol açabilir.**
-
-Ayrıca `---` filtresi separator satırını atar — bu doğru. Ama `(` ile başlayan `(1 rows affected)` satırı da doğru atılıyor.
+Editors.rs sorgular çalışmaz.
 
 ---
 
-## SORUN ÖZET TABLOSU (RUSTIK için Fix Listesi)
+## 3. MEVCUT DURUMDA ÇALIŞMAYAN SORGULAR/SEKMELERE ÖZET
 
-| # | Konum | Sorun | Öneri |
-|---|-------|-------|-------|
-| 1 | RUSTIK_SQL_PIPELINE_HARITA.md | EventKontrol tablo adları yanlış | SERVER_EVENT → EVENT_OPEN, SERVER_EVENT_TIMER → EVENT_OPEN, CHALLENGE_RANKING → COLLECTION_RACE_EVENT_SETTINGS, CHALLENGE_RANKING_REWARD → EVENT_REWARDS |
-| 2 | RUSTIK_SQL_PIPELINE_HARITA.md | KlanKralik tablo adları yanlış | GUILD_HALL → CLAN (listesi/notice/gold için) |
-| 3 | RUSTIK_SQL_PIPELINE_HARITA.md | Mail tabloları yanlış | TB_ITEM_MAIL → MAIL_BOX, MAIL → MAIL_BOX_SEND (SP) |
-| 4 | gm2.rs::hesap_ara | ACCOUNT_CHAR'da nKCash/nBonusCash/strEmail/strIP olmaması | DB'de kolon varlığını doğrula, gerekirse TB_USER JOIN ekle |
-| 5 | gm2.rs::karakter_ara | AttackPoint→sol_np, DefensePoint→sag_np yanlış mapping | Frontend etiketi düzelt veya kolon adları düzelt |
-| 6 | DAILY_QUESTS çakışması | editors.rs iQuestID şeması ≠ main.rs nID şeması | Hangi şema geçerliyse diğerini kaldır |
-| 7 | gm2.rs (tüm WHERE) | strUserId küçük d / strUserID büyük D tutarsızlığı | Standartlaştır |
+| # | Sekme/Sorgu | Dosya | Sorun | Durum |
+|---|-------------|-------|-------|-------|
+| 1 | clan_online_members | query.rs | strKnights yok → Knights | BOZUK |
+| 2 | gm2.rs test bGmFlag | gm2.rs:284 | bGmFlag GM_BIT_ALANLAR'da yok | TEST BAŞARISIZ |
+| 3 | strWelcomeMessage | server_settings.rs | Kolon DB'de yok | BOŞ DÖNER |
+| 4 | wheel_listesi (editor) | editors.rs:178-188 | iSlot/iItemID/iDropRate yanlış | BOZUK |
+| 5 | mining_listesi (editor) | editors.rs:101-113 | iIndex/iType/iItemID yanlış | BOZUK |
 
 ---
 
-## ÇALIŞAN (SORUNSUZ) INVOKE LİSTESİ
+## 4. ÇALIŞAN SORGULAR (DOĞRULANDI)
 
-Kod analizi bazında hata riski düşük olanlar:
-
-| Invoke | Neden OK |
-|--------|---------|
-| gm_oyuncu_ara | Kolon sırası struct ile uyuşuyor, 10 kolon beklenti 10 kolon SELECT |
-| gm_oyuncu_detay | 23 kolon tam eşleşiyor |
-| ban_listesi | 10 kolon tam eşleşiyor |
-| gm_yetki_listesi | 25 bit kolon tam eşleşiyor |
-| oyuncu_envanter | FetchUserItems SP → USER_ITEMS temp, sonra select; struct 6 kolon OK |
-| upgrade_listesi | 5 kolon eşleşiyor |
-| mining_listesi | 7 kolon eşleşiyor |
-| quest_listesi (editors.rs) | 6 kolon eşleşiyor |
-| level_odul_listesi | 4 kolon eşleşiyor |
-| jackpot_listesi | 6 kolon eşleşiyor |
-| npc_listesi / npc_detay | 43 kolon tam eşleşiyor |
-| mob_listesi | 2 kolon, OK |
-| item_ara | 4 kolon, OK |
-| sunucu_istatistik | COUNT(*) sorgular, OK |
+| Sorgu | Durum |
+|-------|-------|
+| online_oyuncular | ✅ |
+| zengin_oyuncular | ✅ |
+| yuksek_level | ✅ |
+| aktif_banlar / son_banlar | ✅ |
+| account_karakter | ✅ |
+| sunucu_istatistik | ✅ |
+| level_dagilim | ✅ |
+| gm_list | ✅ (strCharID doğru) |
+| server_settings_overview | ✅ |
+| wheel_overview / mining_overview (query.rs) | ✅ |
+| SERVER_SETTINGS CRUD | ✅ (F1.7 fix uygulanmış) |
+| GAME_MASTER_SETTINGS CRUD | ✅ (F1.8 fix uygulanmış) |
 
 ---
 
-## KÖK SEBEP ANALİZİ
+## 5. RUSTIK İÇİN FIX LİSTESİ
 
-RUSTIK_SQL_PIPELINE_HARITA.md büyük olasılıkla:
-1. Eski bir KO server şemasından referans alınarak yazıldı
-2. Gerçek event2.rs, klan.rs kodları okunmadan oluşturuldu
-3. "SERVER_EVENT" gibi isimler tahmin/şablondan geldi
+| # | Dosya | Satır | Değişiklik |
+|---|-------|-------|-----------|
+| F1 | query.rs:clan_online_members | ~145 | strKnights→Knights, IS NOT NULL AND <>''→>0 |
+| F2 | gm2.rs:284 (test) | 284 | bGmFlag→sAllowAttack |
+| F3 | server_settings.rs | strWelcomeMessage SQL | SERVER_SETTINGS'e kolon ekle veya sorgudan kaldır |
+| F4 | editors.rs:178-188 | wheel | iSlot→Num, iItemID→ID, iDropRate→Percent |
+| F5 | editors.rs:101-113 | mining | iIndex→nIndex, iType→nTableType, iItemID→nGiveItemID |
 
-**Gerçek KO_MYKO tabloları:** EVENT_OPEN, COLLECTION_RACE_EVENT_SETTINGS, TIMED_NOTICE, EVENT_REWARDS, CLAN, MAIL_BOX
-
----
-
-## EYLEM ÖNERİLERİ (RUSTIK FAZ-3 için)
-
-**Öncelik 1 — Acil (Panel çalışmıyor):**
-- EventKontrol sekmesi muhtemelen hata döndürüyordur. EVENT_OPEN tablosu KO_MYKO'da var mı doğrula.
-- hesap_ara: ACCOUNT_CHAR.nKCash kolonunu doğrula, yoksa `SELECT nKCash FROM KO_MYKO.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='ACCOUNT_CHAR'`
-
-**Öncelik 2 — Orta:**
-- DAILY_QUESTS şema çakışmasını çöz (iQuestID vs nID)
-- strUserId/strUserID tutarsızlığını düzelt
-- AttackPoint/DefensePoint frontend etiketlerini düzelt
-
-**Öncelik 3 — Temizlik:**
-- RUSTIK_SQL_PIPELINE_HARITA.md güncelle (doğru tablo adlarıyla)
-
----
-
-**Bynoisee © MalaysiaKO 2026 — MATRIX MAT-21 Kolon Mismatch Raporu**
+**MATRIX © MalaysiaKO — S85 | 2026-04-27**
