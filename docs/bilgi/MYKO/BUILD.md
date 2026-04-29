@@ -164,23 +164,105 @@ Ve client ile AYNI ANDA deploy (CHI-15 dersi — bak: `C:\temp\Chip\hatalar\`).
 
 ---
 
+## VS 2022 Adım Adım Build
+
+```
+1. ByNoiseGameServer.sln'ı VS 2022'de aç
+2. Solution Platform → x64
+3. Solution Configuration → Release
+4. Build → Build Solution (Ctrl+Shift+B)
+5. Output penceresini izle — "0 errors" bekle
+6. Çıktı: x64\Release\GameServer.exe (~3.4 MB)
+            x64\Release\LogInServer.exe (~496 KB)
+```
+
+Build süresi (tahmini):
+- Full build: ~3–5 dakika (8 çekirdek)
+- Incremental build (1-2 dosya): ~30–60 saniye
+
+---
+
+## Inkremental vs Full Build
+
+| Senaryo | Komut | Süre |
+|---------|-------|------|
+| 1-2 dosya değişti | `MSBuild ... -m` (VS otomatik) | ~30-60 sn |
+| Full temiz build | `MSBuild ... -t:Rebuild` | ~3-5 dk |
+| Sadece GameServer | `MSBuild ... -t:GameServer` | ~2 dk |
+| Sadece LogInServer | `MSBuild ... -t:LogInServer` | ~30 sn |
+
+---
+
+## Pre/Post Build Adımları
+
+**Pre-build (otomatik, VS yapar):**
+- Precompiled header: `stdafx.cpp` → `stdafx.pch`
+- shared.vcxproj önce derlenir (GameServer bağımlı)
+
+**Post-build (manuel, CHIP yapar):**
+```bash
+# 1. Yedekle
+cp x64/Release/GameServer.exe x64/Release/GameServer.exe.bak.$(date +%d%b)
+
+# 2. Deploy — DOKTOR + RUSTIK yetkisi gerekli
+# CHIP tek başına deploy YAPAMAZ
+```
+
+---
+
+## GameServer.ini Yapısı (ServerConfig.h tabanlı)
+
+Format: `[SECTION]\nKEY=VALUE`
+
+| INI Anahtarı | Varsayılan | Amaç |
+|-------------|-----------|------|
+| `SERVER.packet_rate_limit` | 150 | Paket rate limiti |
+| `SERVER.save_interval` | 600 | Otomatik kayıt aralığı (sn) |
+| `SERVER.ip_ban_seconds` | 3600 | IP ban süresi |
+| `SERVER.ip_max_fails` | 10 | Maks başarısız giriş |
+| `SERVER.move_broadcast_ms` | 50 | Hareket yayın aralığı (ms) |
+| `SERVER.npc_damage_cap` | 30 | NPC hasar listesi cap |
+| `SERVER.queue_max_size` | 10000 | İş kuyruğu max |
+| `SERVER.socket_buffer_kb` | 64 | Soket tampon boyutu (KB) |
+
+---
+
 ## Build Hataları — Bilinen
 
 | Hata | Çözüm | Kaynak |
 |------|-------|--------|
 | `std::map` → `std::unordered_map` implicit conversion | `auto` kullan | S46 CHIP hafıza notu |
 | Npc.cpp:6002 build hatası | `auto` tipi | S46 |
+| `QUOTED_IDENTIFIER` hatası (SQL) | Login prosedürlerinde `SET QUOTED_IDENTIFIER ON` ekle | CHIP kritik ders |
+| ODBC bağlanamıyor | DSN adı ASCII mi kontrol et | Patlama Dersi 2 |
+| code.guard bulunamıyor | `Desktop\Server\` altında olmalı, build sonrası kopyala | Patlama Dersi 5 |
+
+---
+
+## Bağımlılık Kontrol Listesi (Build öncesi)
+
+```
+[ ] Visual Studio 2022 + v143 toolset kurulu
+[ ] Windows SDK 10.0+ kurulu
+[ ] MSSQL ODBC Driver kurulu (sqlcmd erişilebilir)
+[ ] ODBC DSN "CodeGuardMYKO_DB" tanımlı ve bağlanıyor:
+    sqlcmd -S localhost\MSSQLSERVER01 -d KO_MYKO -Q "SELECT 1"
+[ ] x64/Release/ dizini mevcut (VS oluşturur)
+[ ] libcurl, zlib, BugTrap, Lua 5.1 — kaynak içinde, ayrıca kurulum gereksiz
+```
 
 ---
 
 ## Hızlı Kontrol Listesi (Deploy öncesi)
 
-- [ ] LOGIN_PORT GameServer.ini == LogInServer.ini PORT
+- [ ] LOGIN_PORT GameServer.ini == LogInServer.ini PORT (15100)
 - [ ] ODBC DSN `CodeGuardMYKO_DB` mevcut ve bağlanıyor
 - [ ] code.guard deploy edildi
 - [ ] XSafe_VERSION değiştirilmediyse client uyumlu
 - [ ] `shared\` değişti → client de güncellendi mi?
 - [ ] `CharacterMovementHandler.cpp:197` wall cheat açık mı?
+- [ ] Build çıktı `0 errors` mi?
+- [ ] GameServer.exe boyutu ~3.4 MB mi? (çok küçükse eksik bağlantı var)
 
 ---
 

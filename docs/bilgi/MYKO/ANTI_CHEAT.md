@@ -218,6 +218,47 @@ myko-panel → SSH → tasklist/taskkill veya stdin inject
 
 ---
 
+## 1098 PATCH NOTU
+
+Pearl Guard bu kaynakta **v2369 client + 1098 patch dosyaları** kombinasyonu için optimize edilmiştir.
+
+| Konu | Değer |
+|------|-------|
+| Base client | v2369 |
+| Patch seviyesi | 1098 |
+| `code.guard` boyutu | ~6.0 MB |
+| Anti-cheat katmanı | Pearl Guard (custom) + code obfuscation |
+| Hedef cheat seviyesi | 1098 dönemi: wall/speed/item dupe odak |
+
+**1098 dönemi AC seviyesi: ORTA**
+- Wall hack: `CharacterMovementHandler.cpp:264` — `UserWallCheatCheckRegion()` YORUM SATIRINDA (devre dışı)
+  - ⚠️ Bu fonksiyon aktif edilmeli. Şu an wall cheat tespiti KAPALI.
+  - Etkinleştirme: yorum satırını kaldır, test et
+- Speed hack: XSafe heartbeat + server taraf movement validation
+- Item dupe: XSafe_StayAlive MD5 challenge ile kısmen korunuyor
+
+**Pearl Guard + 1098 uyumu:**
+- `code.guard` DLL `Desktop\Server\` altında olmalı (GameServer başlamazsa ilk bak)
+- `.code` uzantılı UI dosyaları 1098 patch ile gelen dosyalar — 2369 orijinallerinden farklı
+- RC4 key MYKO'ya özel — key değişince tüm .code dosyaları çalışmaz
+- `XSafe_VERSION 5` — 1098 patch client bu versiyonla eşleşiyor
+
+**Kontrol — deploy öncesi:**
+```bash
+# code.guard deploy edildi mi?
+ls Desktop/Server/code.guard
+
+# XSafe aktif mi?
+grep "XSafe_ACTIVE" GameServer_SRC/GameServer/XGuard.cpp
+# → #define XSafe_ACTIVE 1  (1 olmalı)
+
+# Wall cheat detection durumu:
+grep "UserWallCheatCheckRegion" GameServer_SRC/GameServer/CharacterMovementHandler.cpp
+# → Satır 264: yorum satırında = KAPALI (dikkat!)
+```
+
+---
+
 ## İlgili Dosyalar
 
 - Server kaynağı: `SRC_HARITA.md`
