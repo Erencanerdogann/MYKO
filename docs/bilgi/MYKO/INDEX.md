@@ -90,11 +90,31 @@
 |------|-------|
 | Production sunucu IP/yol/port? | `SUNUCU_DOSYA_YOLLARI.md` |
 | Lokal dev server yolu? | `SUNUCU_DOSYA_YOLLARI.md § 2` |
-| Client (C:\MalaysiaKO) yapısı? | `SUNUCU_DOSYA_YOLLARI.md § 2`, `CLIENT_HARITA.md` |
+| Client (C:\MalaysiaKO) yapısı? | `SUNUCU_DOSYA_YOLLARI.md § 2`, `CLIENT_HARITA.md`, `CLIENT_SETUP.md` |
 | Yedekler nerede (F:\)? | `SUNUCU_DOSYA_YOLLARI.md § 5` |
 | Deploy komutları (scp/ssh)? | `SUNUCU_DOSYA_YOLLARI.md § 7` |
 | INI port/DSN değerleri? | `SUNUCU_DOSYA_YOLLARI.md § 1`, § 2` |
 | Agent klasör yapısı? | `SUNUCU_DOSYA_YOLLARI.md § 4` |
+
+### Lansman / GM / Operasyon (S88 yeni)
+| Soru | Cevap |
+|------|-------|
+| GM komut listesi (200 komut)? | `GM_KOMUT.md` |
+| Yetki sistemi (Authority)? | `GM_KOMUT.md § 1` |
+| Event takvimi / saatleri? | `EVENT_TAKVIMI.md` |
+| EVENT_SCHEDULE DB tablosu? | `EVENT_TAKVIMI.md § 1` |
+| Lansman checklist (T-24, T-2)? | `LANSMAN_CHECKLIST.md` |
+| 4 BLOCKER (wall cheat, hash, scroll, smoke)? | `LANSMAN_CHECKLIST.md § BLOCKER` |
+| Cash shop (PUS) sistemi? | `CASH_SHOP_PUS.md` |
+| PUS_ITEMS / PUS_CATEGORY? | `CASH_SHOP_PUS.md § 2` |
+| NPC drop / loot tablosu? | `NPC_DROP_LOOT.md` |
+| K_MONSTER_ITEM (12 slot)? | `NPC_DROP_LOOT.md § 2` |
+| Log dosyaları nerede, ne anlam? | `LOG_MONITORING.md` |
+| Crash recovery prosedürü? | `CRASH_RECOVERY.md` |
+| Backup / restore (saatlik DB)? | `BACKUP_RESTORE.md` |
+| Player support / ticket akışı? | `PLAYER_SUPPORT.md` |
+| Client setup (oyuncu kurulum)? | `CLIENT_SETUP.md` |
+| Smoke test (lansman öncesi)? | `SMOKE_TEST.md` |
 
 ---
 
