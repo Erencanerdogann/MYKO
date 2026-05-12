@@ -1460,6 +1460,10 @@ COMMAND_HANDLER(CGameServerDlg::HandleReloadBonusNotice)
 
 COMMAND_HANDLER(CGameServerDlg::HandleReloadNoticeCommand)
 {
+	// TIMED_NOTICE memory cache yenile (S107)
+	m_TimedNoticeArray.DeleteAllData();
+	LoadTimedNoticeTable();
+
 	// Reload the notice data
 	LoadNoticeData();
 	LoadNoticeUpData();
