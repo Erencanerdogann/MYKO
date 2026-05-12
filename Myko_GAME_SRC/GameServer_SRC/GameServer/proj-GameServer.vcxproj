@@ -119,7 +119,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <PreprocessorDefinitions>WIN32;GAMESERVER;NDEBUG;_WINDOWS;_3DSERVER;_CRT_SECURE_NO_WARNINGS;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;GAMESERVER;NDEBUG;_WINDOWS;_3DSERVER;_CRT_SECURE_NO_WARNINGS;CURL_STATICLIB;HTTP_CMD_SERVER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -219,6 +219,7 @@
     <ClCompile Include="CharacterSelectionHandler.cpp" />
     <ClCompile Include="CharacterMovementHandler.cpp" />
     <ClCompile Include="ChatHandler.cpp" />
+    <ClCompile Include="HttpCmdServer.cpp" />
     <ClCompile Include="ChatRoomHandler.cpp" />
     <ClCompile Include="ConsoleInputThread.cpp" />
     <ClCompile Include="DatabaseThread.cpp" />
@@ -442,6 +443,7 @@
     <ClInclude Include="..\shared\database\ZoneKillReward.h" />
     <ClInclude Include="BotHandler.h" />
     <ClInclude Include="ChatHandler.h" />
+    <ClInclude Include="HttpCmdServer.h" />
     <ClInclude Include="ConsoleColor.h" />
     <ClInclude Include="ConsoleInputThread.h" />
     <ClInclude Include="curl\curl\curl.h" />

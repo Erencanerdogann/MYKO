@@ -1310,9 +1310,8 @@ private:
 	std::string m_strLogDSN, m_strLogUID, m_strLogPWD;
 	bool m_bMarsEnabled;
 
-	bool ProcessServerCommand(std::string & command);
-
 public:
+	bool ProcessServerCommand(std::string & command);
 	void InitServerCommands();
 	void CleanupServerCommands();
 

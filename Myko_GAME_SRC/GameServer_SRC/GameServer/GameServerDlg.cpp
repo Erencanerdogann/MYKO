@@ -1,4 +1,5 @@
 ﻿#include "stdafx.h"
+#include "HttpCmdServer.h"
 #include "KingSystem.h"
 #include "KnightsManager.h"
 #include "../shared/ClientSocketMgr.h"
@@ -209,7 +210,11 @@ bool CGameServerDlg::Startup()
 
 	m_afkqueue = new AdiniFerihaKoydum();
 
-	return true; 
+#ifdef HTTP_CMD_SERVER
+	CHttpCmdServer::Start();
+#endif
+
+	return true;
 }
 
 void CGameServerDlg::EventTimerSet() {
