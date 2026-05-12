@@ -1,11 +1,11 @@
 # ============================================
-# MYKO .gitignore — SADECE src/ PUSH EDILIR
+# MYKO .gitignore — SADECE Myko_GAME_SRC/ PUSH EDILIR (S107 rename src/ -> Myko_GAME_SRC/)
 # Geri kalan HER SEY YASAK
 # ============================================
 
-# SADECE src/ IZINLI — geri kalan her sey engellenir
+# SADECE Myko_GAME_SRC/ IZINLI — geri kalan her sey engellenir
 /*
-!src/
+!Myko_GAME_SRC/
 !.gitignore
 
 # src icindeki build output

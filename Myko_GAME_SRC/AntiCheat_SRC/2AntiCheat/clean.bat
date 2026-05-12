@@ -1,0 +1,6 @@
+rmdir /s /q "Pearl Guard/Debug"
+rmdir /s /q "Pearl Guard/Release"
+rmdir /s /q ".vs"
+rmdir /s /q "Win32"
+rmdir /s /q "Debug"
+rmdir /s /q "Release"
