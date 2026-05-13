@@ -243,6 +243,7 @@ public:
 	void UpdateSiege(int16 m_sCastleIndex, int16 m_sMasterKnights, int16 m_bySiegeType, int16 m_byWarDay, int16 m_byWarTime, int16 m_byWarMinute);
 	void UpdateSiegeTax(uint8 Zone, int16 ZoneTarrif);
 	void UpdateSiegeWarfareDB(uint32 nMoradonTax, uint32 nDelosTax, uint32 nDungeonCharge);
+	void UpdateSiegeRequestList(uint16 r1, uint16 r2, uint16 r3, uint16 r4, uint16 r5, uint16 r6, uint16 r7, uint16 r8, uint16 r9, uint16 r10);
 
 	//clanbank
 	bool UpdateClanWarehouseData(std::string strClanID, CUser * pser);

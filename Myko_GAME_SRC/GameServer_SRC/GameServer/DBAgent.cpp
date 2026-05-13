@@ -2763,6 +2763,17 @@ void CDBAgent::UpdateSiegeTax(uint8 Zone, int16 ZoneTarrif)
 			ReportSQLError(GetGameDB()->GetError());
 	}
 }
+
+void CDBAgent::UpdateSiegeRequestList(uint16 r1, uint16 r2, uint16 r3, uint16 r4, uint16 r5, uint16 r6, uint16 r7, uint16 r8, uint16 r9, uint16 r10)
+{
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr)
+		return;
+
+	if (!dbCommand->Execute(string_format(_T("UPDATE KNIGHTS_SIEGE_WARFARE SET sRequestList_1=%d, sRequestList_2=%d, sRequestList_3=%d, sRequestList_4=%d, sRequestList_5=%d, sRequestList_6=%d, sRequestList_7=%d, sRequestList_8=%d, sRequestList_9=%d, sRequestList_10=%d"),
+		r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)))
+		ReportSQLError(GetGameDB()->GetError());
+}
 #pragma endregion
 
 

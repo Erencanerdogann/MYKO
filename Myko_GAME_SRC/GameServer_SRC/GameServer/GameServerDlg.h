@@ -528,6 +528,7 @@ public:
 
 	void UpdateSiege(int16 m_sCastleIndex, int16 m_sMasterKnights, int16 m_bySiegeType, int16 m_byWarDay, int16 m_byWarTime, int16 m_byWarMinute);
 	void UpdateSiegeTax(uint8 Zone, int16 ZoneTarrif);
+	void UpdateSiegeRequestList();
 	void HandleSiegeDatabaseRequest(CUser * pUser, Packet & pkt);
 
 	void ReqHandleDatabasRequest(Packet &pkt);

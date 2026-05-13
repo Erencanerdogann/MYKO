@@ -2457,7 +2457,25 @@ void CGameServerDlg::HandleSiegeDatabaseRequest(CUser * pUser, Packet & pkt)
 			g_DBAgent.UpdateSiegeTax(Zone, ZoneTarrif);
 		}
 		break;
+	case 2:
+		{
+			uint16 r1, r2, r3, r4, r5, r6, r7, r8, r9, r10;
+			pkt >> r1 >> r2 >> r3 >> r4 >> r5 >> r6 >> r7 >> r8 >> r9 >> r10;
+			g_DBAgent.UpdateSiegeRequestList(r1, r2, r3, r4, r5, r6, r7, r8, r9, r10);
+		}
+		break;
 	}
+}
+
+void CGameServerDlg::UpdateSiegeRequestList()
+{
+	_KNIGHTS_SIEGE_WARFARE& sw = pSiegeWar;
+	Packet result(WIZ_SIEGE, uint8(2));
+	result << sw.sRequestList_1 << sw.sRequestList_2 << sw.sRequestList_3
+		   << sw.sRequestList_4 << sw.sRequestList_5 << sw.sRequestList_6
+		   << sw.sRequestList_7 << sw.sRequestList_8 << sw.sRequestList_9
+		   << sw.sRequestList_10;
+	AddDatabaseRequest(result);
 }
 
 void CGameServerDlg::UpdateSiege(int16 m_sCastleIndex, int16 m_sMasterKnights, int16 m_bySiegeType, int16 m_byWarDay, int16 m_byWarTime, int16 m_byWarMinute)

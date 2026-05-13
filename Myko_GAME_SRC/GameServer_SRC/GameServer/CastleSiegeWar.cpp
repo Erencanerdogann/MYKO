@@ -347,6 +347,7 @@ int8 CUser::CheckCastleSiegeWarDeathmatchRegister()
 	// Kayit yap — hafizada guncelle, fon dusur
 	*requestList[freeSlot] = GetClanID();
 	pKnights->m_nClanPointFund -= 100000000;
+	g_pMain->UpdateSiegeRequestList();
 
 	return 1;
 }
@@ -376,6 +377,7 @@ int8 CUser::CheckCastleSiegeWarDeathmatchCancelRegister()
 			*requestList[i] = 0;
 			// 100M geri ver
 			pKnights->m_nClanPointFund += 100000000;
+			g_pMain->UpdateSiegeRequestList();
 			return 1;
 		}
 	}
