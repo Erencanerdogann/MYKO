@@ -213,20 +213,21 @@ void CHttpCmdServer::HandleRequest(SOCKET client)
 		return;
 	}
 
-	// Hemen 200 don, komutu arka planda calistir (mouse takilma fix)
+	// ProcessServerCommand
+	try
+	{
+		g_pMain->ProcessServerCommand(cmd);
+	}
+	catch (...)
+	{
+		printf("[HttpCmd] ProcessServerCommand istisna: %s\n", cmdName.c_str());
+		const char* resp = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
+		send(client, resp, (int)strlen(resp), 0);
+		return;
+	}
+
 	const char* resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
 	send(client, resp, (int)strlen(resp), 0);
-
-	std::thread([cmd, cmdName]() {
-		try
-		{
-			g_pMain->ProcessServerCommand(const_cast<std::string&>(cmd));
-		}
-		catch (...)
-		{
-			printf("[HttpCmd] ProcessServerCommand istisna: %s\n", cmdName.c_str());
-		}
-	}).detach();
 }
 
 bool CHttpCmdServer::VerifyToken(const std::string& token)
