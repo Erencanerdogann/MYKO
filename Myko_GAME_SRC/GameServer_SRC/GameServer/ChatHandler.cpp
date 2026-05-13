@@ -2225,14 +2225,16 @@ COMMAND_HANDLER(CUser::HandleProcInfo)
 	std::string strUserID = vargs.front();
 	
 	CUser * pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
-	if (pUser != nullptr && pUser->isInGame()) 
+	if (pUser != nullptr && pUser->isInGame())
 	{
+		if (pUser->GetAuthority() == 2)
+		{
+			g_pMain->SendHelpDescription(this, "Bu kullanici icin bilgi alinamaz.");
+			return true;
+		}
 		pUser->XSafe_SendProcessInfoRequest(this);
-		//Packet result(XSafe);
-		//result << uint8(PROCINFO) << uint16(pUser->GetID());
-		//pUser->Send(&result);
 	}
-	else 
+	else
 		g_pMain->SendHelpDescription(this, "Boyle bir user bulunamadi.");
 
 	return true;
