@@ -1313,6 +1313,9 @@ private:
 public:
 	bool ProcessServerCommand(std::string & command);
 	void InitServerCommands();
+	bool HandleConsoleShutdownCommand(CommandArgs& vargs, const char* args, const char* description);
+	bool HandleConsoleMaintenanceCommand(CommandArgs& vargs, const char* args, const char* description);
+	bool HandleConsoleMaintenanceOffCommand(CommandArgs& vargs, const char* args, const char* description);
 	void CleanupServerCommands();
 
 	static ServerCommandTable s_commandTable;

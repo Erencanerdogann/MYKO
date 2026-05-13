@@ -17,13 +17,30 @@ std::thread CHttpCmdServer::s_thread;
 std::string CHttpCmdServer::s_token;
 
 static const std::set<std::string> s_whitelist = {
+	// Duyuru
 	"permanent", "offpermanent", "notice", "noticeall",
+	// Reload
 	"reloadnotice", "reloadalltables", "reloaditems", "reloaddrops",
 	"reloadquests", "reloadmagics", "reloadkings", "reloadevent",
 	"reloadtables", "reloadtables2", "reloadtables3",
+	// Savas/Etkinlik
 	"open1", "open2", "open3", "open4", "open5", "open6",
 	"snow", "csw", "close", "cswclose",
-	"santa", "santaclose", "angel", "discount", "alldiscount", "offdiscount"
+	"santa", "santaclose", "angel", "angelclose", "discount", "alldiscount", "offdiscount",
+	// Bakim / Kapanma
+	"caremode", "caremodeoff", "shutdown",
+	// Etkinlikler
+	"madclas", "madclasclose",
+	"ftopen", "ftclose",
+	"utc",
+	"chaosopen", "chaosclose",
+	"borderopen", "borderclose",
+	"juraidopen", "juraidclose",
+	"beefopen", "beefclose",
+	"tournamentstart", "tournamentclose",
+	"lottery", "lotteryclose",
+	// Diger
+	"count", "aireset", "bug"
 };
 
 void CHttpCmdServer::Start()
@@ -196,21 +213,20 @@ void CHttpCmdServer::HandleRequest(SOCKET client)
 		return;
 	}
 
-	// ProcessServerCommand
-	try
-	{
-		g_pMain->ProcessServerCommand(cmd);
-	}
-	catch (...)
-	{
-		printf("[HttpCmd] ProcessServerCommand istisna: %s\n", cmdName.c_str());
-		const char* resp = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
-		send(client, resp, (int)strlen(resp), 0);
-		return;
-	}
-
+	// Hemen 200 don, komutu arka planda calistir (mouse takilma fix)
 	const char* resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
 	send(client, resp, (int)strlen(resp), 0);
+
+	std::thread([cmd, cmdName]() {
+		try
+		{
+			g_pMain->ProcessServerCommand(const_cast<std::string&>(cmd));
+		}
+		catch (...)
+		{
+			printf("[HttpCmd] ProcessServerCommand istisna: %s\n", cmdName.c_str());
+		}
+	}).detach();
 }
 
 bool CHttpCmdServer::VerifyToken(const std::string& token)

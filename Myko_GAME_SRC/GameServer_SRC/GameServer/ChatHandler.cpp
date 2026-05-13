@@ -28,6 +28,9 @@ void CGameServerDlg::InitServerCommands()
 		{ "close",				&CGameServerDlg::HandleWarCloseCommand,				"Closes the active war zone" },
 		{ "cswclose",			&CGameServerDlg::HandleCastleSiegeWarClose,			"Closes the active csw zone" },
 		{ "down",				&CGameServerDlg::HandleShutdownCommand,				"Shuts down the server" },
+		{ "shutdown",			&CGameServerDlg::HandleConsoleShutdownCommand,		"Sunucu N dk sonra kapat (orn: /shutdown 5)" },
+		{ "caremode",			&CGameServerDlg::HandleConsoleMaintenanceCommand,	"Bakim modu N dk sonra (orn: /caremode 10)" },
+		{ "caremodeoff",		&CGameServerDlg::HandleConsoleMaintenanceOffCommand,"Bakim modu iptal" },
 		{ "discount",			&CGameServerDlg::HandleDiscountCommand,				"Enables server discounts for the winning nation of the last war" },
 		{ "alldiscount",		&CGameServerDlg::HandleGlobalDiscountCommand,		"Enables server discounts for everyone" },
 		{ "offdiscount",		&CGameServerDlg::HandleDiscountOffCommand,			"Disables server discounts" },
@@ -1322,6 +1325,53 @@ COMMAND_HANDLER(CGameServerDlg::HandleShutdownCommand)
 	Packet result(WIZ_LOGOSSHOUT, uint8(2));
 	result << uint8(6) << uint8(1);
 	Send_All(&result);
+	return true;
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandleConsoleShutdownCommand)
+{
+	if (m_Shutdownstart) { printf("[Shutdown] Zaten kapaniyor.\n"); return true; }
+	uint32 minutes = 5;
+	if (!vargs.empty())
+		minutes = SafeAtoi(vargs.front(), 1, 60);
+	m_Shutdownfinishtime = UNIXTIME + (minutes * 60);
+	m_Shutdownstart = true;
+	m_ShutdownKickStart = false;
+	m_Shutdownfinished = false;
+	Packet notice;
+	std::string msg = string_format("#### DIKKAT: Sunucu %d dakika icinde kapanacak! ####", minutes);
+	ChatPacket::Construct(&notice, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+	Send_All(&notice, nullptr, (uint8)Nation::ALL);
+	printf("[Shutdown] Console triggered, %d minutes\n", minutes);
+	return true;
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandleConsoleMaintenanceCommand)
+{
+	if (m_bMaintenanceMode) { printf("[Maintenance] Zaten aktif.\n"); return true; }
+	uint32 minutes = 10;
+	if (!vargs.empty())
+		minutes = SafeAtoi(vargs.front(), 1, 60);
+	m_bMaintenanceMode = true;
+	m_MaintenanceKickTime = UNIXTIME + (minutes * 60);
+	Packet notice;
+	std::string msg = string_format("#### SUNUCU %d DAKIKA SONRA BAKIMA GIRECEKTIR! ####", minutes);
+	ChatPacket::Construct(&notice, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+	Send_All(&notice, nullptr, (uint8)Nation::ALL);
+	printf("[Maintenance] Console triggered, %d minutes\n", minutes);
+	return true;
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandleConsoleMaintenanceOffCommand)
+{
+	if (!m_bMaintenanceMode) { printf("[Maintenance] Zaten kapali.\n"); return true; }
+	m_bMaintenanceMode = false;
+	m_MaintenanceKickTime = 0;
+	Packet notice;
+	std::string msg = "#### SUNUCU BAKIMI TAMAMLANDI — HERKES GIREBILIR ####";
+	ChatPacket::Construct(&notice, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+	Send_All(&notice, nullptr, (uint8)Nation::ALL);
+	printf("[Maintenance] Console maintenance off.\n");
 	return true;
 }
 
