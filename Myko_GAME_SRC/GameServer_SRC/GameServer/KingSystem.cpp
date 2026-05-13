@@ -3,7 +3,7 @@
 #include "../shared/DateTime.h"
 #include "Map.h"
 
-#define MIN_LEVEL_VOTER 50
+#define MIN_LEVEL_VOTER 72
 #define MIN_NP_VOTER 10000
 
 CKingSystem::CKingSystem() { Initialize(); }
@@ -1063,6 +1063,9 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 			return;
 		}
 
+		// PATRON KARARI S107: Premium sarti kaldirildi (KO standardi disi).
+		// Her oyuncu (Lvl 72+) oy verebilir.
+		/*
 		if (!pUser->GetPremium())
 		{
 			result << int16_t(-5);
@@ -1070,6 +1073,7 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 			m_KingSystemlock.unlock();
 			return;
 		}
+		*/
 
 		// Prevent duplicate voting
 		if (pUser->m_bKingVoted)
