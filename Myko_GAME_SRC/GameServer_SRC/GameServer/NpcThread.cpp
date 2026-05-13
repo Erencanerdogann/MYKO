@@ -946,27 +946,28 @@ void CGameServerDlg::ResetAllEventObject(uint8 byZone)
 #pragma region CNpcThread::ResetAllNPCs()
 void CNpcThread::ResetAllNPCs()
 {
-	std::vector<CNpc*> mlist;
+	std::vector<uint16> npcIDs;
 	m_arNpcArray.m_lock.lock();
 	foreach_stlmap_nolock(itr, m_arNpcArray) {
 		CNpc* pNpc = itr->second;
 		if (pNpc == nullptr || pNpc->GetType() == NPC_DESTROYED_ARTIFACT)
 			continue;
 
-		mlist.push_back(pNpc);
+		npcIDs.push_back(pNpc->GetID());
 	}
 	m_arNpcArray.m_lock.unlock();
 
-	foreach(itr, mlist)
+	for (uint16 npcID : npcIDs)
 	{
-		if (!(*itr))
+		CNpc* pNpc = m_arNpcArray.GetData(npcID);
+		if (pNpc == nullptr)
 			continue;
 
-		(*itr)->Dead();
-		(*itr)->m_bForceReset = true;
+		pNpc->Dead();
+		pNpc->m_bForceReset = true;
 
-		if ((*itr)->GetNpcState() == (uint8)NpcState::NPC_LIVE)
-			(*itr)->HpChange((*itr)->GetMaxHealth(), nullptr);
+		if (pNpc->GetNpcState() == (uint8)NpcState::NPC_LIVE)
+			pNpc->HpChange(pNpc->GetMaxHealth(), nullptr);
 	}
 }
 #pragma endregion
