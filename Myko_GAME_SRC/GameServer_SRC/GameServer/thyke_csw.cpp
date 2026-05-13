@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#define CSW_DEFENDER_ENABLED 0   // S107: devre disi - S108 mutex+idempotent fix sonra 1 yap
 
 #pragma region CGameServerDlg::csw_maintimer
 void CGameServerDlg::csw_maintimer() {
@@ -33,6 +34,7 @@ void CGameServerDlg::csw_maintimer() {
 			else if (r_time == 2 * MINUTE) csw_remnotice((uint8)CswNotice::War, 2);
 			else if (r_time == 1 * MINUTE) csw_remnotice((uint8)CswNotice::War, 1);
 
+#if CSW_DEFENDER_ENABLED
 			// Defender 40dk mantigi: mevcut sahip Delos'ta tutunursa otomatik kazanir
 			if (pCswEvent.defenderClanID > 0) {
 				bool defenderPresent = false;
@@ -57,6 +59,7 @@ void CGameServerDlg::csw_maintimer() {
 					csw_close();
 				}
 			}
+#endif
 		}
 		else {
 			pCswEvent.war_check = true;
