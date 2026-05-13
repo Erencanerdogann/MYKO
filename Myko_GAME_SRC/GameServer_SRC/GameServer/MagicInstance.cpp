@@ -3978,7 +3978,7 @@ bool MagicInstance::ExecuteType4()
 		if (!bShouldPersist && pTarget->isPlayer())
 		{
 			CUser* pTUser = TO_USER(pTarget);
-			if (pTUser != nullptr && pTUser->isLockableScroll(pType->bBuffType))
+			if (pTUser != nullptr && pTUser->isLockableScroll(pType->bBuffType) && pType->isBuff())
 				bShouldPersist = true;
 		}
 
