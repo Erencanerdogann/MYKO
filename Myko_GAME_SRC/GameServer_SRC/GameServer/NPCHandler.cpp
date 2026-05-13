@@ -1579,6 +1579,14 @@ void CUser::ItemTrade(Packet& pkt)
 								case ZONE_OLD_KARUS:
 								case ZONE_OLD_HUMAN:
 								case ZONE_NEW_BATTLE_TEST:
+								case ZONE_MORADON:
+								case ZONE_MORADON2:
+								case ZONE_MORADON3:
+								case ZONE_MORADON4:
+								case ZONE_MORADON5:
+								case ZONE_DELOS:
+								case ZONE_DELOS_CASTELLAN:
+								case ZONE_FORGOTTEN_TEMPLE:
 								{
 									uint32 nNationalTreasuryTax = (tax * 80) / 100;
 									uint32 nTerritoryTax = (tax * 20) / 100;
