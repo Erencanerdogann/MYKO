@@ -132,10 +132,21 @@ void CUser::MoveProcess(Packet & pkt)
 			|| zoneID == ZONE_KARUS_ESLANT2 || zoneID == ZONE_KARUS_ESLANT3
 			|| zoneID == ZONE_ELMORAD_ESLANT2 || zoneID == ZONE_ELMORAD_ESLANT3)
 			maxY = 250.0f;
+		else if (zoneID == ZONE_MORADON || zoneID == ZONE_MORADON2 || zoneID == ZONE_MORADON3
+			|| zoneID == ZONE_MORADON4 || zoneID == ZONE_MORADON5)
+			maxY = 280.0f; // Moradon tepeleri + GENIE altitude
 
-		if (!m_bGenieStatus && real_y > maxY)
+		if (!m_bGenieStatus
+			&& (UNIXTIME2 - m_lastZoneChangeTime) > 2000
+			&& real_y > maxY)
 		{
-			LOG_HACK("[FLY_HACK] User=%s Zone=%u Y=%.1f MaxY=%.1f IP=%s", GetName().c_str(), zoneID, real_y, maxY, GetRemoteIP().c_str());
+			static thread_local ULONGLONG s_lastFlyLogTime = 0;
+			ULONGLONG now = UNIXTIME2;
+			if (now - s_lastFlyLogTime > 5000)
+			{
+				LOG_HACK("[FLY_HACK] User=%s Zone=%u Y=%.1f MaxY=%.1f IP=%s", GetName().c_str(), zoneID, real_y, maxY, GetRemoteIP().c_str());
+				s_lastFlyLogTime = now;
+			}
 			real_y = GetY(); // eski Y'ye geri dondur
 		}
 	}
