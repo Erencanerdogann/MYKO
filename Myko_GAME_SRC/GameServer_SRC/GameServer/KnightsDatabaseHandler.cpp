@@ -540,6 +540,7 @@ void CKnightsManager::ReqKnightsChief(CUser* pUser, Packet & pkt)
 	{
 		pTUser->m_bFame = CHIEF;
 		pTUser->SendClanUserStatusUpdate(false);
+		pTUser->UserDataSaveToAgent();
 	}
 
 	g_pMain->GetServerResource(IDS_KNIGHTS_CHIEF, &clanNotice, strTarget.c_str());
@@ -588,6 +589,7 @@ void CKnightsManager::ReqKnightsViceChief(CUser* pUser, Packet & pkt)
 	{
 		pTUser->m_bFame = VICECHIEF;
 		pTUser->SendClanUserStatusUpdate(false);
+		pTUser->UserDataSaveToAgent();
 	}
 
 	std::string clanNotice;
@@ -642,6 +644,7 @@ void CKnightsManager::ReqKnightsOfficer(CUser* pUser, Packet & pkt)
 	{
 		pTUser->m_bFame = OFFICER;
 		pTUser->SendClanUserStatusUpdate(false);
+		pTUser->UserDataSaveToAgent();
 	}
 }
 #pragma endregion
