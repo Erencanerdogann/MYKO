@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#define CSW_DEFENDER_ENABLED 0   // S107: devre disi - S108 mutex+idempotent fix sonra 1 yap
 
 #pragma region CGameServerDlg::csw_maintimer
 void CGameServerDlg::csw_maintimer() {
@@ -33,33 +32,6 @@ void CGameServerDlg::csw_maintimer() {
 			else if (r_time == 3 * MINUTE) csw_remnotice((uint8)CswNotice::War, 3);
 			else if (r_time == 2 * MINUTE) csw_remnotice((uint8)CswNotice::War, 2);
 			else if (r_time == 1 * MINUTE) csw_remnotice((uint8)CswNotice::War, 1);
-
-#if CSW_DEFENDER_ENABLED
-			// Defender 40dk mantigi: mevcut sahip Delos'ta tutunursa otomatik kazanir
-			if (pCswEvent.defenderClanID > 0) {
-				bool defenderPresent = false;
-				std::lock_guard<std::recursive_mutex> lock(m_socketMgr.GetLock());
-				SessionMap& sessions = m_socketMgr.GetActiveSessionMap();
-				for (auto itr = sessions.begin(); itr != sessions.end(); ++itr) {
-					CUser* pUser = static_cast<CUser*>(itr->second);
-					if (pUser && pUser->isInGame()
-						&& pUser->GetClanID() == pCswEvent.defenderClanID
-						&& pUser->GetZoneID() == ZONE_DELOS) {
-						defenderPresent = true;
-						break;
-					}
-				}
-				if (defenderPresent)
-					pCswEvent.defenderHoldTime++;
-				else
-					pCswEvent.defenderHoldTime = 0;
-
-				if (pCswEvent.defenderHoldTime >= 40 * 60) {
-					pCswEvent.war_check = true;
-					csw_close();
-				}
-			}
-#endif
 		}
 		else {
 			pCswEvent.war_check = true;
@@ -89,8 +61,6 @@ void CGameServerDlg::csw_reset() {
 	pCswEvent.Started = false;
 	pCswEvent.MonumentTime = 0;
 	pCswEvent.war_check = pCswEvent.prepare_check = false;
-	pCswEvent.defenderHoldTime = 0;
-	pCswEvent.defenderClanID = 0;
 }
 #pragma endregion
 
@@ -153,9 +123,6 @@ void CGameServerDlg::csw_waropen() {
 	m_byBattleOpen = m_byOldBattleOpen = SIEGE_BATTLE;
 	pCswEvent.Status = CswOpStatus::War;
 	pCswEvent.CswTime = UNIXTIME + (pCswEvent.poptions.wartime * MINUTE);
-	// Defender = mevcut kale sahibi
-	pCswEvent.defenderClanID = pSiegeWar.sMasterKnights;
-	pCswEvent.defenderHoldTime = 0;
 	csw_usertools(true, CswNotice::War, true, false, true, true);
 }
 #pragma endregion
