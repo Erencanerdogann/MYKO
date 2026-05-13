@@ -426,10 +426,11 @@ void CKnightsManager::ReqKnightsAdmit(CUser* pUser, Packet & pkt)
 
 	CUser *pTUser = g_pMain->GetUserPtr(strTarget, NameType::TYPE_CHARACTER);
 	if (pTUser != nullptr)
+	{
 		pTUser->m_bFame = KNIGHT;
-
-	if (pTUser != nullptr)
 		pTUser->SendClanUserStatusUpdate(false);
+		pTUser->UserDataSaveToAgent();
+	}
 }
 #pragma endregion
 
@@ -467,6 +468,7 @@ void CKnightsManager::ReqKnightsReject(CUser* pUser, Packet & pkt)
 		pTUser->m_bFame = 0;
 		pKnights->RemoveUser(pTUser);
 		pTUser->SendClanUserStatusUpdate(false);
+		pTUser->UserDataSaveToAgent();
 	}
 	else
 		pKnights->RemoveUser(strTarget);
@@ -503,6 +505,7 @@ void CKnightsManager::ReqKnightsPunish(CUser* pUser, Packet & pkt)
 	if (pTUser != nullptr) {
 		pTUser->m_bFame = PUNISH;
 		pTUser->SendClanUserStatusUpdate(false);
+		pTUser->UserDataSaveToAgent();
 	}
 }
 #pragma endregion
