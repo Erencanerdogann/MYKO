@@ -79,8 +79,13 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 		switch (type)
 		{
 		case 1:
-			//CastleSiegeWarBaseCreate
+		{
+			// CastleSiegeWarBaseCreate — kayit teminat al (Aaron NPC ana menu)
+			int8 regResult = CheckCastleSiegeWarDeathmatchRegister();
+			result << int8(regResult);
+			Send(&result);
 			break;
+		}
 		default:
 			printf("Siege Npc Base Created unhandlec packets %d \n", type);
 			TRACE("Siege Npc Base Created unhandlec packets %d \n", type);
@@ -93,8 +98,29 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 		switch (type)
 		{
 		case 1:
-			//CastleSiegeWarRegisterClanShow
+		{
+			// CastleSiegeWarRegisterClanShow — kayitli klan listesi
+			_KNIGHTS_SIEGE_WARFARE& sw = g_pMain->pSiegeWar;
+			uint16 requestList[10] = {
+				sw.sRequestList_1, sw.sRequestList_2, sw.sRequestList_3,
+				sw.sRequestList_4, sw.sRequestList_5, sw.sRequestList_6,
+				sw.sRequestList_7, sw.sRequestList_8, sw.sRequestList_9,
+				sw.sRequestList_10
+			};
+			uint8 count = 0;
+			for (int i = 0; i < 10; i++) if (requestList[i] > 0) count++;
+			result << count;
+			for (int i = 0; i < 10; i++)
+			{
+				if (requestList[i] == 0) continue;
+				CKnights* pKnights = g_pMain->GetClanPtr(requestList[i]);
+				if (pKnights == nullptr) continue;
+				result.SByte();
+				result << requestList[i] << pKnights->GetName();
+			}
+			Send(&result);
 			break;
+		}
 		case 2:
 			csw_rank();
 			break;
@@ -280,5 +306,81 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 		TRACE("Siege Npc - unhandled packets type: %d opcode: %d\n", type, opcode);
 		break;
 	}
+}
+#pragma endregion
+
+#pragma region CUser::CheckCastleSiegeWarDeathmatchRegister()
+int8 CUser::CheckCastleSiegeWarDeathmatchRegister()
+{
+	CKnights* pKnights = g_pMain->GetClanPtr(GetClanID());
+	if (pKnights == nullptr) return 2;
+
+	// Klan lideri veya yardimcisi olmali
+	if (!isClanLeader() && !isClanAssistant()) return 2;
+
+	// Accredited 1+ (grade <= 3 = yetersiz, 4+ = OK)
+	if (pKnights->m_byGrade > 3) return 3;
+
+	// Klan fonu yeterli mi? (100,000,000)
+	if (pKnights->m_nClanPointFund < 100000000) return 4;
+
+	_KNIGHTS_SIEGE_WARFARE& sw = g_pMain->pSiegeWar;
+	uint16* requestList[10] = {
+		&sw.sRequestList_1, &sw.sRequestList_2, &sw.sRequestList_3,
+		&sw.sRequestList_4, &sw.sRequestList_5, &sw.sRequestList_6,
+		&sw.sRequestList_7, &sw.sRequestList_8, &sw.sRequestList_9,
+		&sw.sRequestList_10
+	};
+
+	// Zaten kayitli mi?
+	for (int i = 0; i < 10; i++)
+		if (*requestList[i] == GetClanID()) return 5;
+
+	// Slot dolu mu?
+	int freeSlot = -1;
+	for (int i = 0; i < 10; i++)
+	{
+		if (*requestList[i] == 0) { freeSlot = i; break; }
+	}
+	if (freeSlot < 0) return 6;
+
+	// Kayit yap — hafizada guncelle, fon dusur
+	*requestList[freeSlot] = GetClanID();
+	pKnights->m_nClanPointFund -= 100000000;
+
+	return 1;
+}
+#pragma endregion
+
+#pragma region CUser::CheckCastleSiegeWarDeathmatchCancelRegister()
+int8 CUser::CheckCastleSiegeWarDeathmatchCancelRegister()
+{
+	CKnights* pKnights = g_pMain->GetClanPtr(GetClanID());
+	if (pKnights == nullptr) return 2;
+
+	// Klan lideri veya yardimcisi olmali
+	if (!isClanLeader() && !isClanAssistant()) return 2;
+
+	_KNIGHTS_SIEGE_WARFARE& sw = g_pMain->pSiegeWar;
+	uint16* requestList[10] = {
+		&sw.sRequestList_1, &sw.sRequestList_2, &sw.sRequestList_3,
+		&sw.sRequestList_4, &sw.sRequestList_5, &sw.sRequestList_6,
+		&sw.sRequestList_7, &sw.sRequestList_8, &sw.sRequestList_9,
+		&sw.sRequestList_10
+	};
+
+	for (int i = 0; i < 10; i++)
+	{
+		if (*requestList[i] == GetClanID())
+		{
+			*requestList[i] = 0;
+			// 100M geri ver
+			pKnights->m_nClanPointFund += 100000000;
+			return 1;
+		}
+	}
+
+	// Kayitli degil
+	return 5;
 }
 #pragma endregion

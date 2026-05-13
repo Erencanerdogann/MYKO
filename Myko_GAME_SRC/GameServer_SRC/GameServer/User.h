@@ -2244,6 +2244,8 @@ public:
 	void SiegeWarFareProcess(Packet & pkt);
 	void DelosCasttellanZoneOut();
 	bool isCswWinnerNembers();
+	int8 CheckCastleSiegeWarDeathmatchRegister();
+	int8 CheckCastleSiegeWarDeathmatchCancelRegister();
 
 	void GetUserInfo(Packet & pkt);
 	void SendUserStatusUpdate(UserStatus type, UserStatusBehaviour status);
@@ -3423,5 +3425,23 @@ public:
 			LUA_RETURN(0);
 		}
 		LUA_RETURN(pUser->GetExpPercent());
+	}
+
+	DECLARE_LUA_FUNCTION(CheckCastleSiegeWarDeathmatchRegister)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) {
+			LUA_RETURN(0);
+		}
+		LUA_RETURN(pUser->CheckCastleSiegeWarDeathmatchRegister());
+	}
+
+	DECLARE_LUA_FUNCTION(CheckCastleSiegeWarDeathmatchCancelRegister)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) {
+			LUA_RETURN(0);
+		}
+		LUA_RETURN(pUser->CheckCastleSiegeWarDeathmatchCancelRegister());
 	}
 };

@@ -192,6 +192,8 @@ Classes
 		MAKE_LUA_METHOD(GenieExchange)
 		MAKE_LUA_METHOD(ClanNts)
 		MAKE_LUA_METHOD(PerkUseItem)
+		MAKE_LUA_METHOD(CheckCastleSiegeWarDeathmatchRegister)
+		MAKE_LUA_METHOD(CheckCastleSiegeWarDeathmatchCancelRegister)
 	);
 
 #undef LUA_CLASS
