@@ -94,6 +94,8 @@ public:
 	void ImpeachmentElect(CUser * pUser, Packet & pkt);
 	void ImpeachmentRequestUiOpen(CUser * pUser, Packet & pkt);
 	void ImpeachmentElectionUiOpen(CUser * pUser, Packet & pkt);
+	void GetImpeachmentRequestResult();
+	void GetImpeachmentElectionResult();
 
 	void KingTaxSystem(CUser * pUser, Packet & pkt);
 	void KingSpecialEvent(CUser * pUser, Packet & pkt);

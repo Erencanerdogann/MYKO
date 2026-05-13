@@ -194,7 +194,7 @@ void CKingSystem::CheckKingTimer()
 			&& bCurHour == dt.GetHour()
 			&& bCurMinute == dt.GetMinute())
 		{
-			// GetImpeachmentRequestResult();
+			GetImpeachmentRequestResult();
 		}
 	}
 	break;
@@ -224,7 +224,7 @@ void CKingSystem::CheckKingTimer()
 			&& bCurMinute == dt.GetMinute())
 		{
 			m_byImType = 4;
-			// GetImpeachmentElectionResult();
+			GetImpeachmentElectionResult();
 		}
 	}
 	break;
@@ -1267,6 +1267,44 @@ void CKingSystem::ImpeachmentList(CUser * pUser, Packet & pkt)
 }
 void CKingSystem::ImpeachmentElect(CUser * pUser, Packet & pkt)
 {
+}
+
+void CKingSystem::GetImpeachmentRequestResult()
+{
+	m_KingSystemlock.lock();
+
+	uint32 totalVotes = 0;
+	uint32 senatorCount = (uint32)m_senatorList.size();
+
+	foreach(itr, m_senatorList)
+	{
+		if (itr->second != nullptr)
+			totalVotes += itr->second->nVotes;
+	}
+
+	m_KingSystemlock.unlock();
+
+	// Senator sayısının yarısından fazlası onayladıysa halk oyu fazına geç
+	if (senatorCount > 0 && totalVotes > senatorCount / 2)
+	{
+		m_byImType = 2;
+		g_pMain->SendFormattedResource(IDS_KING_IMPEACHMENT_ELECTION_MESSAGE, m_byNation, false);
+	}
+	else
+	{
+		m_byImType = 0;
+		g_pMain->SendFormattedResource(IDS_KING_IMPEACHMENT_REJECT_MESSAGE, m_byNation, false);
+	}
+}
+
+void CKingSystem::GetImpeachmentElectionResult()
+{
+	// ACILIS SONRASI: Halk oyu (KING_BALLOT_BOX) implement edilecek.
+	// Su an: byImType=4 gelince kral dusur, yeni secim ac.
+	m_strKingName.clear();
+	m_byImType = 0;
+	UpdateElectionStatus(0);
+	g_pMain->SendFormattedResource(IDS_KING_IMPEACHMENT_ELECTION_YES_RESULT_MESSAGE, m_byNation, false);
 }
 
 #pragma endregion

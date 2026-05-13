@@ -220,6 +220,8 @@ struct _CSW_STATUS
 	std::recursive_mutex mClanListLock;
 	std::map<uint16, uint16> mClanList;
 	time_t  CswTime, MonumentTime;
+	uint32 defenderHoldTime;
+	uint16 defenderClanID;
 	_CSW_STATUS() {
 		Initialize();
 	}
@@ -232,6 +234,8 @@ struct _CSW_STATUS
 		mClanList.clear();
 		mClanListLock.unlock();
 		CswTime = MonumentTime = 0;
+		defenderHoldTime = 0;
+		defenderClanID = 0;
 	}
 };
 
