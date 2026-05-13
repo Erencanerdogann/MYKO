@@ -96,6 +96,8 @@ void CGameServerDlg::InitServerCommands()
 		{ "block",				&CGameServerDlg::Handlebannedcommand,				"Oyuncu Banlama - Player permanent ban" },
 		{ "bug",				&CGameServerDlg::HandleBugdanKurtarCommand,			"askida kalan karakteri kurtar" },
 		{ "reload_cind",		&CGameServerDlg::HandleReloadCindirellaCommand,		"Reloads the in-game Cindirella Table list" },
+		{ "setweather",			&CGameServerDlg::HandleSetWeatherCommand,			"Hava tipini degistir (1=fine 2=rain 3=snow) [miktar 0-100]" },
+		{ "reloadcsw",			&CGameServerDlg::HandleReloadCswCommand,			"CSW tablolarini yeniler" },
 
 	};
 
@@ -1845,6 +1847,12 @@ COMMAND_HANDLER(CGameServerDlg::HandleReloadKingsCommand)
 {
 	m_KingSystemArray.DeleteAllData();
 	LoadKingSystem();
+	return true;
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandleReloadCswCommand)
+{
+	LoadKnightsSiegeWarsTable();
 	return true;
 }
 

@@ -21,7 +21,7 @@ static const std::set<std::string> s_whitelist = {
 	"permanent", "offpermanent", "notice", "noticeall",
 	// Reload
 	"reloadnotice", "reloadalltables", "reloaditems", "reloaddrops",
-	"reloadquests", "reloadmagics", "reloadkings", "reloadevent",
+	"reloadquests", "reloadmagics", "reloadkings", "reloadcsw", "reloadevent",
 	"reloadtables", "reloadtables2", "reloadtables3",
 	// Savas/Etkinlik
 	"open1", "open2", "open3", "open4", "open5", "open6",

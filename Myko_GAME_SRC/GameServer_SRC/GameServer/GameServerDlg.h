@@ -1406,6 +1406,8 @@ public:
 	COMMAND_HANDLER(HandleAIResetCommand);
 	COMMAND_HANDLER(HandleReloadCindirellaCommand);
 	COMMAND_HANDLER(HandleCindirellaWarClose);
+	COMMAND_HANDLER(HandleSetWeatherCommand);
+	COMMAND_HANDLER(HandleReloadCswCommand);
 };
 
 extern CGameServerDlg * g_pMain;

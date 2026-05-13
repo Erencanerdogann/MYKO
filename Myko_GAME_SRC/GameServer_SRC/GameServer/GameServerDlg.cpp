@@ -1413,6 +1413,43 @@ sendweather:
 	}
 }
 
+COMMAND_HANDLER(CGameServerDlg::HandleSetWeatherCommand)
+{
+	if (vargs.empty())
+		return false;
+
+	uint8 weatherType = (uint8)atoi(vargs.front().c_str());
+	if (weatherType < 1 || weatherType > 3)
+		return false;
+
+	vargs.pop_front();
+	uint8 amount = (uint8)(!vargs.empty() ? atoi(vargs.front().c_str()) : 50);
+	if (amount > 100) amount = 100;
+
+	m_byWeather = weatherType;
+	m_sWeatherAmount = amount;
+	m_byKingWeatherEvent = 0;
+
+	Packet realWeather(WIZ_WEATHER, m_byWeather);
+	realWeather << m_sWeatherAmount;
+	Packet fakeWeather(WIZ_WEATHER, uint8(WEATHER_FINE));
+	fakeWeather << m_sWeatherAmount;
+
+	for (uint16 i = 0; i < MAX_USER; i++)
+	{
+		CUser* pUser = g_pMain->GetUserPtr(i);
+		if (pUser == nullptr || !pUser->isInGame())
+			continue;
+
+		if (pUser->GetZoneID() == 32 || pUser->GetZoneID() == 33 || pUser->GetZoneID() == 48)
+			pUser->Send(&fakeWeather);
+		else
+			pUser->Send(&realWeather);
+	}
+
+	return true;
+}
+
 void CGameServerDlg::SetGameTime()
 {
 	CIni ini(CONF_GAME_SERVER);
