@@ -265,7 +265,10 @@ void CUser::csw_notice(CswNotice p)
 		g_pMain->GetServerResource(IDS_SIEGE_WAR_READY_TIME_NOTICE, &notice, g_pMain->pCswEvent.poptions.Preparing);
 		break;
 	case CswNotice::MonumentKilled:
-		g_pMain->GetServerResource(IDS_NPC_GUIDON_DESTORY, &notice, pKnights == nullptr ? "***" : pKnights->GetName().c_str());
+		// DB string 2 adet %s ister: klan adi + kristal kesen oyuncu adi (S107 crash fix)
+		g_pMain->GetServerResource(IDS_NPC_GUIDON_DESTORY, &notice,
+			pKnights == nullptr ? "***" : pKnights->GetName().c_str(),
+			GetName().c_str());
 		break;
 	case CswNotice::War:
 		g_pMain->GetServerResource(IDS_SIEGE_WAR_TIME_NOTICE, &notice, g_pMain->pCswEvent.poptions.wartime);
@@ -407,7 +410,7 @@ void CNpc::csw_momumentprocess(CUser* pUser) {
 	g_pMain->pCswEvent.war_check = true;
 	g_pMain->pSiegeWar.sMasterKnights = pUser->GetClanID();
 	g_pMain->UpdateSiege(g_pMain->pSiegeWar.sCastleIndex, g_pMain->pSiegeWar.sMasterKnights, g_pMain->pSiegeWar.bySiegeType, 0, 0, 0);
-	g_pMain->csw_usertools(false, CswNotice::MonumentKilled, true, false, false);
+	g_pMain->csw_usertools(true, CswNotice::MonumentKilled, true, false, false);
 	g_pMain->ResetAllEventObject(ZONE_DELOS);
 }
 #pragma endregion
