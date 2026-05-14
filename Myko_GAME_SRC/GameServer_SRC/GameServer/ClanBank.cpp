@@ -338,8 +338,6 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 		std::lock_guard<std::recursive_mutex> whLock(pKnights->m_warehouseLock);
 
 		pkt >> nItemID >> Page >> bSrcPos >> bDstPos >> nCount;
-		printf("ClanBankOutput: user=%s nItemID=%u Page=%d bSrcPos=%d bDstPos=%d nCount=%u\n", GetName().c_str(), nItemID, Page, bSrcPos, bDstPos, nCount);
-		if (Page > 3) { ReturnValue = 0; break; }
 		pTable = g_pMain->GetItemPtr(nItemID);
 		if (pTable.isnull()) { ReturnValue = 0; break; }
 
@@ -347,7 +345,6 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 		{
 			{ // clan bank withdraw gold lock
 				std::lock_guard<std::recursive_mutex> lock(m_goldLock);
-				if (!pKnights->hasClanInnCoins(nCount) || m_iGold + nCount > COIN_MAX) { ReturnValue = 0; break; }
 				pKnights->m_nMoney -= nCount;
 				m_iGold += nCount;
 			}
@@ -360,6 +357,7 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 			return;
 		}
 
+		if (Page > 3) { ReturnValue = 0; break; }
 		if (pTable.m_bCountable) { if (((pTable.m_sWeight * nCount) + m_sItemWeight) > m_sMaxWeight) { ReturnValue = 3; break; } }
 		else { if ((pTable.m_sWeight + m_sItemWeight) > m_sMaxWeight) { ReturnValue = 3; break; } }
 
