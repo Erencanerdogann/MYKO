@@ -210,11 +210,6 @@ bool CUser::ZoneChange(uint16 sNewZone, float x, float z, int16 eventroom /*= -1
 	m_bCheckWarpZoneChange = true; // zone gecisi sonrasi ilk harekette teleport hack kontrolunu atla
 	m_lastZoneChangeTime = UNIXTIME2; // teleport hack grace period icin
 
-	if (isInParty() && isPartyLeader()) {
-		auto* pParty = g_pMain->GetPartyPtr(GetPartyID());
-		if (pParty != nullptr) PartyLeaderPromote(pParty->uid[1]);
-	}
-
 	PartyNemberRemove(GetSocketID());
 
 	if (hasRival())
@@ -601,10 +596,6 @@ void CUser::RecvZoneChange(Packet & pkt)
 		m_bZoneChangeControl = false;
 		m_bCheckWarpZoneChange = false;
 
-		// B10 fix: Zone yukleme sirasinda gelen PARTY_DELETE/PARTY_REMOVE paketi
-		// client tarafindan kaybedilebilir (loading ekrani). Zone yuklendikten sonra
-		// parti durumu senkronize edilir.
-		SendPartyInfoOnZoneChange();
 	}
 	else if (opcode == ZoneMilitaryCamp)
 	{
