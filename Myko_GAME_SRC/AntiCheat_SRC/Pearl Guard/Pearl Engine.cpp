@@ -3,6 +3,7 @@
 #include <thread>
 #include <future>
 #include <unordered_map>
+#include <unordered_set>
 #include <TlHelp32.h>
 #include "sha1.hpp"
 #include "RC5/RC5.h"
@@ -1633,6 +1634,9 @@ bool partyInit = false;
 bool amIInParty = false;
 bool waitingForParty = false;
 
+// Pearl Guard kendi party ID listesi — KO client memory'ye bagimli degil
+std::unordered_set<int16> g_partyIds;
+
 void __fastcall Object_Player_Callback(DWORD obj)
 {
 	if (!obj) return;
@@ -1651,7 +1655,7 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	bool dusmanMi = nation != nationm;
 #if (HOOK_SOURCE_VERSION == 1098)
 
-	bool isPartyMember = Engine->m_bInParty && Engine->uiPartyBBS != NULL && Engine->uiPartyBBS->PartyFind(id);
+	bool isPartyMember = !g_partyIds.empty() && g_partyIds.count(id) > 0;
 
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
@@ -6185,6 +6189,7 @@ bool __cdecl HandlePacket(Packet pkt)
 				string userName;
 				//pkt >> ret >> userName >> maxhp >> hp >> level >> iclass >> maxmp >> mp >> nation;
 				pkt >> partyid >> ret >> userName >> maxhp >> hp >> level >> iclass >> maxmp >> mp >> nation >> UserPartyType;
+				g_partyIds.insert(partyid);
 				Engine->m_bInParty = true;
 #if (HOOK_SOURCE_VERSION == 1098)
 				if (Engine->m_bInParty == true)
@@ -6208,6 +6213,7 @@ bool __cdecl HandlePacket(Packet pkt)
 			}
 			else if (subcode == PARTY_DELETE)
 			{
+				g_partyIds.clear();
 				Engine->m_bInParty = false;
 #if (HOOK_SOURCE_VERSION == 1098)	
 if (Engine->m_bInParty == false)
