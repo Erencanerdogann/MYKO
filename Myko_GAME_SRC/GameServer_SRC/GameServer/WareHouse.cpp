@@ -97,7 +97,7 @@ void CUser::WarehouseProcess(Packet & pkt)
 	}
 	pkt >> sNpcId >> nItemID >> page >> bSrcPos >> bDstPos;
 
-	if (page >= 8) return;
+	if (nItemID != ITEM_GOLD && page >= 8) goto fail_return;
 
 	pNpc = g_pMain->GetNpcPtr(sNpcId, GetZoneID());
 	if (pNpc == nullptr
