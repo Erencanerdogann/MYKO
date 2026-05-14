@@ -6211,6 +6211,13 @@ bool __cdecl HandlePacket(Packet pkt)
 #endif
 			
 			}
+			else if (subcode == PARTY_REMOVE)
+			{
+				// Geride tek kisi kaldiysa PARTY_REMOVE gelir — ID'yi listeden cikar
+				short removedId;
+				pkt >> removedId;
+				g_partyIds.erase(removedId);
+			}
 			else if (subcode == PARTY_DELETE)
 			{
 				g_partyIds.clear();
