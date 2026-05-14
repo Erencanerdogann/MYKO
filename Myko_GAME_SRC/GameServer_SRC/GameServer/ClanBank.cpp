@@ -338,6 +338,7 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 		std::lock_guard<std::recursive_mutex> whLock(pKnights->m_warehouseLock);
 
 		pkt >> nItemID >> Page >> bSrcPos >> bDstPos >> nCount;
+		printf("ClanBankOutput: user=%s nItemID=%u Page=%d bSrcPos=%d bDstPos=%d nCount=%u\n", GetName().c_str(), nItemID, Page, bSrcPos, bDstPos, nCount);
 		if (Page > 3) { ReturnValue = 0; break; }
 		pTable = g_pMain->GetItemPtr(nItemID);
 		if (pTable.isnull()) { ReturnValue = 0; break; }
