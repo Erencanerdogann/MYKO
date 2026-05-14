@@ -1923,10 +1923,28 @@ COMMAND_HANDLER(CUser::HandleAnindaGM) //aninda gm ol cýk
 
 			if (GetHealth() < (GetMaxHealth() / 2))
 				HpChange(GetMaxHealth());
-			m_bAbnormalType = GetAuthority() == (uint8)AuthorityTypes::AUTHORITY_GAME_MASTER ? ABNORMAL_INVISIBLE : ABNORMAL_NORMAL;
+
+			bool bBecomingGM = (GetAuthority() == (uint8)AuthorityTypes::AUTHORITY_GAME_MASTER);
+
+			// GM moduna gecince diger clientlara kaybolma paketi gonder (donukluk onlenir)
+			// User moduna gecince once visible yap, sonra ABNORMAL_NORMAL set et
+			if (bBecomingGM)
+			{
+				// Once bolgedeki herkese kaybol paketi gonder
+				UserInOut(INOUT_OUT);
+				m_bAbnormalType = ABNORMAL_INVISIBLE;
+			}
+			else
+			{
+				// Once invisible state'i temizle, sonra bolgeye gir
+				m_bAbnormalType = ABNORMAL_NORMAL;
+			}
+
 			SendMyInfo();
-			UserInOut(INOUT_OUT);
-		
+
+			if (!bBecomingGM)
+				UserInOut(INOUT_OUT);
+
 			RegisterRegion();
 			SetRegion(GetNewRegionX(), GetNewRegionZ());
 			UserInOut(INOUT_WARP);
