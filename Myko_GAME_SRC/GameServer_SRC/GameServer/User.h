@@ -1667,6 +1667,7 @@ public:
 	COMMAND_HANDLER(HandleDisableCommand);
 	COMMAND_HANDLER(HandleChangeRoom);
 	COMMAND_HANDLER(HandleCastleSiegeWarClose);
+	COMMAND_HANDLER(HandleCastleSiegeWarSkipTimer);
 	COMMAND_HANDLER(HandleSummonPrison);
 	COMMAND_HANDLER(HandleServerGameTestCommand);
 	COMMAND_HANDLER(HandleServerBotCommand);

@@ -1380,6 +1380,7 @@ public:
 	COMMAND_HANDLER(HandleWarResultCommand);
 	COMMAND_HANDLER(HandleEventUnderTheCastleCommand);
 	COMMAND_HANDLER(HandleCastleSiegeWarClose);
+	COMMAND_HANDLER(HandleCastleSiegeWarSkipTimer);
 	COMMAND_HANDLER(HandleTournamentStart);
 	COMMAND_HANDLER(HandleTournamentClose);
 	COMMAND_HANDLER(Handleunbannedcommand);

@@ -27,6 +27,7 @@ void CGameServerDlg::InitServerCommands()
 		{ "csw",				&CGameServerDlg::HandleSiegeWarOpenCommand,			"Opens the Castle Siege War zone" },
 		{ "close",				&CGameServerDlg::HandleWarCloseCommand,				"Closes the active war zone" },
 		{ "cswclose",			&CGameServerDlg::HandleCastleSiegeWarClose,			"Closes the active csw zone" },
+		{ "cswskip",			&CGameServerDlg::HandleCastleSiegeWarSkipTimer,		"CSW timer'i 5sn'ye dusurur (test)" },
 		{ "down",				&CGameServerDlg::HandleShutdownCommand,				"Shuts down the server" },
 		{ "shutdown",			&CGameServerDlg::HandleConsoleShutdownCommand,		"Sunucu N dk sonra kapat (orn: /shutdown 5)" },
 		{ "caremode",			&CGameServerDlg::HandleConsoleMaintenanceCommand,	"Bakim modu N dk sonra (orn: /caremode 10)" },
@@ -131,6 +132,7 @@ void CUser::InitChatCommands()
 		{ "csw",				&CUser::HandleSiegeWarOpenCommand,				"CSW Savaşı baslatir - Opens the Castle Siege War zone. How does it work? Expamle : +csw" },
 		{ "close",				&CUser::HandleWarCloseCommand,					"Aktif Olan Savası Kapatir - Closes the active war zone. How does it work? Expamle : +close" },
 		{ "cswclose",			&CUser::HandleCastleSiegeWarClose,				"Csw Savaşı Kapatır - Closes the active CSW Zone. How does it work? Expamle : +cswclose" },
+		{ "cswskip",			&CUser::HandleCastleSiegeWarSkipTimer,			"CSW Timer'i 5sn'ye dusurur (test) - Example : +cswskip" },
 		{ "np",					&CUser::HandleLoyaltyChangeCommand,				"Belirlenen Kullanıcıya NP verir - Change a player an loyalty. How does it work? Expamle : +np CharacterNick 100" },
 		{ "exp",				&CUser::HandleExpChangeCommand,					"Belirtilen KUllanıcıya Exp Verir - Change a player an exp. How does it work? Expamle : +exp CharacterNick 100" },
 		{ "noah",				&CUser::HandleGoldChangeCommand,				"Belirtilen Kullanıcıya Para verir - Change a player an gold. How does it work? Expamle : +noah CharacterNick 100" },
@@ -1132,6 +1134,19 @@ COMMAND_HANDLER(CUser::HandleCastleSiegeWarClose)
 COMMAND_HANDLER(CGameServerDlg::HandleCastleSiegeWarClose)
 {
 	csw_close();
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleCastleSiegeWarSkipTimer)
+{
+	return !isGM() ? false : g_pMain->HandleCastleSiegeWarSkipTimer(vargs, args, description);
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandleCastleSiegeWarSkipTimer)
+{
+	if (!isCswActive())
+		return true;
+	pCswEvent.CswTime = UNIXTIME + 5;
 	return true;
 }
 
