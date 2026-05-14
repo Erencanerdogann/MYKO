@@ -453,6 +453,7 @@ public:
 	bool    m_bInEnterParty;
 	bool	m_bPartyLeader;
 	bool	m_bPartyCommandLeader;
+	std::vector<uint16> m_vPendingPartyDelete; // zone gecisinde dagilmis partinin geride kalan uye socketID'leri
 	//bool	m_bDisconnected; // RECONNECT PARK (Session 25)
 
 	uint8 m_jackpotype;

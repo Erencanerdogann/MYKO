@@ -715,17 +715,44 @@ void CUser::PartyNemberRemove(uint16 UserID, _PARTY_GROUP* pmyparty)
 		count++;
 	}
 
-	// Disband kontrolu
+	// Disband: tek uye kaldi → party dagil
 	if (count == 1)
 	{
-		CUser* pPartyLeader = g_pMain->GetUserPtr(pParty->uid[0]);
-		if (pPartyLeader != nullptr)
-			pPartyLeader->PartyisDelete();
-		else {
-			// B10 fix: Lider de DC ise parti array'ini temizle
-			for (int i = 0; i < MAX_PARTY_USERS; i++)
-				pParty->uid[i] = -1;
+		// Tum uyelerin flag'lerini temizle
+		for (int i = 0; i < MAX_PARTY_USERS; i++) {
+			CUser* pMember = g_pMain->GetUserPtr(pParty->uid[i]);
+			if (pMember != nullptr) {
+				pMember->m_sUserPartyType = 0;
+				pMember->m_bInEnterParty = false;
+				pMember->m_bInParty = false;
+				pMember->m_sPartyIndex = -1;
+				pMember->m_bPartyCommandLeader = false;
+				pMember->m_bPartyLeader = false;
+			}
 		}
+
+		// Liderin 'P' sembolunu kaldir
+		CUser* pLeader = g_pMain->GetUserPtr(pParty->uid[0]);
+		if (pLeader != nullptr)
+			pLeader->StateChangeServerDirect(6, 0);
+
+		// Geride kalan uyelere PARTY_REMOVE + PARTY_DELETE gonder
+		// Zone gecisi yapana SendPartyInfoOnZoneChange (ZoneChangeLoaded) ile gidecek
+		Packet removeResult(WIZ_PARTY, uint8(PARTY_REMOVE));
+		removeResult << targetSocketID;
+		Packet delResult(WIZ_PARTY, uint8(PARTY_DELETE));
+
+		for (int i = 0; i < MAX_PARTY_USERS; i++) {
+			if (pParty->uid[i] < 0 || pParty->uid[i] == targetSocketID)
+				continue;
+			CUser* pMember = g_pMain->GetUserPtr(pParty->uid[i]);
+			if (pMember == nullptr || !pMember->isInGame())
+				continue;
+			pMember->Send(&removeResult);
+			pMember->Send(&delResult);
+		}
+
+		g_pMain->DeleteParty(pParty->wIndex);
 		return;
 	}
 
@@ -1472,6 +1499,14 @@ void CUser::SendPartyInfoOnZoneChange()
 	if (!isInApprovedParty()) {
 		Packet result(WIZ_PARTY, uint8(PARTY_DELETE));
 		Send(&result);
+		// Geride kalan eski parti uyelerine de zone yuklenince PARTY_DELETE gonder
+		for (uint16 sid : m_vPendingPartyDelete) {
+			CUser* pMember = g_pMain->GetUserPtr(sid);
+			if (pMember == nullptr || !pMember->isInGame())
+				continue;
+			pMember->Send(&result);
+		}
+		m_vPendingPartyDelete.clear();
 		return;
 	}
 
