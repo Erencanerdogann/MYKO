@@ -153,6 +153,7 @@
       </IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
