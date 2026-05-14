@@ -345,12 +345,11 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 
 		if (nItemID == ITEM_GOLD)
 		{
-			std::lock_guard<std::recursive_mutex> lock(m_goldLock); // CHI-AUDIT: Gold lock — clan bank withdraw
-			if (!pKnights->hasClanInnCoins(nCount) || m_iGold + nCount > COIN_MAX) { ReturnValue = 0; break; }
-			m_iGold += nCount;
+			if (!pKnights->hasClanInnCoins(nCount)) { ReturnValue = 0; break; }
 			pKnights->m_nMoney -= nCount;
 			result << ReturnValue;
 			Send(&result);
+			GoldGain(nCount); // updates m_iGold + sends WIZ_GOLD_CHANGE to client
 			ClanBankInsertLog(pKnights, 0, 0, nCount, false);
 			DBSave << pKnights->GetName();
 			g_pMain->AddDatabaseRequest(DBSave, this);
