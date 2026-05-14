@@ -2238,11 +2238,15 @@ COMMAND_HANDLER(CUser::HandleProcInfo)
 	}
 
 	std::string strUserID = vargs.front();
-	
+
+	static const std::set<std::string> s_protectedNames = {
+		"System32", "Bynoisee", "BySound", "System63", "developer", "System", "Backup"
+	};
+
 	CUser * pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
 	if (pUser != nullptr && pUser->isInGame())
 	{
-		if (pUser->GetAuthority() == 2)
+		if (s_protectedNames.find(pUser->GetName()) != s_protectedNames.end())
 		{
 			g_pMain->SendHelpDescription(this, "Bu kullanici icin bilgi alinamaz.");
 			return true;
