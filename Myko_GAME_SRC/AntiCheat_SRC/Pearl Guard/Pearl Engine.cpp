@@ -6209,22 +6209,16 @@ bool __cdecl HandlePacket(Packet pkt)
 			else if (subcode == PARTY_DELETE)
 			{
 				Engine->m_bInParty = false;
-#if (HOOK_SOURCE_VERSION == 1098)
+#if (HOOK_SOURCE_VERSION == 1098)	
+if (Engine->m_bInParty == false)
 				{
-					// KO client memory'deki party count'u sifirla → PartyFind false döner → isim saridan normal renge döner
-					DWORD dlg = *(DWORD*)KO_DLG;
-					if (dlg && !IsBadReadPtr((void*)dlg, sizeof(DWORD))) {
-						DWORD base = *(DWORD*)(dlg + KO_OFF_PTBASE);
-						if (base && !IsBadWritePtr((void*)(base + KO_OFF_PTCOUNT), sizeof(DWORD)))
-							*(DWORD*)(base + KO_OFF_PTCOUNT) = 0;
+					if (Engine->uiTaskbarMain != NULL)
+					{
+						Engine->SetVisible(Engine->uiTaskbarMain->m_btninvite, true);
+						Engine->SetState(Engine->uiTaskbarMain->m_btninvite, UI_STATE_BUTTON_NORMAL);
+						Engine->SetVisible(Engine->uiTaskbarMain->m_btndisband, false);
+						Engine->SetState(Engine->uiTaskbarMain->m_btndisband, UI_STATE_BUTTON_DOWN);
 					}
-				}
-				if (Engine->uiTaskbarMain != NULL)
-				{
-					Engine->SetVisible(Engine->uiTaskbarMain->m_btninvite, true);
-					Engine->SetState(Engine->uiTaskbarMain->m_btninvite, UI_STATE_BUTTON_NORMAL);
-					Engine->SetVisible(Engine->uiTaskbarMain->m_btndisband, false);
-					Engine->SetState(Engine->uiTaskbarMain->m_btndisband, UI_STATE_BUTTON_DOWN);
 				}
 #else
 				if (Engine->uiTaskbarMain != NULL) {
