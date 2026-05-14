@@ -736,8 +736,6 @@ void CUser::PartyNemberRemove(uint16 UserID, _PARTY_GROUP* pmyparty)
 		if (pLeader != nullptr)
 			pLeader->StateChangeServerDirect(6, 0);
 
-		// Geride kalan uyelere PARTY_REMOVE + PARTY_DELETE gonder
-		// Zone gecisi yapana SendPartyInfoOnZoneChange (ZoneChangeLoaded) ile gidecek
 		Packet removeResult(WIZ_PARTY, uint8(PARTY_REMOVE));
 		removeResult << targetSocketID;
 		Packet delResult(WIZ_PARTY, uint8(PARTY_DELETE));
@@ -1489,55 +1487,4 @@ bool CUser::RestorePartyFromGrace()
 }
 #endif // RECONNECT PARK
 
-#pragma region CUser::SendPartyInfoOnZoneChange()
-void CUser::SendPartyInfoOnZoneChange()
-{
-	// B10 fix: Zone yukleme sirasinda gelen PARTY_DELETE paketi client tarafindan
-	// kaybedilebilir. Zone tamamen yuklendikten sonra cagrilir.
-	// Parti yoksa PARTY_DELETE gonder — client parti gostergesi kalirsa temizler.
-	// Parti varsa PARTY_INSERT ile mevcut uyeleri tekrar gonder — senkronizasyon.
-	if (!isInApprovedParty()) {
-		Packet result(WIZ_PARTY, uint8(PARTY_DELETE));
-		Send(&result);
-		// Geride kalan eski parti uyelerine de zone yuklenince PARTY_DELETE gonder
-		for (uint16 sid : m_vPendingPartyDelete) {
-			CUser* pMember = g_pMain->GetUserPtr(sid);
-			if (pMember == nullptr || !pMember->isInGame())
-				continue;
-			pMember->Send(&result);
-		}
-		m_vPendingPartyDelete.clear();
-		return;
-	}
-
-	_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(GetPartyID());
-	if (pParty == nullptr) {
-		Packet result(WIZ_PARTY, uint8(PARTY_DELETE));
-		Send(&result);
-		m_bInParty = false;
-		m_bInEnterParty = false;
-		m_sPartyIndex = -1;
-		return;
-	}
-
-	// Mevcut parti uyelerini tekrar gonder
-	for (int i = 0; i < MAX_PARTY_USERS; i++) {
-		CUser* pMember = g_pMain->GetUserPtr(pParty->uid[i]);
-		if (pMember == nullptr || !pMember->isInGame())
-			continue;
-
-		Packet result(WIZ_PARTY, uint8(PARTY_INSERT));
-		result << pMember->GetSocketID()
-			<< uint8(i == 0 ? 100 : i)
-			<< pMember->GetName()
-			<< pMember->m_MaxHp << pMember->m_sHp
-			<< pMember->GetLevel() << pMember->GetClass()
-			<< pMember->m_MaxMp << pMember->m_sMp
-			<< pMember->GetNation() << uint8(0)
-			<< pParty->NumberTargetID
-			<< pMember->m_sUserPartyType << pMember->m_bPersonalRank;
-		Send(&result);
-	}
-}
-#pragma endregion
 #pragma endregion

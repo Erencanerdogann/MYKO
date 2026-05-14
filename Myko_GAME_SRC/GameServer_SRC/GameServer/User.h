@@ -453,8 +453,7 @@ public:
 	bool    m_bInEnterParty;
 	bool	m_bPartyLeader;
 	bool	m_bPartyCommandLeader;
-	std::vector<uint16> m_vPendingPartyDelete; // zone gecisinde dagilmis partinin geride kalan uye socketID'leri
-	//bool	m_bDisconnected; // RECONNECT PARK (Session 25)
+//bool	m_bDisconnected; // RECONNECT PARK (Session 25)
 
 	uint8 m_jackpotype;
 
@@ -1475,7 +1474,6 @@ public:
 	virtual void MSpChange(int amount);
 	
 	void SendPartyHPUpdate();
-	void SendPartyInfoOnZoneChange();
 	void SendPartyHpManager(uint8 type); //17.12.2020 Partyde HP Degeri Yazi Olarak Gosterme
 	void ShowEffect(uint32 nSkillID);
 	void ShowNpcEffect(uint32 nEffectID, bool bSendToRegion = false);
