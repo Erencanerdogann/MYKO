@@ -1655,60 +1655,36 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	bool dusmanMi = nation != nationm;
 #if (HOOK_SOURCE_VERSION == 1098)
 
-	bool isPartyMember = Engine->m_bInParty && Engine->uiPartyBBS != NULL && Engine->uiPartyBBS->PartyFind(id);
-
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
-		if (isPartyMember)
-			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
-		else if (Level < 30)
-			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0); //civciv beyaz
+		if (Level < 30)
+			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0);
 		else
-			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 100, 210, 255), 0); //kendi nickim a��k mavi
+			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 100, 210, 255), 0);
 	}
 	else
 	{
 		if (Level < 30)
-		{
-			if (isPartyMember)
-				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
-			else
-				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0); //civciv beyaz
-		}
+			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0);
 		else
 		{
-			if (isPartyMember)
-				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+			if (dusmanMi)
+				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 128, 128), 0);
 			else
-			{
-				if (dusmanMi)
-					SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 128, 128), 0); //karsi irk kirmizi
-				else
-					SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 128, 128, 255), 0); //kendi irkindan olanlar�n koyu mavisi
-			}
+				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 128, 128, 255), 0);
 		}
 	}
 
 	if (*(uint8*)(*(DWORD*)KO_PTR_CHR + KO_WH) == 0)
 	{
-		if (Level < 30) {
-
-			if (isPartyMember)
-				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
-			else
-				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 180), 0); //civciv beyaz
-		}
+		if (Level < 30)
+			SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 180), 0);
 		else
 		{
-			if (isPartyMember)
-				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+			if (dusmanMi)
+				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 128, 128), 0);
 			else
-			{
-				if (dusmanMi)
-					SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 128, 128), 0); //karsi irk kirmizi
-				else
-					SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 128, 128, 255), 0); //kendi irkindan olanlar�n koyu mavisi
-			}
+				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 128, 128, 255), 0);
 		}
 	}
 #endif
