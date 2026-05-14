@@ -173,6 +173,8 @@ void CUser::ClanWarehouseItemInput(Packet& pkt)
 			result << ReturnValue;
 			Send(&result);
 			ClanBankInsertLog(pKnights, 0, 0, nCount, true);
+			DBSave << pKnights->GetName();
+			g_pMain->AddDatabaseRequest(DBSave, this);
 			return;
 		}
 
@@ -349,6 +351,8 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 			result << ReturnValue;
 			Send(&result);
 			ClanBankInsertLog(pKnights, 0, 0, nCount, false);
+			DBSave << pKnights->GetName();
+			g_pMain->AddDatabaseRequest(DBSave, this);
 			return;
 		}
 
