@@ -104,6 +104,9 @@ void CUser::HandleCapeChange(Packet & pkt)
 	{
 		if (opcode == 0 && GetCoins() < nReq1098ClanPrice)
 			return SendCapeFail(-9);
+
+		if (opcode == 0 && pKnights->m_nClanPointFund < nReqClanPoints)
+			return SendCapeFail(-9);
 	}
 	else
 	{
