@@ -1635,7 +1635,7 @@ bool amIInParty = false;
 bool waitingForParty = false;
 
 // Pearl Guard kendi party ID listesi — KO client memory'ye bagimli degil
-std::unordered_set<int16> g_partyIds;
+std::unordered_set<uint16> g_partyIds;
 
 void __fastcall Object_Player_Callback(DWORD obj)
 {
@@ -1655,7 +1655,7 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	bool dusmanMi = nation != nationm;
 #if (HOOK_SOURCE_VERSION == 1098)
 
-	bool isPartyMember = !g_partyIds.empty() && g_partyIds.count(id) > 0;
+	bool isPartyMember = Engine->m_bInParty && Engine->uiPartyBBS != NULL && Engine->uiPartyBBS->PartyFind(id);
 
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
@@ -6213,9 +6213,9 @@ bool __cdecl HandlePacket(Packet pkt)
 			}
 			else if (subcode == PARTY_REMOVE)
 			{
-				// PARTY_REMOVE + PARTY_DELETE birlikte gelir (disband) — hepsini temizle
-				g_partyIds.clear();
-				Engine->m_bInParty = false;
+				uint16 removedId;
+				pkt >> removedId;
+				g_partyIds.erase(removedId);
 			}
 			else if (subcode == PARTY_DELETE)
 			{
