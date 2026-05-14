@@ -407,7 +407,7 @@ void CNpc::csw_momumentprocess(CUser* pUser) {
 	g_pMain->pCswEvent.war_check = true;
 	g_pMain->pSiegeWar.sMasterKnights = pUser->GetClanID();
 	g_pMain->UpdateSiege(g_pMain->pSiegeWar.sCastleIndex, g_pMain->pSiegeWar.sMasterKnights, g_pMain->pSiegeWar.bySiegeType, 0, 0, 0);
-	g_pMain->csw_usertools(true, CswNotice::MonumentKilled, true, false, false);
+	g_pMain->csw_usertools(false, CswNotice::MonumentKilled, true, false, false);
 	g_pMain->ResetAllEventObject(ZONE_DELOS);
 }
 #pragma endregion
