@@ -394,6 +394,9 @@ void CNpc::csw_momumentprocess(CUser* pUser) {
 	if (pUser == nullptr || !pUser->isInClan() || !g_pMain->isCswActive() || !g_pMain->isCswWarActive())
 		return;
 
+	if (g_pMain->pCswEvent.war_check)
+		return;
+
 	auto* pknights = g_pMain->GetClanPtr(pUser->GetClanID());
 	if (!pknights || pknights->m_byGrade > 3)
 		return;
@@ -401,6 +404,7 @@ void CNpc::csw_momumentprocess(CUser* pUser) {
 	if (pUser->GetFame() != CHIEF && pUser->GetFame() != VICECHIEF)
 		return;
 
+	g_pMain->pCswEvent.war_check = true;
 	g_pMain->pSiegeWar.sMasterKnights = pUser->GetClanID();
 	g_pMain->UpdateSiege(g_pMain->pSiegeWar.sCastleIndex, g_pMain->pSiegeWar.sMasterKnights, g_pMain->pSiegeWar.bySiegeType, 0, 0, 0);
 	g_pMain->csw_usertools(true, CswNotice::MonumentKilled, true, false, false);
