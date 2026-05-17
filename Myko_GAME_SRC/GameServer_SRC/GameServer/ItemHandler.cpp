@@ -933,6 +933,9 @@ void CUser::InventorySystem(Packet & pkt)
 	SendItemMove(1, 1);
 	SendItemWeight();
 
+	// F1.1/F1.2: item move/equip sonrasi anlik save (crash/kill anida kayip olmasin)
+	UserDataSaveToAgent();
+
 	// Update everyone else, so that they can see your shiny new items (you didn't take them off did you!? DID YOU!?)
 	switch (dir)
 	{
