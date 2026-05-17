@@ -33,6 +33,9 @@ void CUser::SkillPointChange(Packet & pkt)
 	--m_bstrSkill[0];
 	++m_bstrSkill[type];
 	SetUserAbility();
+
+	// F1.3: skill point harcamasi sonrasi anlik save
+	UserDataSaveToAgent();
 }
 
 // Dialog
@@ -1245,6 +1248,9 @@ void CUser::PointChange(Packet & pkt)
 	result << m_MaxHp << m_MaxMp << m_sTotalHit << m_sMaxWeight << uint16(m_sHp) << uint16(m_sMp);
 	Send(&result);
 	SendItemMove(1, 1);
+
+	// F1.3: stat point harcamasi sonrasi anlik save
+	UserDataSaveToAgent();
 }
 
 #pragma region CUser::GetBaseClass()
