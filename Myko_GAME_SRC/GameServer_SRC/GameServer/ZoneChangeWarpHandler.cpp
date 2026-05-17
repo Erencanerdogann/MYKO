@@ -400,7 +400,10 @@ bool CUser::ZoneChange(uint16 sNewZone, float x, float z, int16 eventroom /*= -1
 		csw_sendwarflag();
 		csw_rank_register();
 	}
-		
+
+	// F1.6: zone degisimi basarili - anlik save (crash anida pozisyon kaybedilmesin)
+	UserDataSaveToAgent();
+
 	return true;
 }
 
