@@ -1626,7 +1626,9 @@ void CKingSystem::HandleDatabaseRequest_Election(CUser * pUser, Packet & pkt)
 			switch (opcode)
 			{
 			case KING_ELECTION_UPDATE_STATUS: // 7
+				LOG(LogCategory::LOG_GENERAL, "KING_DBQ_STATUS: nation=%u newByType=%u", byNation, byType);
 				g_DBAgent.UpdateElectionStatus(byType, byNation);
+				LOG(LogCategory::LOG_GENERAL, "KING_DBQ_STATUS_DONE: nation=%u newByType=%u", byNation, byType);
 				break;
 
 			case KING_ELECTION_UPDATE_LIST: // 6

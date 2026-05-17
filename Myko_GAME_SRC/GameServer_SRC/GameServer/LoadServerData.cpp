@@ -706,6 +706,15 @@ bool CGameServerDlg::LoadKingSystem()
 	LOAD_TABLE_ERROR_ONLY(CKingSystemSet, g_DBAgent.GetGameDB(), &m_KingSystemArray, true, false);
 	LOAD_TABLE_ERROR_ONLY(CKingCandidacyNoticeBoardSet, g_DBAgent.GetGameDB(), &m_KingSystemArray, true, false);
 	LOAD_TABLE_ERROR_ONLY(CKingNominationListSet, g_DBAgent.GetGameDB(), &m_KingSystemArray, true, false);
+	// Why: LOAD_TABLE makrosu return ediyor; teshis icin yukleme sonrasi state log'lansin
+	foreach_stlmap(itr, m_KingSystemArray)
+	{
+		if (itr->second == nullptr) continue;
+		LOG(LogCategory::LOG_GENERAL, "KING_LOAD: nation=%u byType=%u sYear=%u byMonth=%u byDay=%u byHour=%u byMinute=%u kingName=[%s] senatorListSize=%zu candidateListSize=%zu",
+			itr->first, itr->second->m_byType, itr->second->m_sYear, itr->second->m_byMonth,
+			itr->second->m_byDay, itr->second->m_byHour, itr->second->m_byMinute,
+			itr->second->m_strKingName.c_str(), itr->second->m_senatorList.size(), itr->second->m_candidateList.size());
+	}
 	LOAD_TABLE(CKingElectionListSet, g_DBAgent.GetGameDB(), &m_KingSystemArray, true, false);
 }
 

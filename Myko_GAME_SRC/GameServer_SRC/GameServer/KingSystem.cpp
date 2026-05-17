@@ -99,6 +99,8 @@ void CKingSystem::CheckKingTimer()
 		dt.AddDays(-2);
 		if (TimeReached(dt))
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_TIMER: nation=%u NO_TERM -> NOMINATION (target %u-%u-%u %u:%u)",
+				m_byNation, dt.GetYear(), dt.GetMonth(), dt.GetDay(), dt.GetHour(), dt.GetMinute());
 			UpdateElectionStatus(ELECTION_TYPE_NOMINATION);
 			g_pMain->SendFormattedResource(IDS_KING_RECOMMEND_TIME, m_byNation, false);
 			ResetElectionLists();
@@ -151,6 +153,7 @@ void CKingSystem::CheckKingTimer()
 		//dt.AddDays(1);
 		if (TimeReached(dt))
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_TIMER: nation=%u ELECTION -> TERM_ENDED", m_byNation);
 			UpdateElectionStatus(ELECTION_TYPE_TERM_ENDED);
 
 			// Get Election results
@@ -177,6 +180,8 @@ void CKingSystem::CheckKingTimer()
 
 		if (TimeReached(dt))
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_TIMER: nation=%u TERM_ENDED -> NO_TERM (winner=%s)",
+				m_byNation, m_strNewKingName.empty() ? "(none)" : m_strNewKingName.c_str());
 			AssignNewKingAndSenators();
 			// Bir sonraki ay icin tarihi ileri al; mktime overflow'u dogru sekilde
 			// 13. ayi 1'e cevirir, yili guncel tutar.
@@ -292,7 +297,9 @@ void CKingSystem::UpdateElectionStatus(uint8 byElectionStatus)
 	result << uint8(KING_ELECTION) << uint8(KING_ELECTION_UPDATE_STATUS)
 		<< m_byNation << byElectionStatus;
 	m_byType = byElectionStatus;
+	LOG(LogCategory::LOG_GENERAL, "KING_UPDATE_STATUS_ENQ: nation=%u newByType=%u (paket DB kuyruguna eklenmeden once)", m_byNation, byElectionStatus);
 	g_pMain->AddDatabaseRequest(result);
+	LOG(LogCategory::LOG_GENERAL, "KING_UPDATE_STATUS_ENQ_DONE: nation=%u newByType=%u (paket DB kuyruguna eklendi)", m_byNation, byElectionStatus);
 }
 #pragma endregion
 

@@ -157,7 +157,9 @@ void AdiniFerihaKoydum::ProcessDatabasePacket(Packet& pkt)
 		if (pUser) pUser->ReqNationTransfer(pkt);
 		break;
 	case WIZ_KING:
-		if (!pUser) return;
+		// Why: Timer'dan tetiklenen DB updateleri (KING_ELECTION_UPDATE_STATUS vb)
+		// pUser=nullptr ile gelir. Eski erken return DB writelerini drop ediyordu.
+		// Alt handlerlar (HandleDatabaseRequest_Election vs) gerekli yerlerde pUser null check yapiyor.
 		CKingSystem::HandleDatabaseRequest(pUser, pkt);
 		break;
 	case WIZ_SIEGE:
