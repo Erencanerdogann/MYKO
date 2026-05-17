@@ -343,6 +343,9 @@ void CUser::SaveEvent(uint16 sQuestID, uint8 bQuestState)
 	}
 	break;
 	}
+
+	// F1.5: quest state degisimi sonrasi anlik DB save (mob count update bu fonksiyonu cagirmiyor)
+	g_DBAgent.UpdateQuestData(GetName(), this);
 }
 
 // this method is reduntant for now.
