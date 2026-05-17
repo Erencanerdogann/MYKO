@@ -6,6 +6,33 @@
 #define MIN_LEVEL_VOTER 72
 #define MIN_NP_VOTER 10000
 
+// Hedef tarih simdiye gore gecmis veya simdi mi? (geriye donus icin)
+// Why: == dakika eslesmesi server lag/restart sirasinda kacirilirsa byType sonsuza takiliyor.
+static bool TimeReached(uint16 sYear, uint8 byMonth, uint8 byDay, uint8 byHour, uint8 byMinute)
+{
+	struct tm target;
+	memset(&target, 0, sizeof(target));
+	target.tm_year = sYear - 1900;
+	target.tm_mon  = byMonth - 1;
+	target.tm_mday = byDay;
+	target.tm_hour = byHour;
+	target.tm_min  = byMinute;
+	target.tm_sec  = 0;
+	target.tm_isdst = -1;
+	time_t tTarget = mktime(&target);
+
+	struct tm nowCopy = g_localTime;
+	time_t tNow = mktime(&nowCopy);
+
+	return tNow >= tTarget;
+}
+
+// DateTime nesnesi icin overload
+static bool TimeReached(DateTime & dt)
+{
+	return TimeReached(dt.GetYear(), dt.GetMonth(), dt.GetDay(), dt.GetHour(), dt.GetMinute());
+}
+
 CKingSystem::CKingSystem() { Initialize(); }
 
 #pragma region CKingSystem::Initialize()
@@ -70,12 +97,7 @@ void CKingSystem::CheckKingTimer()
 
 		// Nominations start two days before the election.
 		dt.AddDays(-2);
-		//printf("Secim 1 Gün %u Ay %u Saat %u Dakika %u \n", bCurDay, bCurMonth, bCurHour, bCurMinute);
-		//printf("Secim 2 Gün %u Ay %u Saat %u Dakika %u \n", dt.GetDay(), dt.GetMonth(), dt.GetHour(), dt.GetMinute());
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			UpdateElectionStatus(ELECTION_TYPE_NOMINATION);
 			g_pMain->SendFormattedResource(IDS_KING_RECOMMEND_TIME, m_byNation, false);
@@ -90,12 +112,7 @@ void CKingSystem::CheckKingTimer()
 
 		//Nominations last until one day and one hour before the scheduled election time.
 		dt.AddDays(-1); dt.AddHours(-1);
-		//printf("1 Secim 1 Gün %u Ay %u Saat %u Dakika %u \n", bCurDay, bCurMonth, bCurHour, bCurMinute);
-		//printf("1 Secim 2 Gün %u Ay %u Saat %u Dakika %u \n", dt.GetDay(), dt.GetMonth(), dt.GetHour(), dt.GetMinute());
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			/*&& bCurMinute == dt.GetMinute()*/)
+		if (TimeReached(dt))
 		{
 			UpdateElectionStatus(ELECTION_TYPE_PRE_ELECTION);
 			DetermineKingCandidaciesList();
@@ -119,12 +136,7 @@ void CKingSystem::CheckKingTimer()
 	{
 		DateTime dt(m_sYear, m_byMonth, m_byDay, m_byHour, m_byMinute);
 		dt.AddDays(-1);
-		//printf("2 Secim 1 Gün %u Ay %u Saat %u Dakika %u \n", bCurDay, bCurMonth, bCurHour, bCurMinute);
-		//printf("2 Secim 2 Gün %u Ay %u Saat %u Dakika %u \n", dt.GetDay(), dt.GetMonth(), dt.GetHour(), dt.GetMinute());
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			UpdateElectionStatus(ELECTION_TYPE_ELECTION);
 			g_pMain->SendFormattedResource(IDS_KING_ELECTION_TIME, m_byNation, false);
@@ -137,12 +149,7 @@ void CKingSystem::CheckKingTimer()
 
 		// Elections last for a day.
 		//dt.AddDays(1);
-		//printf("3 Secim 1 Gün %u Ay %u Saat %u Dakika %u \n", bCurDay, bCurMonth, bCurHour, bCurMinute);
-		//printf("3 Secim 2 Gün %u Ay %u Saat %u Dakika %u \n", dt.GetDay(), dt.GetMonth(), dt.GetHour(), dt.GetMinute());
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			UpdateElectionStatus(ELECTION_TYPE_TERM_ENDED);
 
@@ -167,16 +174,19 @@ void CKingSystem::CheckKingTimer()
 		// Elections last for a day.
 		/*dt.AddDays(1);*/
 		dt.AddMinutes(5);
-		//printf("4 Secim 1 Gün %u Ay %u Saat %u Dakika %u \n", bCurDay, bCurMonth, bCurHour, bCurMinute);
-		//printf("4 Secim 2 Gün %u Ay %u Saat %u Dakika %u \n", dt.GetDay(), dt.GetMonth(), dt.GetHour(), dt.GetMinute());
 
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			AssignNewKingAndSenators();
-			m_byMonth++;
+			// Bir sonraki ay icin tarihi ileri al; mktime overflow'u dogru sekilde
+			// 13. ayi 1'e cevirir, yili guncel tutar.
+			DateTime nextElection(m_sYear, m_byMonth, m_byDay, m_byHour, m_byMinute);
+			nextElection.AddMonths(1);
+			m_sYear   = nextElection.GetYear();
+			m_byMonth = nextElection.GetMonth();
+			m_byDay   = nextElection.GetDay();
+			m_byHour  = nextElection.GetHour();
+			m_byMinute = nextElection.GetMinute();
 			UpdateElectionStatus(ELECTION_TYPE_NO_TERM);
 		}
 	}
@@ -189,39 +199,30 @@ void CKingSystem::CheckKingTimer()
 	{
 		DateTime dt(m_sImYear, m_byImMonth, m_byImDay, m_byImHour, m_byImMinute);
 		dt.AddHours(47);
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			GetImpeachmentRequestResult();
 		}
 	}
 	break;
-	case 2: // 2 days (48 hours) after the impeachment time, set the impeachment type to 3 
+	case 2: // 2 days (48 hours) after the impeachment time, set the impeachment type to 3
 			// and send IDS_KING_IMPEACHMENT_ELECTION_MESSAGE as WAR_SYSTEM_CHAT
 	{
 		DateTime dt(m_sImYear, m_byImMonth, m_byImDay, m_byImHour, m_byImMinute);
 		dt.AddDays(2);
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			m_byImType = 3;
 			g_pMain->SendFormattedResource(IDS_KING_IMPEACHMENT_ELECTION_MESSAGE, m_byNation, false);
 		}
 	}
 	break;
-	case 3: // 3 days (72 hours) after the impeachment time, set the impeachment type to 4 
+	case 3: // 3 days (72 hours) after the impeachment time, set the impeachment type to 4
 			// and call GetImpeachmentElectionResult()
 	{
 		DateTime dt(m_sImYear, m_byImMonth, m_byImDay, m_byImHour, m_byImMinute);
 		dt.AddDays(3);
-		if (bCurMonth == dt.GetMonth()
-			&& bCurDay == dt.GetDay()
-			&& bCurHour == dt.GetHour()
-			&& bCurMinute == dt.GetMinute())
+		if (TimeReached(dt))
 		{
 			m_byImType = 4;
 			GetImpeachmentElectionResult();
@@ -240,9 +241,19 @@ void CKingSystem::CheckKingTimer()
 */
 void CKingSystem::AssignNewKingAndSenators()
 {
+	// Aday yoksa veya SP sonuc dondurmediyse bos isim duyurma.
+	// Why: GetElectionResults SP'si KING_NOMINATION_RESULT'a hicbir kayit yazmadiysa
+	// m_strNewKingName bos kalir; o durumda "kazanan: " duyurusu garip gorunur.
+	if (m_strNewKingName.empty())
+	{
+		m_strKingName.clear();
+		TRACE("CKingSystem::AssignNewKingAndSenators: no candidate for nation %u\n", m_byNation);
+		return;
+	}
+
 	m_strKingName = m_strNewKingName;
 
-	int perc = int((float(m_KingVotes * 100) / float(m_TotalVotes)));
+	int perc;
 	if (m_TotalVotes == 0)
 		perc = 100;
 	else
@@ -1001,6 +1012,8 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 	// election stage.
 	if (m_byType != ELECTION_TYPE_ELECTION)
 	{
+		LOG(LogCategory::LOG_GENERAL, "KING_POLL_REJECT: opcode=%u user=%s nation=%u byType=%u (expected %u)",
+			opcode, pUser->GetName().c_str(), m_byNation, m_byType, (uint8)ELECTION_TYPE_ELECTION);
 		result << int16(-1);
 		pUser->Send(&result);
 		return;
@@ -1038,8 +1051,12 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 		std::string strCandidate;
 		pkt.SByte();
 		pkt >> strCandidate;
+		LOG(LogCategory::LOG_GENERAL, "KING_VOTE_BEGIN: voter=%s candidate=%s nation=%u byType=%u",
+			pUser->GetName().c_str(), strCandidate.c_str(), m_byNation, m_byType);
+
 		if (strCandidate.empty() || strCandidate.length() > MAX_ID_SIZE)
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_VOTE_REJECT: empty or oversized candidate name");
 			m_KingSystemlock.unlock();
 			return;
 		}
@@ -1048,6 +1065,8 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 		KingElectionList::iterator itr = m_candidateList.find(strCandidate);
 		if (itr == m_candidateList.end())
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_VOTE_REJECT: candidate %s not in m_candidateList (size=%zu)",
+				strCandidate.c_str(), m_candidateList.size());
 			result << int16(-2);
 			pUser->Send(&result);
 			m_KingSystemlock.unlock();
@@ -1057,6 +1076,8 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 		// User's level is too low to vote.
 		if (pUser->GetLevel() < MIN_LEVEL_VOTER)
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_VOTE_REJECT: voter level %u < min %u",
+				pUser->GetLevel(), MIN_LEVEL_VOTER);
 			result << int16(-4);
 			pUser->Send(&result);
 			m_KingSystemlock.unlock();
@@ -1078,6 +1099,8 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 		// Prevent duplicate voting
 		if (pUser->m_bKingVoted)
 		{
+			LOG(LogCategory::LOG_GENERAL, "KING_VOTE_REJECT: voter %s session-flag already voted",
+				pUser->GetName().c_str());
 			result << int16(-6);
 			pUser->Send(&result);
 			m_KingSystemlock.unlock();
@@ -1085,6 +1108,8 @@ void CKingSystem::ElectionPoll(CUser * pUser, Packet & pkt)
 		}
 		pUser->m_bKingVoted = true;
 
+		LOG(LogCategory::LOG_GENERAL, "KING_VOTE_DBREQ: dispatching to DB for voter=%s candidate=%s",
+			pUser->GetName().c_str(), strCandidate.c_str());
 		VoteForKing(pUser->GetAccountName(), pUser->GetName(), strCandidate);
 
 	}

@@ -1640,14 +1640,17 @@ void CKingSystem::HandleDatabaseRequest_Election(CUser * pUser, Packet & pkt)
 					g_DBAgent.UpdateElectionList(bDelete ? 2 : 1, byType, byNation, sKnights, nVotes, strNominee);
 				} 
 				break;
-			case KING_ELECTION_VOTE: 
+			case KING_ELECTION_VOTE:
 				{
 					Packet result(WIZ_KING, uint8(KING_ELECTION));
 					result << uint8(KING_ELECTION_POLL) << uint8(2);
 					string strVoterAccountID, strVoterUserID, strNominee;
 					int16 bResult = -3;
 					pkt >> strVoterAccountID >> strVoterUserID >> strNominee;
+					LOG(LogCategory::LOG_GENERAL, "KING_VOTE_SP_CALL: voter=%s nominee=%s nation=%u",
+						strVoterUserID.c_str(), strNominee.c_str(), byNation);
 					bResult = g_DBAgent.UpdateElectionVoteList(byNation, strVoterAccountID, strVoterUserID, strNominee);
+					LOG(LogCategory::LOG_GENERAL, "KING_VOTE_SP_RESULT: voter=%s result=%d", strVoterUserID.c_str(), (int)bResult);
 					result << uint16(bResult);
 					CUser * pVoter = g_pMain->GetUserPtr(strVoterUserID, NameType::TYPE_CHARACTER);
 					if (pVoter != nullptr && pVoter->isInGame())
