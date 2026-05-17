@@ -54,8 +54,7 @@ void CUser::EventTrapProcess(float x, float z, CUser * pUser)
 #pragma region CUser::UserWallCheatCheckRegion()
 void CUser::UserWallCheatCheckRegion()
 {
-	return;
-
+	// F3.1 LOG-ONLY mod: prison'a gondermek yerine sadece log yaz. Koordinat dogrulamasi sonrasi prison'a acilabilir.
 	if (isGM() || !isInGame())
 		return;
 
@@ -82,7 +81,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(1595.0f, 1494.0f, 10)
 			|| isInRangeSlow(1530.0f, 1383.0f, 10)
 			|| isInRangeSlow(1295.0f, 835.0f, 40))
-			ZoneChange(ZONE_PRISON, 170, 146);
+			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
 	}
 	break;
 	case ZONE_ELMORAD:
@@ -111,7 +110,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(169.0f, 176.0f, 20)
 			|| isInRangeSlow(188.0f, 327.0f, 20)
 			|| isInRangeSlow(1578.0f, 1975.0f, 40))
-			ZoneChange(ZONE_PRISON, 170, 146);
+			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
 	}
 	break;
 	case ZONE_MORADON:
@@ -127,7 +126,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(851.0f, 269.0f, 15)
 			|| isInRangeSlow(606.0f, 33.0f, 4))
 			//|| isInRangeSlow(x, y, alan))
-			ZoneChange(ZONE_PRISON, 170, 146);
+			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
 	}
 	break;
 	case ZONE_RONARK_LAND:
@@ -148,7 +147,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(468.0f, 1620.0f, 30)
 			|| isInRangeSlow(312.0f, 1512.0f, 30)
 			|| isInRangeSlow(184.0f, 1347.0f, 30))
-			ZoneChange(ZONE_PRISON, 170, 146);
+			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
 	}
 	break;
 	default:
@@ -220,7 +219,7 @@ void CUser::OreadsZoneTerrainEvent()
 	|| isInRangeSlow(370.0f, 661.0f, 40)
 	|| isInRangeSlow(421.0f, 760.0f, 40)
 	|| isInRangeSlow(570.0f, 820.0f, 40))
-	results << uint8(1) << uint8(1); //Terrain: Hay- Boosts Fire Magic,but weakens ýce and lightning damage.
+	results << uint8(1) << uint8(1); //Terrain: Hay- Boosts Fire Magic,but weakens ï¿½ce and lightning damage.
 	else if (isInRangeSlow(733.0f, 705.0f, 30)
 	|| isInRangeSlow(762.0f, 744.0f, 40)
 	|| isInRangeSlow(801.0f, 783.0f, 50)

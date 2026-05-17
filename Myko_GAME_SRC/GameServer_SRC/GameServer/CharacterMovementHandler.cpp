@@ -272,7 +272,7 @@ void CUser::MoveProcess(Packet & pkt)
 
 	EventTrapProcess(real_x, real_z, this);
 	OreadsZoneTerrainEvent();
-	//UserWallCheatCheckRegion();
+	UserWallCheatCheckRegion();
 	BDWMonumentPointProcess();
 }
 #pragma endregion 
