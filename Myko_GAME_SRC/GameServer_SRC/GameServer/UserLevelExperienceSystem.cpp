@@ -278,6 +278,9 @@ void CUser::LevelChange(uint8 level, bool bLevelUp)
 	
 #endif
 	SendPresetReqMoney();
+
+	// F1.4: level degisimi (up/down) sonrasi anlik save
+	UserDataSaveToAgent();
 }
 
 void CGameServerDlg::SendGameNotice(ChatType chattype,
