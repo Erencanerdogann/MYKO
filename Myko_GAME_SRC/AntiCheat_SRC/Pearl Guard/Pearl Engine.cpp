@@ -7333,19 +7333,23 @@ void PearlEngine::StayAlive()
 			if (hwnd != NULL)
 			{
 				SetWindowTextA(hwnd, newTitle.c_str());
-				// Tray icon tooltip de guncelle + KnightOnline.exe iconunu kullan
+				// Tray icon tooltip + KnightOnline.exe iconunu kullan
 				if (nid.hWnd != NULL)
 				{
 					strncpy_s(nid.szTip, newTitle.c_str(), _TRUNCATE);
-					// KnightOnline.exe ana iconunu yukle (varsayilan IDI_APPLICATION fallback)
-					HICON koIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(1), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED);
-					if (koIcon)
+					// KnightOnline.exe dosyasindan ilk iconu cikar (ExtractIcon)
+					char exePath[MAX_PATH] = {0};
+					GetModuleFileNameA(NULL, exePath, MAX_PATH);
+					HICON koIconSmall = NULL;
+					HICON koIconBig = NULL;
+					ExtractIconExA(exePath, 0, &koIconBig, &koIconSmall, 1);
+					if (koIconSmall || koIconBig)
 					{
-						nid.hIcon = koIcon;
+						HICON iconToUse = koIconSmall ? koIconSmall : koIconBig;
+						nid.hIcon = iconToUse;
 						nid.uFlags |= NIF_ICON;
-						// Pencere icon'u da set et (taskbar)
-						SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)koIcon);
-						SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)koIcon);
+						SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)(koIconSmall ? koIconSmall : koIconBig));
+						SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)(koIconBig ? koIconBig : koIconSmall));
 					}
 					Shell_NotifyIcon(NIM_MODIFY, &nid);
 				}
