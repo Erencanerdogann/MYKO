@@ -7315,7 +7315,7 @@ void PearlEngine::StayAlive()
 	if (accountID.size() > 0)
 	{
 		static std::string lastTitle = "";
-		std::string newTitle = "Bynoisee - " + accountID;
+		std::string newTitle = "MalaysiaKO - " + accountID;
 		if (newTitle != lastTitle)
 		{
 			// Eski PID'li title ile bul, yenisi ile guncelle
