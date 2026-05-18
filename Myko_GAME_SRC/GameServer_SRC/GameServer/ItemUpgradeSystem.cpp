@@ -1075,9 +1075,13 @@ void CUser::ItemUpgrade(Packet& pkt, uint8 nUpgradeType)
 			bResult = UpgradeNeedCoins;
 			goto fail_return;
 		}
-		// Deduct gold early to prevent race condition
-		GoldLose(nReqCoins, true);
-		bGoldDeducted = true; // AS22-2: gold alindi, fail durumunda iade edilmeli
+		// AS22-3 fix: Preview (deneme) modu gold ALMAMALI
+		if (bType != UpgradeTypePreview)
+		{
+			// Deduct gold early to prevent race condition
+			GoldLose(nReqCoins, true);
+			bGoldDeducted = true; // gold alindi, fail durumunda iade edilmeli
+		}
 		if (!IsExistInMap(nItems, ReqItem2) && ReqItem2 > 0) {
 			bResult = UpgradeNoMatch;
 			goto fail_return;
