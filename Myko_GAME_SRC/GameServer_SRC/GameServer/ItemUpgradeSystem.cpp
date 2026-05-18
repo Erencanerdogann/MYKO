@@ -771,6 +771,7 @@ void CUser::ItemUpgrade(Packet& pkt, uint8 nUpgradeType)
 	DWORD CheckTime = GetTickCount();
 
 	bool isrecycle = false, logositemac = false;
+	bool bGoldDeducted = false; // AS22-2 fix: fail durumunda gold iade icin flag
 
 	if (isDead() || isTrading() || isStoreOpen() || isMerchanting() || isSellingMerchant() || isBuyingMerchant() || isMining())
 	{
@@ -1076,6 +1077,7 @@ void CUser::ItemUpgrade(Packet& pkt, uint8 nUpgradeType)
 		}
 		// Deduct gold early to prevent race condition
 		GoldLose(nReqCoins, true);
+		bGoldDeducted = true; // AS22-2: gold alindi, fail durumunda iade edilmeli
 		if (!IsExistInMap(nItems, ReqItem2) && ReqItem2 > 0) {
 			bResult = UpgradeNoMatch;
 			goto fail_return;
@@ -1234,6 +1236,12 @@ void CUser::ItemUpgrade(Packet& pkt, uint8 nUpgradeType)
 
 	return;
 fail_return:
+	// AS22-2 fix: upgrade fail oldu, alinan gold geri verilmeli (forum sikayet bug'i)
+	if (bGoldDeducted && nReqCoins > 0)
+	{
+		GoldGain(nReqCoins, false);
+		bGoldDeducted = false;
+	}
 	if (bResult == UpgradeFailed)
 		result << logositemac;
 	result << bType << bResult;
