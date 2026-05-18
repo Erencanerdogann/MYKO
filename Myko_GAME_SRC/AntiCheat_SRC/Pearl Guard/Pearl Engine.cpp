@@ -7309,24 +7309,36 @@ void PearlEngine::StayAlive()
 	accountID = string(AccName);
 	if (accountID.size()) STRTOUPPER(accountID);
 
-	// AS24 (18 May): Pencere title PID yerine account adi
-	// Pencere title eski format: "CodeGuard Client[PID]"
-	// Yeni: "Bynoisee - <ACCOUNT>"
+	// AS24 (18 May): Pencere title + tray tooltip PID yerine account adi
+	// Eski format: "CodeGuard Client[PID]"
+	// Yeni: "MalaysiaKO - <ACCOUNT>"
+	extern HWND window;
+	extern NOTIFYICONDATA nid;
 	if (accountID.size() > 0)
 	{
 		static std::string lastTitle = "";
 		std::string newTitle = "MalaysiaKO - " + accountID;
 		if (newTitle != lastTitle)
 		{
-			// Eski PID'li title ile bul, yenisi ile guncelle
-			char oldBuff[50];
-			sprintf_s(oldBuff, "%s Client[%d]", AcsFolderName, GetCurrentProcessId());
-			HWND hwnd = FindWindowA(NULL, oldBuff);
-			if (hwnd == NULL)
-				hwnd = FindWindowA(NULL, lastTitle.c_str()); // Daha once degistirdiysek
+			// Pencere title
+			HWND hwnd = window;
+			if (hwnd == NULL || !IsWindow(hwnd))
+			{
+				char oldBuff[50];
+				sprintf_s(oldBuff, "%s Client[%d]", AcsFolderName, GetCurrentProcessId());
+				hwnd = FindWindowA(NULL, oldBuff);
+				if (hwnd == NULL && lastTitle.size())
+					hwnd = FindWindowA(NULL, lastTitle.c_str());
+			}
 			if (hwnd != NULL)
 			{
 				SetWindowTextA(hwnd, newTitle.c_str());
+				// Tray icon tooltip de guncelle
+				if (nid.hWnd != NULL)
+				{
+					strncpy_s(nid.szTip, newTitle.c_str(), _TRUNCATE);
+					Shell_NotifyIcon(NIM_MODIFY, &nid);
+				}
 				lastTitle = newTitle;
 			}
 		}
