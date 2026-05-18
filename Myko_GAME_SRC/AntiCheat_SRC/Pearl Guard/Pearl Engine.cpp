@@ -7333,10 +7333,20 @@ void PearlEngine::StayAlive()
 			if (hwnd != NULL)
 			{
 				SetWindowTextA(hwnd, newTitle.c_str());
-				// Tray icon tooltip de guncelle
+				// Tray icon tooltip de guncelle + KnightOnline.exe iconunu kullan
 				if (nid.hWnd != NULL)
 				{
 					strncpy_s(nid.szTip, newTitle.c_str(), _TRUNCATE);
+					// KnightOnline.exe ana iconunu yukle (varsayilan IDI_APPLICATION fallback)
+					HICON koIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(1), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED);
+					if (koIcon)
+					{
+						nid.hIcon = koIcon;
+						nid.uFlags |= NIF_ICON;
+						// Pencere icon'u da set et (taskbar)
+						SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)koIcon);
+						SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)koIcon);
+					}
 					Shell_NotifyIcon(NIM_MODIFY, &nid);
 				}
 				lastTitle = newTitle;
