@@ -7309,6 +7309,29 @@ void PearlEngine::StayAlive()
 	accountID = string(AccName);
 	if (accountID.size()) STRTOUPPER(accountID);
 
+	// AS24 (18 May): Pencere title PID yerine account adi
+	// Pencere title eski format: "CodeGuard Client[PID]"
+	// Yeni: "Bynoisee - <ACCOUNT>"
+	if (accountID.size() > 0)
+	{
+		static std::string lastTitle = "";
+		std::string newTitle = "Bynoisee - " + accountID;
+		if (newTitle != lastTitle)
+		{
+			// Eski PID'li title ile bul, yenisi ile guncelle
+			char oldBuff[50];
+			sprintf_s(oldBuff, "%s Client[%d]", AcsFolderName, GetCurrentProcessId());
+			HWND hwnd = FindWindowA(NULL, oldBuff);
+			if (hwnd == NULL)
+				hwnd = FindWindowA(NULL, lastTitle.c_str()); // Daha once degistirdiysek
+			if (hwnd != NULL)
+			{
+				SetWindowTextA(hwnd, newTitle.c_str());
+				lastTitle = newTitle;
+			}
+		}
+	}
+
 	clock_t realtime = Real_SendTime;
 	bool cheatactive = ischeatactive;
 
