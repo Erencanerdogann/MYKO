@@ -647,11 +647,8 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         //    false								//looped
         //);
         
-        RECT clientRect;
-        GetClientRect(hWnd, &clientRect);
-
-        int xPos = (GetSystemMetrics(SM_CXSCREEN) - clientRect.right) / 2;
-        int yPos = (GetSystemMetrics(SM_CYSCREEN) - clientRect.bottom) / 2;
+        int xPos = GetSystemMetrics(SM_CXSCREEN) - IMAGE_WIDTH - 20;
+        int yPos = GetSystemMetrics(SM_CYSCREEN) - IMAGE_HEIGHT - 60;
 
         gdiHelper.DisplayImageFromResource(
             mainInstance,
