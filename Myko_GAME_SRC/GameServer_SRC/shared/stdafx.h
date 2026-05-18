@@ -59,6 +59,7 @@
 #define STRINGIFY(str) STR(str)
 
 #include <thread>
+#include <future>
 #include <chrono>
 #include <atomic>
 #include <mutex>

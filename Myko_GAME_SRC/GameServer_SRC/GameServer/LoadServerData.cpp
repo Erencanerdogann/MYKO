@@ -213,7 +213,6 @@ bool CGameServerDlg::LoadNpcPosTable()
 }
 
 bool CGameServerDlg::CreateBottomZoneMap() {
-	Sleep(1000);
 	foreach_stlmap(itr, m_ZoneArray) {
 		_BOTTOM_USER_LIST* pBottom = new _BOTTOM_USER_LIST();
 		pBottom->m_UserList.clear();
