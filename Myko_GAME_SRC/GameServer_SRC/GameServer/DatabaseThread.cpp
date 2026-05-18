@@ -1470,6 +1470,11 @@ void CUser::ReqUserLogOut()
 	if (isInGame())
 		g_pMain->DecrementIPUserCount(GetRemoteIP());
 
+	// KO klasik exit deneyimi: DB save'ler bittikten sonra 3sn bekle
+	// Sebep: Faz 1 anlik save eklendi, DB queue bos kaliyordu, client anlik kapaniyordu
+	// Etki: Eski 3-4sn geri sayim hissi geri gelir + 'Already in game' riski sifirlanir
+	sleep(3000);
+
 	// this session can be used again.
 	m_bCharacterDataLoaded = false;
 	m_deleted = false;
