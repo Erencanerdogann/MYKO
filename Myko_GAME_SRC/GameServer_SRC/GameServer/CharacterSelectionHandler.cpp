@@ -415,13 +415,10 @@ void CUser::NewCharToAgent(Packet & pkt)
 
 	if (errorCode != 0)
 	{
-		printf("[NewChar] FAIL account=%s char=%s errorCode=%d race=%d class=%d str=%d sta=%d dex=%d int=%d cha=%d total=%d\n",
-			m_strAccountID.c_str(), strUserID.c_str(), errorCode, bRace, sClass, str, sta, dex, intel, cha, str+sta+dex+intel+cha);
 		result << errorCode;
 		Send(&result);
 		return;
 	}
-	printf("[NewChar] OK account=%s char=%s race=%d class=%d -> sending to DB\n", m_strAccountID.c_str(), strUserID.c_str(), bRace, sClass);
 
 	result << bCharIndex
 		<< strUserID << bRace << sClass << bFace << nHair

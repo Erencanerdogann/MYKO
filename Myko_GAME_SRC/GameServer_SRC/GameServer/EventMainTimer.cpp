@@ -388,7 +388,7 @@ void CGameServerDlg::VirtualEventOpen(uint8 id, EVENT_OPENTIMELIST ptime, int ti
 void CGameServerDlg::CloseBowlEvent()
 {
 	g_pMain->isBowlEventActive = false;
-	std::string sEventMessages2 = string_format("Bowl Event etkinliði sona erdi.");
+	std::string sEventMessages2 = string_format("Bowl Event etkinliï¿½i sona erdi.");
 	g_pMain->tBowlEventTime = 0;
 	g_pMain->tBowlEventZone = 0;
 	if (!sEventMessages2.empty())
@@ -772,14 +772,12 @@ void CGameServerDlg::SingleLunarEventTimer()
 								int16 sNoticeHour = ptime->hour[timei] - 1;
 								if (sNoticeHour < 0) sNoticeHour = 23;
 								if (sNoticeHour == nHour && sNoticeMinutes == nMinute && nSeconds == 0) {
-									printf("War Open Notice (1) left %d Minutes \n", NoticeCount);
-									m_byBattleNoticeTime = NoticeCount;
+										m_byBattleNoticeTime = NoticeCount;
 									Announcement(IDS_PRE_BATTLE_ANNOUNCEMENT);
 								}
 							}
 						}
 						else if (ptime->hour[timei] == nHour && (ptime->minute[timei] - NoticeCount == nMinute) && nSeconds == 0) {
-							printf("War Open Notice (2) left %d Minutes \n", NoticeCount);
 							m_byBattleNoticeTime = NoticeCount;
 							Announcement(IDS_PRE_BATTLE_ANNOUNCEMENT);
 						}

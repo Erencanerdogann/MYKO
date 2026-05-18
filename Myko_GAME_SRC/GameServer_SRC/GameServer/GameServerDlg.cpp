@@ -3078,14 +3078,7 @@ uint32 CGameServerDlg::Timer_BotCleanup(void* lpParam)
 		g_pMain->m_BotArray.m_lock.unlock();
 
 		for (auto* pBot : expiredBots)
-		{
-			printf("[BotCleanup] Removing bot ID=%d Name=%s LastWarpTime=%lld UNIXTIME=%lld Merchant=%d\n",
-				pBot->GetID(), pBot->GetName().c_str(), (long long)pBot->LastWarpTime, (long long)UNIXTIME, pBot->isMerchanting());
 			pBot->UserInOut(INOUT_OUT);
-		}
-
-		if (!expiredBots.empty())
-			printf("[BotCleanup] %zu expired bot(s) removed.\n", expiredBots.size());
 	}
 	return 0;
 }

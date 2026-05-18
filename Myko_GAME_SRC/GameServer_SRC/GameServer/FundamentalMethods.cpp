@@ -899,7 +899,6 @@ void CGameServerDlg::Send_UnitRegion(Packet *pkt, C3DMap *pMap, int x, int z, CU
 	{
 		if (cm_RegionUserArray.size() <= 0)
 		{
-			printf("cm_RegionUserArray [10] size = 0\n");
 			break;
 		}
 		CUser *pUser = GetUserPtr(*itr);

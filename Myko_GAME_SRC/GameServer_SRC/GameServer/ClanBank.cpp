@@ -49,7 +49,6 @@ void CUser::ClanWarehouseOpen(Packet& pkt)
 	{
 		if (m_bIsLoggingOut || !isInClan() || !sClanPremStatus || !g_pMain->ClanBankStatus)
 		{
-			printf("ByNoise  | 1: %s: m_bIsLoggingOut=%d,sClanPremStatus=%d,g_pMain->ClanBankStatus=%d\n", __FUNCTION__, m_bIsLoggingOut, sClanPremStatus, g_pMain->ClanBankStatus);
 			ReturnValue = 0;
 			goto fail_return;
 		}
@@ -58,7 +57,6 @@ void CUser::ClanWarehouseOpen(Packet& pkt)
 	{
 		if (m_bIsLoggingOut || !isInClan() || !g_pMain->ClanBankStatus)
 		{
-			printf("ByNoise  | 2: %s: m_bIsLoggingOut=%d,sClanPremStatus=%d,g_pMain->ClanBankStatus=%d\n", __FUNCTION__, m_bIsLoggingOut, sClanPremStatus, g_pMain->ClanBankStatus);
 			ReturnValue = 0;
 			goto fail_return;
 		}
@@ -124,15 +122,6 @@ void CUser::ClanWarehouseItemInput(Packet& pkt)
 		{
 			if (m_bIsLoggingOut || !isInClan() || !sClanPremStatus || !g_pMain->ClanBankStatus)
 			{
-				if (m_bIsLoggingOut)
-					printf("ByNoise  | cb_error input:0-1\n");
-				else if (!isInClan())
-					printf("ByNoise  | cb_error input:0-2\n");
-				else if (!sClanPremStatus)
-					printf("ByNoise  | cb_error input:0-3\n");
-				else if (!g_pMain->ClanBankStatus)
-					printf("ByNoise  | cb_error input:0-4\n");
-
 				ReturnValue = 0;
 				goto fail_return;
 			}
@@ -299,17 +288,6 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 		{
 			if (m_bIsLoggingOut || !isInClan() || !sClanPremStatus || !g_pMain->ClanBankStatus || (!isClanLeader() && !isClanAssistant()))
 			{
-				if (m_bIsLoggingOut)
-					printf("ByNoise  | cb_error output:1-1\n");
-				else if (!isInClan())
-					printf("ByNoise  | cb_error output:1-2\n");
-				else if (!sClanPremStatus)
-					printf("ByNoise  | cb_error output:1-3\n");
-				else if (!g_pMain->ClanBankStatus)
-					printf("ByNoise  | cb_error output:1-4\n");
-				else if (!isClanLeader() && !isClanAssistant())
-					printf("ByNoise  | cb_error output:1-5\n");			// Hata ! Burası sürekli uyarı veriyor.   1-5 uyarısı
-
 				ReturnValue = 0;
 				goto fail_return;
 			}

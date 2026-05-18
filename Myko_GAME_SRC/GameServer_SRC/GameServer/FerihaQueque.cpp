@@ -67,7 +67,6 @@ void AdiniFerihaKoydum::Initialize() {
 	mthread[(int)dbreqtype::Database3] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database3);
 	mthread[(int)dbreqtype::Database4] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database4);
 	mthread[(int)dbreqtype::Logger]    = std::thread(&AdiniFerihaKoydum::tKnightLogger, this);
-	printf("Database threads: 4 workers initialized\n");
 }
 #pragma endregion
 
@@ -285,9 +284,5 @@ void AdiniFerihaKoydum::Shutdown(int type)
 	}
 	_lock[type].unlock();
 
-	std::string nlname = "-";
-	if (type == 0) nlname = "Database";
-	else if (type == 1) nlname = "Logger";
-	printf("Popped %s query thread list count : %d\n", nlname.c_str(), dbpoppedCount);
 }
 #pragma endregion

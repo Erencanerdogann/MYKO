@@ -286,7 +286,6 @@ void CUser::HandleUserAchieveUserDetail(Packet & pkt)//x1x0x0
 
 	if (sAchieveNum >= 10)
 	{
-		printf("voidName HandleUserAchieveUserDetail sAchieveNum: %d \n", sAchieveNum);
 		return;
 	}
 

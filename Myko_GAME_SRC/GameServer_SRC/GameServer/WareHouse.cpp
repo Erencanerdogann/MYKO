@@ -111,7 +111,6 @@ void CUser::WarehouseProcess(Packet & pkt)
 
 	reference_pos = 24 * page;
 
-	LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE] User=%s opcode=%u nItemID=%u page=%u srcPos=%u dstPos=%u npcId=%u", GetName().c_str(), opcode, nItemID, page, bSrcPos, bDstPos, sNpcId);
 
 	switch (opcode)
 	{
@@ -125,7 +124,6 @@ void CUser::WarehouseProcess(Packet & pkt)
 		// Handle coin input.
 		if (nItemID == ITEM_GOLD)
 		{
-			LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE_GOLD_IN] User=%s count=%u gold=%u bank=%u", GetName().c_str(), nCount, GetCoins(), GetInnCoins());
 			// CHI-AUDIT: Gold lock — warehouse deposit
 			m_goldLock.lock();
 			if (m_iGold < nCount
@@ -138,7 +136,6 @@ void CUser::WarehouseProcess(Packet & pkt)
 			m_iBank += nCount;
 			m_iGold -= nCount;
 			m_goldLock.unlock();
-			LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE_GOLD_IN_OK] User=%s newGold=%u newBank=%u", GetName().c_str(), GetCoins(), GetInnCoins());
 			UserDataSaveToAgent();
 			resultOpCode = ResultOpCodes::OpenWarehouse;
 			break;
@@ -218,7 +215,6 @@ void CUser::WarehouseProcess(Packet & pkt)
 
 		if (nItemID == ITEM_GOLD)
 		{
-			LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE_GOLD_OUT] User=%s count=%u gold=%u bank=%u", GetName().c_str(), nCount, GetCoins(), GetInnCoins());
 			// CHI-AUDIT: Gold lock — warehouse withdraw
 			m_goldLock.lock();
 			if (!hasInnCoins(nCount)
@@ -231,7 +227,6 @@ void CUser::WarehouseProcess(Packet & pkt)
 			m_iGold += nCount;
 			m_iBank -= nCount;
 			m_goldLock.unlock();
-			LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE_GOLD_OUT_OK] User=%s newGold=%u newBank=%u", GetName().c_str(), GetCoins(), GetInnCoins());
 			UserDataSaveToAgent();
 			resultOpCode = ResultOpCodes::OpenWarehouse;
 			break;
@@ -344,9 +339,7 @@ void CUser::WarehouseProcess(Packet & pkt)
 	UserDataSaveToAgent(); // Depo islemi sonrasi aninda kaydet
 
 fail_return:
-	LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE_RESP] User=%s opcode=%u resultCode=%u pktSize=%u", GetName().c_str(), opcode, (uint8)resultOpCode, result.size());
 	result << opcode << (uint8)resultOpCode;
-	LOG(LogCategory::LOG_GENERAL, "[WAREHOUSE_RESP_SENT] User=%s finalPktSize=%u", GetName().c_str(), result.size());
 	Send(&result);
 }
 #pragma endregion
