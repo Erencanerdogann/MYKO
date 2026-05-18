@@ -653,6 +653,8 @@ void CUser::InventorySystem(Packet & pkt)
 	if (!isInGame() || m_bIsLoggingOut)
 		return;
 
+	std::lock_guard<std::recursive_mutex> inventoryGuard(m_inventoryLock);
+
 	if (isTrading()
 		|| isMerchanting()
 		|| isMining()
