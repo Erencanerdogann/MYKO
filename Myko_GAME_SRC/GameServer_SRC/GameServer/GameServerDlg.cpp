@@ -2725,10 +2725,13 @@ void CGameServerDlg::RecordLoginFail(const std::string &strIP)
 	attempt.nFailCount++;
 	attempt.tLastAttempt = UNIXTIME;
 
-	if (attempt.nFailCount >= 5)
+	// AS14 (18 May): 5 fail/5dk -> 8 fail/2dk (oyuncuya tolerans, brute force korumasi yine yeterli)
+	int kalan = 8 - attempt.nFailCount;
+	printf("[LOGIN_FAIL] GS IP=%s FailCount=%d/8 Kalan=%d\n", strIP.c_str(), attempt.nFailCount, kalan > 0 ? kalan : 0);
+	if (attempt.nFailCount >= 8)
 	{
-		attempt.tBanUntil = UNIXTIME + 300; // 5 dakika ban
-		printf("[BRUTEFORCE] IP %s BANNED for 5 minutes (%d failed attempts)\n", strIP.c_str(), attempt.nFailCount);
+		attempt.tBanUntil = UNIXTIME + 120; // 2 dakika ban
+		printf("[BRUTEFORCE] IP %s BANNED for 2 minutes (%d failed attempts)\n", strIP.c_str(), attempt.nFailCount);
 	}
 }
 

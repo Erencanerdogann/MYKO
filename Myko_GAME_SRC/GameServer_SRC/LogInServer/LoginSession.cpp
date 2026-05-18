@@ -15,8 +15,9 @@ struct IPFailRecord {
 static std::recursive_mutex s_ipRateMutex;
 static std::map<std::string, IPFailRecord> s_ipFailMap;
 
-static const int IP_MAX_FAILS = 5;
-static const int IP_BAN_SECONDS = 300; // 5 minutes
+// AS14 (18 May): 5 fail/5dk -> 8 fail/2dk (refleksle yanlis yazan oyuncuya tolerans, brute force korumasi yine yeterli)
+static const int IP_MAX_FAILS = 8;
+static const int IP_BAN_SECONDS = 120; // 2 minutes
 
 static bool IsIPBanned(const std::string &ip)
 {
@@ -34,13 +35,14 @@ static bool IsIPBanned(const std::string &ip)
 	return false;
 }
 
-static void RecordIPLoginFail(const std::string &ip)
+static int RecordIPLoginFail(const std::string &ip)
 {
 	std::lock_guard<std::recursive_mutex> lock(s_ipRateMutex);
 	auto &rec = s_ipFailMap[ip];
 	rec.failCount++;
 	if (rec.failCount >= IP_MAX_FAILS)
 		rec.banUntil = std::chrono::steady_clock::now() + std::chrono::seconds(IP_BAN_SECONDS);
+	return rec.failCount;
 }
 
 static void ResetIPLoginFails(const std::string &ip)
@@ -321,11 +323,15 @@ void LoginSession::HandleLogin(Packet& pkt)
 	}
 	else if (resultCode == AUTH_NOT_FOUND || resultCode == AUTH_INVALID || resultCode == AUTH_FAILED)
 	{
-		RecordIPLoginFail(clientIP);
-		con_red(); printf("[LOGIN_FAIL] IP=%s Account=%s Time=%02d:%02d:%02d Reason=%s\n",
+		int currentFails = RecordIPLoginFail(clientIP);
+		int remaining = IP_MAX_FAILS - currentFails;
+		con_red(); printf("[LOGIN_FAIL] IP=%s Account=%s Time=%02d:%02d:%02d Reason=%s FailCount=%d/%d Kalan=%d\n",
 			clientIP.c_str(), account.c_str(),
 			time.GetHour(), time.GetMinute(), time.GetSecond(),
-			sAuthMessage.c_str()); con_white();
+			sAuthMessage.c_str(), currentFails, IP_MAX_FAILS, remaining > 0 ? remaining : 0); con_white();
+		if (currentFails >= IP_MAX_FAILS) {
+			LOG_LOGIN("[LOGIN_BANNED] IP=%s Account=%s Ban=%d sn", clientIP.c_str(), account.c_str(), IP_BAN_SECONDS);
+		}
 	}
 
 	// L4: Account enumeration onlemi — NOT_FOUND ve INVALID ayni kod olarak gonder
