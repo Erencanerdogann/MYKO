@@ -345,6 +345,12 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 		{
 			{ // clan bank withdraw gold lock
 				std::lock_guard<std::recursive_mutex> lock(m_goldLock);
+				// AS22 fix: bankada olmayan parayi cekme - uint64 underflow = gold dupe
+				if (pKnights->m_nMoney < nCount || m_iGold + nCount > COIN_MAX)
+				{
+					ReturnValue = 0;
+					break;
+				}
 				pKnights->m_nMoney -= nCount;
 				m_iGold += nCount;
 			}

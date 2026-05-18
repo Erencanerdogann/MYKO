@@ -60,7 +60,7 @@ void CKingSystem::Initialize()
 	m_byExpEvent = 0;
 	m_byExpEvent_Day = 0;
 	m_byExpEvent_Hour = 0;
-	m_byExpEvent_Minute;
+	m_byExpEvent_Minute = 0;
 	m_sExpEvent_Duration = 0;
 	m_nTribute = 0;
 	m_nTerritoryTax = 0;
