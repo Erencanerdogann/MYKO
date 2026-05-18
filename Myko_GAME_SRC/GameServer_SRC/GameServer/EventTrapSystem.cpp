@@ -74,14 +74,14 @@ static void HandleWallCheatViolation(CUser* pUser)
 	pUser->pMove.wallCheatCount++;
 	pUser->pMove.wallCheatLastTime = now;
 
-	if (mode >= 3 && pUser->pMove.wallCheatCount >= 10)
+	if (mode >= 3 && pUser->pMove.wallCheatCount >= 20)
 	{
 		LOG_HACK("[WALL_CHEAT_BAN] User=%s count=%d — banned 24h", pUser->GetName().c_str(), pUser->pMove.wallCheatCount);
 		pUser->goDisconnect("wall_cheat_ban", __FUNCTION__);
 		return;
 	}
 
-	if (mode >= 2 && pUser->pMove.wallCheatCount >= 3)
+	if (mode >= 2 && pUser->pMove.wallCheatCount >= 10)
 	{
 		LOG_HACK("[WALL_CHEAT_KICK] User=%s count=%d — kicked", pUser->GetName().c_str(), pUser->pMove.wallCheatCount);
 		pUser->goDisconnect("wall_cheat_kick", __FUNCTION__);
