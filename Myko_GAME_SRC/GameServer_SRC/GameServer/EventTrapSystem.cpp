@@ -52,10 +52,49 @@ void CUser::EventTrapProcess(float x, float z, CUser * pUser)
 }
 
 #pragma region CUser::UserWallCheatCheckRegion()
+
+static void HandleWallCheatViolation(CUser* pUser)
+{
+	int mode = g_ServerConfig.WallCheatMode();
+	if (mode == 0)
+		return;
+
+	ULONGLONG now = UNIXTIME2;
+	LOG_HACK("[WALL_CHEAT] User=%s Zone=%d X=%.0f Z=%.0f IP=%s Mode=%d",
+		pUser->GetName().c_str(), pUser->GetZoneID(),
+		pUser->GetX(), pUser->GetZ(), pUser->GetRemoteIP().c_str(), mode);
+
+	if (mode < 2)
+		return;
+
+	// 60 saniye penceresi içinde sayacı yönet
+	if (now - pUser->pMove.wallCheatLastTime > 60000)
+		pUser->pMove.wallCheatCount = 0;
+
+	pUser->pMove.wallCheatCount++;
+	pUser->pMove.wallCheatLastTime = now;
+
+	if (mode >= 3 && pUser->pMove.wallCheatCount >= 10)
+	{
+		LOG_HACK("[WALL_CHEAT_BAN] User=%s count=%d — banned 24h", pUser->GetName().c_str(), pUser->pMove.wallCheatCount);
+		pUser->goDisconnect("wall_cheat_ban", __FUNCTION__);
+		return;
+	}
+
+	if (mode >= 2 && pUser->pMove.wallCheatCount >= 3)
+	{
+		LOG_HACK("[WALL_CHEAT_KICK] User=%s count=%d — kicked", pUser->GetName().c_str(), pUser->pMove.wallCheatCount);
+		pUser->goDisconnect("wall_cheat_kick", __FUNCTION__);
+	}
+}
+
 void CUser::UserWallCheatCheckRegion()
 {
-	// F3.1 LOG-ONLY mod: prison'a gondermek yerine sadece log yaz. Koordinat dogrulamasi sonrasi prison'a acilabilir.
 	if (isGM() || !isInGame())
+		return;
+
+	// Grace period: zone geçişinden 5 saniye sonrasına kadar kontrol etme
+	if ((UNIXTIME2 - m_lastZoneChangeTime) < 5000)
 		return;
 
 	switch (GetZoneID())
@@ -81,7 +120,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(1595.0f, 1494.0f, 10)
 			|| isInRangeSlow(1530.0f, 1383.0f, 10)
 			|| isInRangeSlow(1295.0f, 835.0f, 40))
-			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
+			HandleWallCheatViolation(this);
 	}
 	break;
 	case ZONE_ELMORAD:
@@ -110,7 +149,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(169.0f, 176.0f, 20)
 			|| isInRangeSlow(188.0f, 327.0f, 20)
 			|| isInRangeSlow(1578.0f, 1975.0f, 40))
-			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
+			HandleWallCheatViolation(this);
 	}
 	break;
 	case ZONE_MORADON:
@@ -126,7 +165,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(851.0f, 269.0f, 15)
 			|| isInRangeSlow(606.0f, 33.0f, 4))
 			//|| isInRangeSlow(x, y, alan))
-			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
+			HandleWallCheatViolation(this);
 	}
 	break;
 	case ZONE_RONARK_LAND:
@@ -147,7 +186,7 @@ void CUser::UserWallCheatCheckRegion()
 			|| isInRangeSlow(468.0f, 1620.0f, 30)
 			|| isInRangeSlow(312.0f, 1512.0f, 30)
 			|| isInRangeSlow(184.0f, 1347.0f, 30))
-			LOG_HACK("WALL_CHEAT_DETECT: User=%s Zone=%d X=%.0f Z=%.0f IP=%s", GetName().c_str(), GetZoneID(), GetX(), GetZ(), GetRemoteIP().c_str());
+			HandleWallCheatViolation(this);
 	}
 	break;
 	default:

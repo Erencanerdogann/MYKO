@@ -81,6 +81,8 @@ public:
 	int IPMaxFails() { return GetInt("SERVER.ip_max_fails", 10); }
 	int MoveBroadcastInterval() { return GetInt("SERVER.move_broadcast_ms", 50); }
 	int NpcDamageListCap() { return GetInt("SERVER.npc_damage_cap", 30); }
+	// 0=off, 1=log-only, 2=kick (3+ violate in 60s), 3=ban (10+ total)
+	int WallCheatMode() { return GetInt("SERVER.wall_cheat_mode", 1); }
 	int QueueMaxSize() { return GetInt("SERVER.queue_max_size", 10000); }
 	int SocketBufferSize() { return GetInt("SERVER.socket_buffer_kb", 64); }
 

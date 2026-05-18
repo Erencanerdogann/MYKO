@@ -4360,6 +4360,8 @@ struct _MOVE {
 	int8  oldecho;
 	int16 oldspeed;
 	int caughtcount;
+	int wallCheatCount;
+	ULONGLONG wallCheatLastTime;
 
 	_MOVE() { Initialize(); }
 	void Initialize() {
@@ -4368,6 +4370,8 @@ struct _MOVE {
 		oldecho = -1;
 		caughtcount = 0;
 		caughttime = UNIXTIME2;
+		wallCheatCount = 0;
+		wallCheatLastTime = 0;
 	}
 };
 
