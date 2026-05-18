@@ -1362,10 +1362,6 @@ void CGameServerDlg::TempleEventFinish(int16 nRoom /* = -1 */)
 
 			pRoomInfo->m_bFinished = true;
 
-			// B7 DEBUG: BDW finish — reward dagitim basladi
-			LOG_ZONE("[B7-DEBUG] BDW TempleEventFinish room=%d winner=%d mreward=%d m_winner=%d m_loser=%d",
-				nRoom, (int)pRoomInfo->m_bWinnerNation, (int)mreward.size(), (int)m_winner.size(), (int)m_loser.size());
-
 			std::vector< std::string> m_KarusUserList, m_ElmoradUserList;
 
 			pRoomInfo->m_KarusUserListLock.lock();
@@ -1379,17 +1375,8 @@ void CGameServerDlg::TempleEventFinish(int16 nRoom /* = -1 */)
 			}
 			pRoomInfo->m_KarusUserListLock.unlock();
 
-			// B7 DEBUG: Karus listesi
-			LOG_ZONE("[B7-DEBUG] BDW KarusUserList size=%d", (int)m_KarusUserList.size());
-
 			foreach(itr, m_KarusUserList) {
 				CUser* pUser = GetUserPtr(*itr, NameType::TYPE_CHARACTER);
-				// B7 DEBUG: Her oyuncu icin ödül kontrol
-				LOG_ZONE("[B7-DEBUG] BDW Karus user=%s isInGame=%d isEventUser=%d zone=%d",
-					itr->c_str(),
-					pUser ? (int)pUser->isInGame() : -1,
-					pUser ? (int)pUser->isEventUser() : -1,
-					pUser ? (int)pUser->GetZoneID() : -1);
 				if (pUser == nullptr || !pUser->isInGame() || !pUser->isEventUser() || pUser->GetZoneID() != ZONE_BORDER_DEFENSE_WAR)
 					continue;
 				
@@ -1451,17 +1438,8 @@ void CGameServerDlg::TempleEventFinish(int16 nRoom /* = -1 */)
 			}
 			pRoomInfo->m_ElmoradUserListLock.unlock();
 
-			// B7 DEBUG: Elmorad listesi
-			LOG_ZONE("[B7-DEBUG] BDW ElmoradUserList size=%d", (int)m_ElmoradUserList.size());
-
 			foreach(itr, m_ElmoradUserList) {
 				CUser* pUser = g_pMain->GetUserPtr(*itr, NameType::TYPE_CHARACTER);
-				// B7 DEBUG
-				LOG_ZONE("[B7-DEBUG] BDW Elmo user=%s isInGame=%d isEventUser=%d zone=%d",
-					itr->c_str(),
-					pUser ? (int)pUser->isInGame() : -1,
-					pUser ? (int)pUser->isEventUser() : -1,
-					pUser ? (int)pUser->GetZoneID() : -1);
 				if (pUser == nullptr || !pUser->isInGame() || !pUser->isEventUser() || pUser->GetZoneID() != ZONE_BORDER_DEFENSE_WAR)
 					continue;
 

@@ -4453,7 +4453,6 @@ bool MagicInstance::ExecuteType6()
 		return false;
 	}
 
-	// TODO : Save duration, and obviously end
 	pCaster->m_sTransformID = pType->sTransformID;
 	pCaster->m_sTransformSkillID = pType->iNum;
 	pCaster->m_tTransformationStartTime = UNIXTIME2; // in milliseconds
@@ -4467,7 +4466,6 @@ bool MagicInstance::ExecuteType6()
 	sData[3] = sDuration;
 	SendSkill();
 
-	// TODO : Give the users ALL TEH BONUSES!!
 	if (pType->bUserSkillUse == TransformationSkillUseSiege || pType->bUserSkillUse == TransformationSkillMovingTower /*|| pType->bUserSkillUse == TransformationSkillOreadsGuard*/)
 	{
 		pCaster->m_sTotalHit = pType->sTotalHit;
@@ -5721,7 +5719,6 @@ void MagicInstance::Type6Cancel(bool bForceRemoval)
 		pUser->m_bRegeneType = REGENE_NORMAL;
 
 	Packet result(WIZ_MAGIC_PROCESS, uint8(MagicOpcode::MAGIC_CANCEL_TRANSFORMATION));
-	// TODO: Reset stat changes, recalculate stats.
 	pUser->m_transformationType = Unit::TransformationType::TransformationNone;
 	pUser->m_sTransformHpchange = false;
 	pUser->m_sTransformMpchange = false;
