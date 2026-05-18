@@ -15,40 +15,47 @@ struct IPFailRecord {
 static std::recursive_mutex s_ipRateMutex;
 static std::map<std::string, IPFailRecord> s_ipFailMap;
 
-// AS14 (18 May): 5 fail/5dk -> 8 fail/2dk (refleksle yanlis yazan oyuncuya tolerans, brute force korumasi yine yeterli)
-static const int IP_MAX_FAILS = 8;
-static const int IP_BAN_SECONDS = 120; // 2 minutes
+// AS14: key = ip+account bazli, 15 fail/2dk (farkli hesap denemeleri ayri sayilir)
+static const int IP_MAX_FAILS = 15;
+static const int IP_BAN_SECONDS = 120;
 
-static bool IsIPBanned(const std::string &ip)
+static std::string MakeKey(const std::string &ip, const std::string &account)
+{
+	return ip + ":" + account;
+}
+
+static bool IsIPBanned(const std::string &ip, const std::string &account = "")
 {
 	std::lock_guard<std::recursive_mutex> lock(s_ipRateMutex);
-	auto it = s_ipFailMap.find(ip);
+	std::string key = account.empty() ? ip : MakeKey(ip, account);
+	auto it = s_ipFailMap.find(key);
 	if (it == s_ipFailMap.end())
 		return false;
 	if (it->second.failCount >= IP_MAX_FAILS) {
 		if (std::chrono::steady_clock::now() < it->second.banUntil)
 			return true;
-		// Ban expired, reset
 		s_ipFailMap.erase(it);
 		return false;
 	}
 	return false;
 }
 
-static int RecordIPLoginFail(const std::string &ip)
+static int RecordIPLoginFail(const std::string &ip, const std::string &account = "")
 {
 	std::lock_guard<std::recursive_mutex> lock(s_ipRateMutex);
-	auto &rec = s_ipFailMap[ip];
+	std::string key = account.empty() ? ip : MakeKey(ip, account);
+	auto &rec = s_ipFailMap[key];
 	rec.failCount++;
 	if (rec.failCount >= IP_MAX_FAILS)
 		rec.banUntil = std::chrono::steady_clock::now() + std::chrono::seconds(IP_BAN_SECONDS);
 	return rec.failCount;
 }
 
-static void ResetIPLoginFails(const std::string &ip)
+static void ResetIPLoginFails(const std::string &ip, const std::string &account = "")
 {
 	std::lock_guard<std::recursive_mutex> lock(s_ipRateMutex);
-	s_ipFailMap.erase(ip);
+	std::string key = account.empty() ? ip : MakeKey(ip, account);
+	s_ipFailMap.erase(key);
 }
 #pragma endregion
 
@@ -241,25 +248,25 @@ void LoginSession::HandleLogin(Packet& pkt)
 		AUTH_FAILED = 0xFF
 	};
 
-	// IP rate limiting check — brute force protection
 	std::string clientIP = GetRemoteIP();
-	if (IsIPBanned(clientIP))
-	{
-		DateTime banTime;
-		con_red(); printf("[LOGIN_BLOCKED] IP=%s Time=%02d:%02d:%02d (IP temporarily banned - too many failed attempts)\n",
-			clientIP.c_str(), banTime.GetHour(), banTime.GetMinute(), banTime.GetSecond()); con_white();
-		Packet banResult(pkt.GetOpcode());
-		banResult << uint16(0) << uint8(0x04); // AUTH_BANNED
-		Send(&banResult);
-		return;
-	}
-
 	Packet result(pkt.GetOpcode());
 	uint16 resultCode = 0;
 	std::string account, password, OTP_Key;
 	DateTime time;
 
 	pkt >> account >> password;
+
+	// IP+account bazli brute force korumasi
+	if (IsIPBanned(clientIP, account))
+	{
+		DateTime banTime;
+		con_red(); printf("[LOGIN_BLOCKED] IP=%s Account=%s Time=%02d:%02d:%02d (too many failed attempts)\n",
+			clientIP.c_str(), account.c_str(), banTime.GetHour(), banTime.GetMinute(), banTime.GetSecond()); con_white();
+		Packet banResult(pkt.GetOpcode());
+		banResult << uint16(0) << uint8(0x04); // AUTH_BANNED
+		Send(&banResult);
+		return;
+	}
 
 	if (account.size() == 0
 		|| account.size() > MAX_ID_SIZE
@@ -319,11 +326,11 @@ void LoginSession::HandleLogin(Packet& pkt)
 	// Track login success/failure for rate limiting
 	if (resultCode == AUTH_SUCCESS || resultCode == AUTH_OTP || resultCode == AUTH_AGREEMENT)
 	{
-		ResetIPLoginFails(clientIP);
+		ResetIPLoginFails(clientIP, account);
 	}
 	else if (resultCode == AUTH_NOT_FOUND || resultCode == AUTH_INVALID || resultCode == AUTH_FAILED)
 	{
-		int currentFails = RecordIPLoginFail(clientIP);
+		int currentFails = RecordIPLoginFail(clientIP, account);
 		int remaining = IP_MAX_FAILS - currentFails;
 		con_red(); printf("[LOGIN_FAIL] IP=%s Account=%s Time=%02d:%02d:%02d Reason=%s FailCount=%d/%d Kalan=%d\n",
 			clientIP.c_str(), account.c_str(),
