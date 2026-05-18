@@ -1976,7 +1976,7 @@ void CGameServerDlg::t_addBot(uint32 index, uint8 type) {
 	if (!m_bzaa_count)
 		return;
 
-	g_pMain->SpawnUserBot(0, bZone, (float)setX, (float)setY, (float)setZ, 6, 1, direction, 0, 0, _merchant);
+	g_pMain->SpawnUserBot(30, bZone, (float)setX, (float)setY, (float)setZ, 6, 1, direction, 0, 0, _merchant);
 }
 
 uint32 CGameServerDlg::Timer_BotAutoSpawn(void* lpParam)
