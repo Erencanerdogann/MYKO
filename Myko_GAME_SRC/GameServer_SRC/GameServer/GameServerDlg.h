@@ -21,7 +21,7 @@ class Condition;
 #include "json.hpp"
 #include "DBAgent.h"
 
-typedef std::map<std::string, CUser *>  NameMap;
+typedef std::unordered_map<std::string, CUser *>  NameMap;
 typedef std::map<std::string, CBot *>  BotNameMap;
 typedef  std::map<uint16, uint16>          ForgettenTempleMonsterList;
 typedef	std::map<uint16, uint16>		   UnderTheCastleMonsterList;

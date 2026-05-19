@@ -149,9 +149,9 @@ public:
 	std::string accountID;
 	vector<HookPM*> privatemessages;
 	DWORD isAgree;
-	std::map<uint32, CSpell> skillmap;
-	std::map<uint32, CSpell> skillmapBackup;
-	std::map<uint32, SpellCRC> skillcrc;
+	std::unordered_map<uint32, CSpell> skillmap;
+	std::unordered_map<uint32, CSpell> skillmapBackup;
+	std::unordered_map<uint32, SpellCRC> skillcrc;
 	bool _InitIcon(DWORD& iconObject, DWORD parent, DWORD itemID);
 	DWORD _CreateIconItemSkill(DWORD self, DWORD UIIcon, DWORD itemID, short count, uint32 expiration = 0, uint16 rental_remTime = 0, uint32 rental_period = 0, uint32 rental_price = 0);
 	uint32 serverhour, serverminute, serversecond;
