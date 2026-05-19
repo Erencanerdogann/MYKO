@@ -307,6 +307,11 @@ extern  "C"  __declspec(dllexport) void __cdecl Init()
 	}
 
 #endif
+	// MAP PRELOAD — zone gecisi hizlandirma (arka planda, oyunu bloklamaz)
+	extern DWORD WINAPI MapPreloadThread(LPVOID);
+	static std::string s_basePath = basePath + "\\";
+	CreateThread(NULL, 0, MapPreloadThread, (LPVOID)s_basePath.c_str(), 0, NULL);
+
 	UIMain();
 }
 

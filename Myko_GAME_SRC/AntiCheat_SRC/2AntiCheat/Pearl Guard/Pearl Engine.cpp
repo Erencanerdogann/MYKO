@@ -11,6 +11,44 @@
 #include "PearlPipe.h"
 volatile bool g_bThreadsShutdown = false;  // PG18/PG19: thread exit sinyali
 
+// MAP PRELOAD — zone gecisi hizlandirma
+// Oyun klasöründeki .gtd/.ni3/.msm dosyalarini Windows file cache'e alir.
+// KO client ayni dosyalari zone gecisinde istediginde disk yerine RAM'den gelir.
+static void PreloadMapFile(const std::string& path)
+{
+	HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
+		NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) return;
+	const DWORD BUF = 65536;
+	BYTE buf[BUF]; DWORD read = 0;
+	while (ReadFile(hFile, buf, BUF, &read, NULL) && read > 0) {}
+	CloseHandle(hFile);
+}
+
+static void PreloadMapDir(const std::string& dir, const std::string& ext)
+{
+	std::string pattern = dir + "\\*." + ext;
+	WIN32_FIND_DATAA fd;
+	HANDLE hFind = FindFirstFileA(pattern.c_str(), &fd);
+	if (hFind == INVALID_HANDLE_VALUE) return;
+	do {
+		if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+			PreloadMapFile(dir + "\\" + fd.cFileName);
+	} while (FindNextFileA(hFind, &fd));
+	FindClose(hFind);
+}
+
+DWORD WINAPI MapPreloadThread(LPVOID lpBase)
+{
+	Sleep(8000); // oyun tamamen yuklensin, sonra basla
+	std::string base = (const char*)lpBase;
+	// Zone map dosyalari — en agir yuklemeler
+	PreloadMapDir(base + "Map", "gtd");
+	PreloadMapDir(base + "Map", "ni3");
+	PreloadMapDir(base + "Map", "msm");
+	return 0;
+}
+
 bool isLeaderAttack = false;
 bool ischeatactive = false;
 bool isHideUser = false;
