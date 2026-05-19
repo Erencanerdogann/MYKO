@@ -2070,8 +2070,7 @@ void __fastcall myTick()
 							}
 						}
 
-						std::map<uint32, CSpell>::iterator itr;
-						for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++)
+						for (auto itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++)
 						{
 							if (CSpell* spell = GetSkillBase(itr->second.dwID))
 							{
@@ -5399,8 +5398,7 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 		uint16 sQuestID;
 
 		pkt >> sQuestID;
-		std::map<uint32, CSpell>::iterator itr;
-		for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++)
+		for (auto itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++)
 		{
 			if (CSpell* spell = GetSkillBase(itr->second.dwID))
 				if(spell->iIDK2==390)
@@ -5649,7 +5647,7 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 			Engine->m_isGenieStatus = true;
 			BLOG("GENIE ACILDI -- castTime yariya dusurulecek");
 
-			std::map<uint32, CSpell>::iterator itr;
+			std::unordered_map<uint32, CSpell>::iterator itr;
 			const vector<uint32> healSkills = {
 				// Karus
 				111001,111005,111500,111509,111518,111527,111536,111545,112560,112554,112557,
@@ -5731,8 +5729,8 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 		{
 			Engine->m_isGenieStatus = false;
 			BLOG("GENIE KAPANDI -- castTime geri yuklendi");
-			std::map<uint32, CSpell>::iterator itr;
-	
+			std::unordered_map<uint32, CSpell>::iterator itr;
+
 			for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++)
 			{
 				auto bkp = Engine->skillmapBackup.find(itr->second.dwID);

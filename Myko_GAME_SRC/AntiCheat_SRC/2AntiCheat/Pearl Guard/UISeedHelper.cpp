@@ -67,13 +67,13 @@ float __cameraLimit = 24.0f;
 DWORD __declspec(naked) hkCameraZoom() // 2369
 {
 	__asm {
-		// <moviemode kontrolü>
+		// <moviemode kontrolï¿½>
 		mov eax, dword ptr ds : [0xF368E0]
 		mov al, byte ptr[eax + 0x208]
 		movzx eax, al
 		test eax, eax
 		jne devamke
-		// </moviemode kontrolü>
+		// </moviemode kontrolï¿½>
 		fld dword ptr[esp + 8]
 		fstp dword ptr camDistance
 		movss xmm0, __cameraLimit
@@ -470,7 +470,7 @@ void CUISeedHelperPlug::Tick()
 		orta.x = (koScreen.x / 2) + 205;
 		Engine->SetUIPos(Engine->uiInformationWind->m_dVTableAddr, orta);
 	}
-	DWORD deger = 500;		// F12 de adjust  & Sis kaldýrýldýðý yer
+	DWORD deger = 500;		// F12 de adjust  & Sis kaldï¿½rï¿½ldï¿½ï¿½ï¿½ yer
 
 	*(DWORD*)0xDE2B10 = deger;
 	*(DWORD*)0x806620 = deger;
@@ -485,9 +485,9 @@ void CUISeedHelperPlug::Tick()
 
 void CUISeedHelperPlug::CostimizeEffect(bool isEnabled)
 {
-	//return;		// Alttan nova için pasif hale geldi. Alttan novayý açmak için burayý kaldýracaðýz.
+	//return;		// Alttan nova iï¿½in pasif hale geldi. Alttan novayï¿½ aï¿½mak iï¿½in burayï¿½ kaldï¿½racaï¿½ï¿½z.
 
-	std::map<uint32, CSpell>::iterator itr;
+	std::unordered_map<uint32, CSpell>::iterator itr;
 	if (isEnabled)
 	{
 		uint32 CostimizeEffect = 0;
@@ -707,7 +707,7 @@ const vector<uint32> healSkills = {
 void CUISeedHelperPlug::ApplySkillFX()
 {
 	if (Engine->bDisableAllSkillFX) {
-		std::map<uint32, CSpell>::iterator itr;
+		std::unordered_map<uint32, CSpell>::iterator itr;
 		for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++) {
 			itr->second.iSelfFX1 = 0;
 			itr->second.iTargetFX = 0;
@@ -724,7 +724,7 @@ void CUISeedHelperPlug::ApplySkillFX()
 		return;
 	}
 	else {
-		std::map<uint32, CSpell>::iterator itr;
+		std::unordered_map<uint32, CSpell>::iterator itr;
 		for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++) {
 			auto bkp = Engine->skillmapBackup.find(itr->second.dwID);
 			itr->second.iSelfFX1 = bkp->second.iSelfFX1;
@@ -742,7 +742,7 @@ void CUISeedHelperPlug::ApplySkillFX()
 	}
 
 	if (Engine->bDisableAreaSkillFX) {
-		std::map<uint32, CSpell>::iterator itr;
+		std::unordered_map<uint32, CSpell>::iterator itr;
 		for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++) {
 			if (itr->second.iMoral == 10 || itr->second.iMoral == 11 || itr->second.iMoral == 12) {
 				itr->second.iTargetFX = 0;
@@ -758,7 +758,7 @@ void CUISeedHelperPlug::ApplySkillFX()
 		}
 	}
 	else {
-		std::map<uint32, CSpell>::iterator itr;
+		std::unordered_map<uint32, CSpell>::iterator itr;
 		for (itr = Engine->skillmap.begin(); itr != Engine->skillmap.end(); itr++) {
 			if (itr->second.iMoral == 10 || itr->second.iMoral == 11 || itr->second.iMoral == 12) {
 				auto bkp = Engine->skillmapBackup.find(itr->second.dwID);
