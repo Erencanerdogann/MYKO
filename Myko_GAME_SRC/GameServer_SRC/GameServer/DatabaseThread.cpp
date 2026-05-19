@@ -6,6 +6,7 @@
 #include <time.h>
 #include "../shared/DateTime.h"
 #include <sstream>
+#include <future>
 
 extern CDBAgent g_DBAgent;
 using std::string;
@@ -1156,14 +1157,17 @@ void CUser::ReqSelectCharacter(Packet & pkt)
 		goto fail_continue;
 	}
 
-	if (!g_DBAgent.LoadWarehouseData(m_strAccountID, this)) {
-		dberror = true; DatabaseProcName = "LoadWarehouseData";
-		goto fail_continue;
-	}
+	{
+		// Warehouse + VIP warehouse + achieve data have no inter-dependencies.
+		// Run them concurrently; each call grabs its own DB connection from the pool.
+		std::string accID = m_strAccountID;
+		auto futWarehouse    = std::async(std::launch::async, [&]{ return g_DBAgent.LoadWarehouseData(accID, this); });
+		auto futVipWarehouse = std::async(std::launch::async, [&]{ return g_DBAgent.LoadVipWarehouseData(accID, this); });
+		auto futAchieve      = std::async(std::launch::async, [&]{ return g_DBAgent.LoadAchieveData(this); });
 
-	if (!g_DBAgent.LoadVipWarehouseData(m_strAccountID, this)) {
-		dberror = true; DatabaseProcName = "LoadVipWarehouseData";
-		goto fail_continue;
+		if (!futWarehouse.get())    { dberror = true; DatabaseProcName = "LoadWarehouseData";    goto fail_continue; }
+		if (!futVipWarehouse.get()) { dberror = true; DatabaseProcName = "LoadVipWarehouseData"; goto fail_continue; }
+		if (!futAchieve.get())      { dberror = true; DatabaseProcName = "LoadAchieveData";      goto fail_continue; }
 	}
 
 	if (!g_DBAgent.LoadPremiumServiceUser(m_strAccountID, this)) {
@@ -1183,11 +1187,6 @@ void CUser::ReqSelectCharacter(Packet & pkt)
 
 	if (!g_DBAgent.LoadQuestData(strCharID, this)) {
 		dberror = true; DatabaseProcName = "LoadQuestData";
-		goto fail_continue;
-	}
-
-	if (!g_DBAgent.LoadAchieveData(this)) {
-		dberror = true; DatabaseProcName = "LoadAchieveData";
 		goto fail_continue;
 	}
 
