@@ -66,6 +66,10 @@ void AdiniFerihaKoydum::Initialize() {
 	mthread[(int)dbreqtype::Database2] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database2);
 	mthread[(int)dbreqtype::Database3] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database3);
 	mthread[(int)dbreqtype::Database4] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database4);
+	mthread[(int)dbreqtype::Database5] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database5);
+	mthread[(int)dbreqtype::Database6] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database6);
+	mthread[(int)dbreqtype::Database7] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database7);
+	mthread[(int)dbreqtype::Database8] = std::thread(&AdiniFerihaKoydum::tDatabaseWorker, this, (int)dbreqtype::Database8);
 	mthread[(int)dbreqtype::Logger]    = std::thread(&AdiniFerihaKoydum::tKnightLogger, this);
 }
 #pragma endregion

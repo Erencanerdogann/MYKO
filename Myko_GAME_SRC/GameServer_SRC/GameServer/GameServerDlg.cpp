@@ -1484,11 +1484,13 @@ void CGameServerDlg::AddDatabaseRequest(Packet & pkt, CUser *pUser /*= nullptr*/
 	*newPacket << int16(pUser == nullptr ? -1 : pUser->GetSocketID());
 	if (pkt.size()) newPacket->append(pkt.contents(), pkt.size());
 
-	// Round-robin across 4 DB worker threads
+	// Round-robin across 8 DB worker threads
 	static std::atomic<uint32> s_dbRoundRobin(0);
 	static const int dbQueues[] = {
-		(int)dbreqtype::Database, (int)dbreqtype::Database2,
-		(int)dbreqtype::Database3, (int)dbreqtype::Database4
+		(int)dbreqtype::Database,  (int)dbreqtype::Database2,
+		(int)dbreqtype::Database3, (int)dbreqtype::Database4,
+		(int)dbreqtype::Database5, (int)dbreqtype::Database6,
+		(int)dbreqtype::Database7, (int)dbreqtype::Database8,
 	};
 	// User-based routing: same player always goes to same thread (prevents race conditions)
 	// Server-wide requests (no user) use round-robin

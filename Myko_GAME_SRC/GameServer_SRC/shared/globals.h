@@ -47,7 +47,7 @@
 #define AWARD_GOLD          100000
 #define AWARD_EXP			5000
 
-enum class dbreqtype { Database, Database2, Database3, Database4, Logger, COUNT };
+enum class dbreqtype { Database, Database2, Database3, Database4, Database5, Database6, Database7, Database8, Logger, COUNT };
 #define DB_WORKER_COUNT 8
 
 enum class NameType
