@@ -4,7 +4,7 @@
 #include "KingSystem.h"
 #include <atomic>
 
-static constexpr int GAME_DB_POOL_SIZE = 4;
+static constexpr int GAME_DB_POOL_SIZE = 8;
 
 enum class UserUpdateType
 {
