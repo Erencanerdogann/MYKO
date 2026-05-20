@@ -343,6 +343,19 @@ void CUser::Chat(Packet & pkt)
 		return;
 	}
 
+	// Why: Kral GM degil ama +king* komutlarini kullanabilmeli (H-paneli eksik).
+	// Komutlar kendi icinde isKing() kontrolu yapar; kral-disi GM komutlari da
+	// kendi icinde isGM() ister, kral onlari calistiramaz. Sadece + ile baslayan
+	// "king" komutlar islensin diye prefix on-filtresi.
+	if (!isGM() && !isGMUser() && isKing()
+		&& chatstr.size() > 5 && chatstr[0] == CHAT_COMMAND_PREFIX
+		&& _strnicmp(chatstr.c_str() + 1, "king", 4) == 0
+		&& ProcessChatCommand(chatstr))
+	{
+		ChatInsertLog(type, "KING", chatstr, pUser);
+		return;
+	}
+
 	if (type == (uint8)ChatType::SEEKING_PARTY_CHAT)
 		pkt >> seekingPartyOptions;
 
