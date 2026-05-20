@@ -1556,7 +1556,8 @@ void CKingSystem::KingSpecialEvent(CUser * pUser, Packet & pkt)
 			return;
 
 		m_KingSystemlock.lock();
-		uint32 nCost = 30000000 * bAmount;
+		// MYKO maliyet ayari: 10->100M, 30->150M, 50->200M (PATRON karari)
+		uint32 nCost = (bAmount == 10) ? 100000000 : (bAmount == 30) ? 150000000 : 200000000;
 		if (nCost > m_nNationalTreasury)
 		{
 			result << int16(-3);
