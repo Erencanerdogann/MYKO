@@ -1698,6 +1698,13 @@ public:
 	COMMAND_HANDLER(HandleReloadDropsCommand);
 	COMMAND_HANDLER(HandleReloadDropsRandomCommand);
 	COMMAND_HANDLER(HandleReloadKingsCommand);
+	COMMAND_HANDLER(HandleKingExpCommand);
+	COMMAND_HANDLER(HandleKingNoahCommand);
+	COMMAND_HANDLER(HandleKingNoticeCommand);
+	COMMAND_HANDLER(HandleKingWeatherCommand);
+	COMMAND_HANDLER(HandleKingPrizeCommand);
+	COMMAND_HANDLER(HandleKingTaxCommand);
+	COMMAND_HANDLER(HandleKingFundCommand);
 	COMMAND_HANDLER(HandleReloadRightTopTitleCommand);
 	COMMAND_HANDLER(HandleReloadPusItemCommand);
 	COMMAND_HANDLER(HandleReloadItemsCommand);

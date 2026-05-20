@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "DBAgent.h"
+#include "KingSystem.h"
 
 using namespace std;
 
@@ -3089,6 +3090,106 @@ COMMAND_HANDLER(CUser::HandleCensorReloadCommand)
 	if (!isGM()) return false;
 	g_pMain->LoadCensorWords();
 	g_pMain->SendHelpDescription(this, string_format("Kufur listesi yeniden yuklendi. %d kelime.", (int)g_pMain->m_CensorWords.size()));
+	return true;
+}
+
+// Why: Kral H-paneli (client UI) Notice + Event ac/kapat butonlarini gostermiyor.
+// Server tarafi (KingSystem.cpp) hazir, chat komutlariyla ayni packet'i uretip
+// CKingSystem::PacketProcess'e besliyoruz. isKing() hem burada hem KingSystem'de kontrol edilir.
+COMMAND_HANDLER(CUser::HandleKingExpCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+	if (vargs.size() < 1) { g_pMain->SendHelpDescription(this, "Ornek: +kingexp 30  (10/30/50)"); return true; }
+	uint8 amount = SafeAtoi(vargs.front(), 0, 50);
+	if (amount != 10 && amount != 30 && amount != 50) { g_pMain->SendHelpDescription(this, "Sadece 10, 30 veya 50."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_EVENT));
+	pkt << uint8(KING_EVENT_EXP) << amount;
+	CKingSystem::PacketProcess(this, pkt);
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleKingNoahCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+	if (vargs.size() < 1) { g_pMain->SendHelpDescription(this, "Ornek: +kingnoah 2  (1/2/3)"); return true; }
+	uint8 amount = SafeAtoi(vargs.front(), 0, 3);
+	if (amount < 1 || amount > 3) { g_pMain->SendHelpDescription(this, "Sadece 1, 2 veya 3."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_EVENT));
+	pkt << uint8(KING_EVENT_NOAH) << amount;
+	CKingSystem::PacketProcess(this, pkt);
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleKingNoticeCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+	if (vargs.empty()) { g_pMain->SendHelpDescription(this, "Ornek: +kingnotice mesaj"); return true; }
+
+	std::string strMessage;
+	while (!vargs.empty()) { strMessage += vargs.front(); vargs.pop_front(); if (!vargs.empty()) strMessage += " "; }
+	if (strMessage.empty() || strMessage.length() > 256) { g_pMain->SendHelpDescription(this, "Mesaj 1-256 karakter olmali."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_EVENT));
+	pkt << uint8(KING_EVENT_NOTICE);
+	pkt.SByte();
+	pkt << strMessage;
+	CKingSystem::PacketProcess(this, pkt);
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleKingWeatherCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+	if (vargs.size() < 2) { g_pMain->SendHelpDescription(this, "Ornek: +kingweather 2 50  (tip 1-3, siddet 1-100)"); return true; }
+	uint8 bType = SafeAtoi(vargs.front(), 0, 255); vargs.pop_front();
+	uint8 bAmount = SafeAtoi(vargs.front(), 0, 255); vargs.pop_front();
+	if (bType < 1 || bType > WEATHER_SNOW) { g_pMain->SendHelpDescription(this, "Tip 1=Gunes 2=Yagmur 3=Kar."); return true; }
+	if (bAmount < 1 || bAmount > 100) { g_pMain->SendHelpDescription(this, "Siddet 1-100."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_EVENT));
+	pkt << uint8(KING_EVENT_WEATHER) << bType << bAmount;
+	CKingSystem::PacketProcess(this, pkt);
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleKingPrizeCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+	if (vargs.size() < 2) { g_pMain->SendHelpDescription(this, "Ornek: +kingprize OyuncuAdi 1000000"); return true; }
+	std::string strTarget = vargs.front(); vargs.pop_front();
+	uint32 nCoins = SafeAtoi(vargs.front(), 0, COIN_MAX); vargs.pop_front();
+	if (strTarget.empty() || strTarget.length() > MAX_ID_SIZE || nCoins == 0) { g_pMain->SendHelpDescription(this, "Gecersiz oyuncu veya miktar."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_EVENT));
+	pkt << uint8(KING_EVENT_PRIZE);
+	pkt.SByte();
+	pkt << nCoins << strTarget;
+	CKingSystem::PacketProcess(this, pkt);
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleKingTaxCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+	if (vargs.size() < 1) { g_pMain->SendHelpDescription(this, "Ornek: +kingtax 5  (0-10)"); return true; }
+	uint8 byTariff = SafeAtoi(vargs.front(), 0, 10);
+	if (byTariff > 10) { g_pMain->SendHelpDescription(this, "Vergi 0-10 arasi."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_TAX));
+	pkt << uint8(4) << byTariff;
+	CKingSystem::PacketProcess(this, pkt);
+	return true;
+}
+
+COMMAND_HANDLER(CUser::HandleKingFundCommand)
+{
+	if (!isKing()) { g_pMain->SendHelpDescription(this, "Sadece Kral kullanabilir."); return true; }
+
+	Packet pkt(WIZ_KING, uint8(KING_TAX));
+	pkt << uint8(2);
+	CKingSystem::PacketProcess(this, pkt);
 	return true;
 }
 #pragma endregion
