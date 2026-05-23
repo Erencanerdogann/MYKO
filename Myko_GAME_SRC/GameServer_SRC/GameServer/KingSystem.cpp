@@ -581,7 +581,7 @@ void CKingSystem::KingPacketProcess(CUser * pUser, Packet & pkt)
 		break;
 	default:
 		TRACE("Unknown King packet %X\n", bOpcode);
-		printf("Unknown King packet %X\n", bOpcode);
+		LOG(LogCategory::LOG_GENERAL, "Unknown King packet %X", bOpcode);
 		break;
 	}
 }
@@ -1733,7 +1733,7 @@ void CKingSystem::KingNationIntro(CUser * pUser, Packet & pkt)
 	}
 	break;
 	default:
-		printf("KingNationIntro unhandled packets %d \n", bType);
+		LOG(LogCategory::LOG_GENERAL, "KingNationIntro unhandled packets %d", bType);
 		break;
 	}
 }

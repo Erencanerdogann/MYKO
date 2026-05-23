@@ -87,7 +87,7 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 			break;
 		}
 		default:
-			printf("Siege Npc Base Created unhandlec packets %d \n", type);
+			LOG(LogCategory::LOG_GENERAL, "Siege Npc Base Created unhandled packets %d", type);
 			TRACE("Siege Npc Base Created unhandlec packets %d \n", type);
 			break;
 		}
@@ -125,7 +125,7 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 			csw_rank();
 			break;
 		default:
-			printf("Siege Rank unhandlec packets %d \n", type);
+			LOG(LogCategory::LOG_GENERAL, "Siege Rank unhandled packets %d", type);
 			TRACE("Siege Rank Created unhandlec packets %d \n", type);
 			break;
 		}
@@ -174,7 +174,7 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 			break;
 
 		default:
-			printf("Siege Npc Maradon unhandled packets %d \n", type);
+			LOG(LogCategory::LOG_GENERAL, "Siege Npc Moradon unhandled packets %d", type);
 			TRACE("Siege Npc Maradon unhandled packets %d \n", type);
 			break;
 		}
@@ -295,14 +295,14 @@ void CUser::SiegeWarFareProcess(Packet & pkt)
 		}
 		break;
 		default:
-			printf("Siege Npc Dels unhandled packets %d \n", type);
+			LOG(LogCategory::LOG_GENERAL, "Siege Npc Delos unhandled packets %d", type);
 			TRACE("Siege Npc Dels unhandled packets %d \n", type);
 			break;
 		}
 	}
 	break;
 	default:
-		printf("Siege Npc - unhandled packets type: %d opcode: %d\n", type, opcode);
+		LOG(LogCategory::LOG_GENERAL, "Siege Npc - unhandled packets type: %d opcode: %d", type, opcode);
 		TRACE("Siege Npc - unhandled packets type: %d opcode: %d\n", type, opcode);
 		break;
 	}
