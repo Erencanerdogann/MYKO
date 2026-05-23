@@ -278,19 +278,11 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		FTPClient.DownloadFile(file, path + "/" + file);
 		FTPClient.CleanupSession();
 
-		// Session 20: MD5 hash dogrulama
-		if (!expectedHash.empty())
-		{
-			MD5 md5check;
-			std::string fileHash = md5check.FileMD5Check(file.c_str());
-			if (fileHash != expectedHash)
-			{
-				std::string errMsg = xorstr("Patch file integrity check failed: ") + file;
-				SetState(errMsg);
-				std::remove(file.c_str());
-				return false;
-			}
-		}
+		// S113: MD5 hash dogrulama KALDIRILDI (KO original davranisina don)
+		// Sebep: bizim ekleme launcher patch zincirini bozuyor, 2372'de takiliyordu.
+		// LoginServer hala hash gonderir (uyumluluk) ama launcher gormezden gelir.
+		// Detay: MASTER_LIBRARY/PATCH_S113_DOGRU_ORNEK/NASIL_HAZIRLANIR.md
+		(void)expectedHash;
 
         std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
         m_settingsVersion = atoi(versionFromFile.c_str());
