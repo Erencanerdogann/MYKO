@@ -213,6 +213,13 @@ void CHDRSystem::Pack(const std::string& v, bool ignoreUnpack)
 	if (hSource != INVALID_HANDLE_VALUE) CloseHandle(hSource);
 }
 
+void CHDRSystem::Compact(const std::string& v)
+{
+	// S113: .src sismeyi temizle — patlat (Unpack), yeniden topla (Pack)
+	Unpack(v);
+	Pack(v, true);
+}
+
 BOOL CHDRSystem::WriteDirectory(const std::string& dd)
 {
 	HANDLE fFile;

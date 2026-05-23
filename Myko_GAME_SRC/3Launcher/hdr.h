@@ -25,6 +25,7 @@ public:
 	CHDRSystem();
 	~CHDRSystem();
 	void Pack();
+	void Compact(const std::string& v);
 private:
 	std::string GetDirectory(const std::string& path);
 	BOOL WriteDirectory(const std::string& dd);

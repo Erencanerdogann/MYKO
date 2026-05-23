@@ -8,6 +8,7 @@
 #include "WinUser.h"
 #include <tchar.h>
 #include "LauncherEngine.h"
+#include "hdr.h"
 #include "CRC.h"
 #include "MD5.h"
 #include "sha.hpp"
@@ -48,9 +49,9 @@ IDirect3DTexture9* StartButtonTexture = NULL;
 IDirect3DTexture9* StartButtonHoverTexture = NULL;
 IDirect3DTexture9* StartButtonDownTexture = NULL;
 
-//IDirect3DTexture9* HomePageButtonTexture = NULL;
-//IDirect3DTexture9* HomePageButtonHoverTexture = NULL;
-//IDirect3DTexture9* HomePageButtonDownTexture = NULL;
+IDirect3DTexture9* HomePageButtonTexture = NULL;
+IDirect3DTexture9* HomePageButtonHoverTexture = NULL;
+IDirect3DTexture9* HomePageButtonDownTexture = NULL;
 
 IDirect3DTexture9* SettingsButtonTexture = NULL;
 IDirect3DTexture9* SettingsButtonDownTexture = NULL;
@@ -60,20 +61,24 @@ IDirect3DTexture9* CloseButtonTexture = NULL;
 IDirect3DTexture9* CloseButtonHoverTexture = NULL;
 IDirect3DTexture9* CloseButtonDownTexture = NULL;
 
-//IDirect3DTexture9* DiscordButtonTexture = NULL;
-//IDirect3DTexture9* DiscordButtonHoverTexture = NULL;
-//IDirect3DTexture9* DiscordButtonDownTexture = NULL;
+IDirect3DTexture9* DiscordButtonTexture = NULL;
+IDirect3DTexture9* DiscordButtonHoverTexture = NULL;
+IDirect3DTexture9* DiscordButtonDownTexture = NULL;
 //
-//IDirect3DTexture9* ForumButtonTexture = NULL;
-//IDirect3DTexture9* ForumButtonHoverTexture = NULL;
-//IDirect3DTexture9* ForumButtonDownTexture = NULL;
+IDirect3DTexture9* ForumButtonTexture = NULL;
+IDirect3DTexture9* ForumButtonHoverTexture = NULL;
+IDirect3DTexture9* ForumButtonDownTexture = NULL;
 //
-//IDirect3DTexture9* FacebookButtonTexture = NULL;
-//IDirect3DTexture9* FacebookButtonHoverTexture = NULL;
-//IDirect3DTexture9* FacebookButtonDownTexture = NULL;
+IDirect3DTexture9* FacebookButtonTexture = NULL;
+IDirect3DTexture9* FacebookButtonHoverTexture = NULL;
+IDirect3DTexture9* FacebookButtonDownTexture = NULL;
 
 IDirect3DTexture9* ProgressTexture = NULL;
 IDirect3DTexture9* ProgressFillTexture = NULL;
+// S113: Compact butonu
+IDirect3DTexture9* CompactButtonTexture = NULL;
+IDirect3DTexture9* CompactButtonDownTexture = NULL;
+IDirect3DTexture9* CompactButtonHoverTexture = NULL;
 
 
 // Sprites
@@ -82,23 +87,30 @@ LPD3DXSPRITE LauncherSprite = NULL;
 // Vectors
 D3DXVECTOR3 LauncherBackgorundPosition(0, 0, 0);
 D3DXVECTOR3 StartButtonPosition(608.0f + iWOff, 509.0f, 0);
-//D3DXVECTOR3 HomePageButtonPosition(23.0f + iWOff, 511.0f, 0);
+D3DXVECTOR3 HomePageButtonPosition(23.0f + iWOff, 511.0f, 0);
 D3DXVECTOR3 SettingsButtonPosition(161.0f + iWOff, 511.0f, 0);
 D3DXVECTOR3 CloseButtonPosition(765.0f + iWOff, 3.0f, 0);
-//D3DXVECTOR3 DiscordButtonPosition(608.0f + iWOff, 509.0f, 0);
-//D3DXVECTOR3 ForumButtonPosition(23.0f + iWOff, 511.0f, 0);
-//D3DXVECTOR3 FacebookButtonPosition(161.0f + iWOff, 511.0f, 0);
+D3DXVECTOR3 DiscordButtonPosition(608.0f + iWOff, 509.0f, 0);
+D3DXVECTOR3 ForumButtonPosition(23.0f + iWOff, 511.0f, 0);
+D3DXVECTOR3 FacebookButtonPosition(161.0f + iWOff, 511.0f, 0);
 D3DXVECTOR3 ProgressPosition(24.0f + iWOff, 557.0f, 0);
+D3DXVECTOR3 CompactButtonPosition(900.0f + iWOff, 79.0f, 0);
 RECT pbFill;
 
 // Surfaces
 D3DSURFACE_DESC StartButtonSurface;
-//D3DSURFACE_DESC HomePageButtonSurface;
+D3DSURFACE_DESC HomePageButtonSurface;
 D3DSURFACE_DESC SettingsButtonSurface;
 D3DSURFACE_DESC CloseButtonSurface;
-//D3DSURFACE_DESC DiscordButtonSurface;
-//D3DSURFACE_DESC ForumButtonSurface;
-//D3DSURFACE_DESC FacebookButtonSurface;
+D3DSURFACE_DESC CompactButtonSurface;
+// S113: Web link URL'leri (UIXSettings.ini'den yuklenir)
+char g_HomepageURL[512] = {0};
+char g_ForumURL[512] = {0};
+char g_DiscordURL[512] = {0};
+char g_FacebookURL[512] = {0};
+D3DSURFACE_DESC DiscordButtonSurface;
+D3DSURFACE_DESC ForumButtonSurface;
+D3DSURFACE_DESC FacebookButtonSurface;
 D3DSURFACE_DESC ProgressSurface;
 // States
 enum ButtonState
@@ -113,14 +125,15 @@ enum ButtonState
 #define COL_H D3DCOLOR_ARGB(255, 255, 255, 255)
 #define COL_D D3DCOLOR_ARGB(255, 150, 150, 150)
 #define COL_X D3DCOLOR_ARGB(255, 80, 80, 80)
-ButtonState states[7] = {};
+ButtonState states[8] = {};
 static ButtonState lastStartState = STATE_NORMAL;
-//static ButtonState lastHomepageState = STATE_NORMAL;
+static ButtonState lastHomepageState = STATE_NORMAL;
 static ButtonState lastSettingsState = STATE_NORMAL;
 static ButtonState lastCloseState = STATE_NORMAL;
-//static ButtonState lastDiscordState = STATE_NORMAL;
-//static ButtonState lastForumState = STATE_NORMAL;
-//static ButtonState lastFacebookState = STATE_NORMAL;
+static ButtonState lastCompactState = STATE_NORMAL;
+static ButtonState lastDiscordState = STATE_NORMAL;
+static ButtonState lastForumState = STATE_NORMAL;
+static ButtonState lastFacebookState = STATE_NORMAL;
 
 static HCURSOR hCursorNormal;
 static HCURSOR hCursorHand;
@@ -284,7 +297,25 @@ bool LoadTextures()
         textureFail = true;
         unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\ProgressValue.code"));
     }
-   
+    // S113: Compact butonu â€” eger .code yoksa hata YAZMA, sessiz atla (opsiyonel buton)
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonDownTexture);
+
+    // S113: Web link butonlari â€” opsiyonel (.code yoksa sessiz atla, gozukmez)
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonDownTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonDownTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &DiscordButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &DiscordButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &DiscordButtonDownTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonDownTexture);
+
     launcherdir = GetDir();
     WebLinkAdded();
 
@@ -299,12 +330,13 @@ bool LoadTextures()
     }
 
     StartButtonTexture->GetLevelDesc(0, &StartButtonSurface);
-    //HomePageButtonTexture->GetLevelDesc(0, &HomePageButtonSurface);
+    if (HomePageButtonTexture) HomePageButtonTexture->GetLevelDesc(0, &HomePageButtonSurface); else { HomePageButtonSurface.Width = 0; HomePageButtonSurface.Height = 0; }
     SettingsButtonTexture->GetLevelDesc(0, &SettingsButtonSurface);
+    if (CompactButtonTexture) CompactButtonTexture->GetLevelDesc(0, &CompactButtonSurface); else { CompactButtonSurface.Width = 0; CompactButtonSurface.Height = 0; }
     CloseButtonTexture->GetLevelDesc(0, &CloseButtonSurface);
-    //DiscordButtonTexture->GetLevelDesc(0, &DiscordButtonSurface);
-    //ForumButtonTexture->GetLevelDesc(0, &ForumButtonSurface);
-    //FacebookButtonTexture->GetLevelDesc(0, &FacebookButtonSurface);
+    if (DiscordButtonTexture) DiscordButtonTexture->GetLevelDesc(0, &DiscordButtonSurface); else { DiscordButtonSurface.Width = 0; DiscordButtonSurface.Height = 0; }
+    if (ForumButtonTexture) ForumButtonTexture->GetLevelDesc(0, &ForumButtonSurface); else { ForumButtonSurface.Width = 0; ForumButtonSurface.Height = 0; }
+    if (FacebookButtonTexture) FacebookButtonTexture->GetLevelDesc(0, &FacebookButtonSurface); else { FacebookButtonSurface.Width = 0; FacebookButtonSurface.Height = 0; }
     ProgressTexture->GetLevelDesc(0, &ProgressSurface);
 
     return true;
@@ -333,9 +365,9 @@ int GetTextWidth(const char* szText, LPD3DXFONT pFont)
 }
 
 static int lisansTarih[] = { 01, 12, 2023 };
-// iki lisans þekli de ayný anda çalýþýr
+// iki lisans ï¿½ekli de aynï¿½ anda ï¿½alï¿½ï¿½ï¿½r
 static std::string ipLisanslari[] = { xorstr("50.114.185.109"), xorstr("50.114.185.109"), xorstr("50.114.185.109") };    //
-// x den öncesine bakar
+// x den ï¿½ncesine bakar
 static std::string subnetLisanlar[] = { xorstr("50.114.185.109") };
 
 bool IsLicensed(std::string ip)
@@ -389,6 +421,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     tmpX = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("X"), 161, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("Y"), 511, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     SettingsButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+
+    // S113: Compact butonu pozisyon (default sag ust, Close butonunun yaninda)
+    tmpX = GetPrivateProfileIntA(xorstr("COMPACT_BUTTON"), xorstr("X"), 900, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("COMPACT_BUTTON"), xorstr("Y"), 79, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    CompactButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+
+    // S113: Web link butonlari pozisyon + URL
+    tmpX = GetPrivateProfileIntA(xorstr("HOMEPAGE_BUTTON"), xorstr("X"), 20, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("HOMEPAGE_BUTTON"), xorstr("Y"), 393, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    HomePageButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    GetPrivateProfileStringA(xorstr("HOMEPAGE_BUTTON"), xorstr("URL"), "", g_HomepageURL, sizeof(g_HomepageURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+
+    tmpX = GetPrivateProfileIntA(xorstr("FORUM_BUTTON"), xorstr("X"), 172, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("FORUM_BUTTON"), xorstr("Y"), 393, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    ForumButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    GetPrivateProfileStringA(xorstr("FORUM_BUTTON"), xorstr("URL"), "", g_ForumURL, sizeof(g_ForumURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+
+    tmpX = GetPrivateProfileIntA(xorstr("DISCORD_BUTTON"), xorstr("X"), 320, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("DISCORD_BUTTON"), xorstr("Y"), 393, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    DiscordButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    GetPrivateProfileStringA(xorstr("DISCORD_BUTTON"), xorstr("URL"), "", g_DiscordURL, sizeof(g_DiscordURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+
+    tmpX = GetPrivateProfileIntA(xorstr("FACEBOOK_BUTTON"), xorstr("X"), 830, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("FACEBOOK_BUTTON"), xorstr("Y"), 389, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    FacebookButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    GetPrivateProfileStringA(xorstr("FACEBOOK_BUTTON"), xorstr("URL"), "", g_FacebookURL, sizeof(g_FacebookURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     // Close Button
     tmpX = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("X"), 765, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("Y"), 3, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
@@ -428,7 +486,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd = ::CreateWindowA(wc.lpszClassName, _T(xorstr("Launcher")), WS_POPUP, 100, 100, iW, iH, NULL, NULL, wc.hInstance, NULL);
     CenterWindow(hwnd, NULL, iW, iH);
     SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-    SetLayeredWindowAttributes(hwnd, RGB(255, 0, 234), 0, LWA_COLORKEY);  // launcher resminin olduðu yerde silinecek olan renk
+    SetLayeredWindowAttributes(hwnd, RGB(255, 0, 234), 0, LWA_COLORKEY);  // launcher resminin olduï¿½u yerde silinecek olan renk
     mainWindow = hwnd;
 
     if (!CreateDeviceD3D(hwnd))
@@ -525,12 +583,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 LauncherSprite->Begin(D3DXSPRITE_ALPHABLEND);
                 LauncherSprite->Draw(LauncherBackgroundTexture, NULL, NULL, &LauncherBackgorundPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(states[0] == STATE_NORMAL ? StartButtonTexture : (states[0] == STATE_DOWN ? StartButtonDownTexture : StartButtonHoverTexture), NULL, NULL, &StartButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
-                //LauncherSprite->Draw(states[1] == STATE_NORMAL ? HomePageButtonTexture : (states[1] == STATE_DOWN ? HomePageButtonDownTexture : HomePageButtonHoverTexture), NULL, NULL, &HomePageButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                if (HomePageButtonTexture)
+                    LauncherSprite->Draw(states[1] == STATE_NORMAL ? HomePageButtonTexture : (states[1] == STATE_DOWN ? (HomePageButtonDownTexture ? HomePageButtonDownTexture : HomePageButtonTexture) : (HomePageButtonHoverTexture ? HomePageButtonHoverTexture : HomePageButtonTexture)), NULL, NULL, &HomePageButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(states[2] == STATE_NORMAL ? SettingsButtonTexture : (states[2] == STATE_DOWN ? SettingsButtonDownTexture : SettingsButtonHoverTexture), NULL, NULL, &SettingsButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(states[3] == STATE_NORMAL ? CloseButtonTexture : (states[3] == STATE_DOWN ? CloseButtonDownTexture : CloseButtonHoverTexture), NULL, NULL, &CloseButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
-                //LauncherSprite->Draw(states[4] == STATE_NORMAL ? DiscordButtonTexture : (states[4] == STATE_DOWN ? DiscordButtonDownTexture : DiscordButtonHoverTexture), NULL, NULL, &DiscordButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
-                //LauncherSprite->Draw(states[5] == STATE_NORMAL ? ForumButtonTexture : (states[5] == STATE_DOWN ? ForumButtonDownTexture : ForumButtonHoverTexture), NULL, NULL, &ForumButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
-                //LauncherSprite->Draw(states[6] == STATE_NORMAL ? FacebookButtonTexture : (states[6] == STATE_DOWN ? FacebookButtonDownTexture : FacebookButtonHoverTexture), NULL, NULL, &FacebookButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                // S113: Compact butonu â€” texture varsa ciz
+                if (CompactButtonTexture)
+                    LauncherSprite->Draw(states[7] == STATE_NORMAL ? CompactButtonTexture : (states[7] == STATE_DOWN ? (CompactButtonDownTexture ? CompactButtonDownTexture : CompactButtonTexture) : (CompactButtonHoverTexture ? CompactButtonHoverTexture : CompactButtonTexture)), NULL, NULL, &CompactButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                if (DiscordButtonTexture)
+                    LauncherSprite->Draw(states[4] == STATE_NORMAL ? DiscordButtonTexture : (states[4] == STATE_DOWN ? (DiscordButtonDownTexture ? DiscordButtonDownTexture : DiscordButtonTexture) : (DiscordButtonHoverTexture ? DiscordButtonHoverTexture : DiscordButtonTexture)), NULL, NULL, &DiscordButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                if (ForumButtonTexture)
+                    LauncherSprite->Draw(states[5] == STATE_NORMAL ? ForumButtonTexture : (states[5] == STATE_DOWN ? (ForumButtonDownTexture ? ForumButtonDownTexture : ForumButtonTexture) : (ForumButtonHoverTexture ? ForumButtonHoverTexture : ForumButtonTexture)), NULL, NULL, &ForumButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                if (FacebookButtonTexture)
+                    LauncherSprite->Draw(states[6] == STATE_NORMAL ? FacebookButtonTexture : (states[6] == STATE_DOWN ? (FacebookButtonDownTexture ? FacebookButtonDownTexture : FacebookButtonTexture) : (FacebookButtonHoverTexture ? FacebookButtonHoverTexture : FacebookButtonTexture)), NULL, NULL, &FacebookButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(ProgressTexture, NULL, NULL, &ProgressPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(ProgressFillTexture, &pbFill, NULL, &ProgressPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
             
@@ -790,11 +855,12 @@ void StartClick()
 
 void HomepageClick()
 {
-    /*if (lastHomepageState == STATE_DOWN && Engine->IsReady()) {
+    if (lastHomepageState == STATE_DOWN) {
         states[1] = STATE_HOVER;
         lastHomepageState = STATE_HOVER;
-        ShellExecuteA(NULL, NULL, Address_HomePage.c_str(), NULL, NULL, SW_SHOW);
-    }*/
+        if (strlen(g_HomepageURL) > 0)
+            ShellExecuteA(NULL, "open", g_HomepageURL, NULL, NULL, SW_SHOW);
+    }
 }
 
 void SettingsClick()
@@ -815,32 +881,59 @@ void CloseClick()
         ::PostQuitMessage(0);
 }
 
+// S113: Compact butonu click â€” UI .src/.hdr sismeyi temizler
+void CompactClick()
+{
+    if (lastCompactState == STATE_DOWN) {
+        states[7] = STATE_HOVER;
+        lastCompactState = STATE_HOVER;
+        if (MessageBoxA(mainWindow, xorstr("UI cache temizlenecek (2-3 dakika surebilir). Devam edilsin mi?"), xorstr("Compact"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+            CHDRSystem* compactor = new CHDRSystem;
+            CHAR cwd[MAX_PATH];
+            GetCurrentDirectoryA(MAX_PATH, cwd);
+            DWORD sizeBeforeLo = 0, sizeBeforeHi = 0;
+            HANDLE hSrc = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hSrc != INVALID_HANDLE_VALUE) { sizeBeforeLo = GetFileSize(hSrc, &sizeBeforeHi); CloseHandle(hSrc); }
+            compactor->Compact("ui");
+            delete compactor;
+            DWORD sizeAfterLo = 0, sizeAfterHi = 0;
+            HANDLE hSrc2 = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hSrc2 != INVALID_HANDLE_VALUE) { sizeAfterLo = GetFileSize(hSrc2, &sizeAfterHi); CloseHandle(hSrc2); }
+            char msg[512];
+            sprintf_s(msg, "CWD: %s\nui\\ui.src ONCE: %u byte\nui\\ui.src SONRA: %u byte", cwd, sizeBeforeLo, sizeAfterLo);
+            MessageBoxA(mainWindow, msg, xorstr("Compact - Debug"), MB_OK | MB_ICONINFORMATION);
+        }
+    }
+}
+
 void DiscordClick()
 {
-    /*if (lastDiscordState == STATE_DOWN && Engine->IsReady()) {
+    if (lastDiscordState == STATE_DOWN) {
         states[4] = STATE_HOVER;
         lastDiscordState = STATE_HOVER;
-        std::string param = std::to_string(GetCurrentProcessId());
-        ShellExecuteA(NULL, NULL, Address_Discord.c_str(), NULL, NULL, SW_SHOW);
-    }*/
+        if (strlen(g_DiscordURL) > 0)
+            ShellExecuteA(NULL, "open", g_DiscordURL, NULL, NULL, SW_SHOW);
+    }
 }
 
 void ForumClick()
 {
-    /*if (lastForumState == STATE_DOWN && Engine->IsReady()) {
+    if (lastForumState == STATE_DOWN) {
         states[5] = STATE_HOVER;
         lastForumState = STATE_HOVER;
-        ShellExecuteA(NULL, NULL, Address_Forum.c_str(), NULL, NULL, SW_SHOW);
-    }*/
+        if (strlen(g_ForumURL) > 0)
+            ShellExecuteA(NULL, "open", g_ForumURL, NULL, NULL, SW_SHOW);
+    }
 }
 
 void FacebookClick()
 {
-    /*if (lastFacebookState == STATE_DOWN && Engine->IsReady()) {
+    if (lastFacebookState == STATE_DOWN) {
         states[6] = STATE_HOVER;
         lastFacebookState = STATE_HOVER;
-        ShellExecuteA(NULL, NULL, Address_Facebook.c_str(), NULL, NULL, SW_SHOW);
-    }*/
+        if (strlen(g_FacebookURL) > 0)
+            ShellExecuteA(NULL, "open", g_FacebookURL, NULL, NULL, SW_SHOW);
+    }
 }
 
 
@@ -850,10 +943,10 @@ bool isInArea(int x, int y)
     {
         return true;
     }
-    /*if (x >= HomePageButtonPosition.x && x <= HomePageButtonPosition.x + HomePageButtonSurface.Width && y >= HomePageButtonPosition.y && y <= HomePageButtonPosition.y + HomePageButtonSurface.Height && Engine->IsReady())
+    if (HomePageButtonTexture && x >= HomePageButtonPosition.x && x <= HomePageButtonPosition.x + HomePageButtonSurface.Width && y >= HomePageButtonPosition.y && y <= HomePageButtonPosition.y + HomePageButtonSurface.Height)
     {
         return true;
-    }*/
+    }
     if (x >= SettingsButtonPosition.x && x <= SettingsButtonPosition.x + SettingsButtonSurface.Width && y >= SettingsButtonPosition.y && y <= SettingsButtonPosition.y + SettingsButtonSurface.Height && Engine->IsReady())
     {
         return true;
@@ -862,18 +955,23 @@ bool isInArea(int x, int y)
     {
         return true;
     }
-    /*if (x >= DiscordButtonPosition.x && x <= DiscordButtonPosition.x + DiscordButtonSurface.Width && y >= DiscordButtonPosition.y && y <= DiscordButtonPosition.y + DiscordButtonSurface.Height && Engine->IsReady())
+    // S113: Compact buton tikla â€” IsReady() kontrolu YOK (her zaman aktif)
+    if (CompactButtonTexture && x >= CompactButtonPosition.x && x <= CompactButtonPosition.x + CompactButtonSurface.Width && y >= CompactButtonPosition.y && y <= CompactButtonPosition.y + CompactButtonSurface.Height)
     {
         return true;
-    }*/
-    /*if (x >= ForumButtonPosition.x && x <= ForumButtonPosition.x + ForumButtonSurface.Width && y >= ForumButtonPosition.y && y <= ForumButtonPosition.y + ForumButtonSurface.Height && Engine->IsReady())
+    }
+    if (DiscordButtonTexture && x >= DiscordButtonPosition.x && x <= DiscordButtonPosition.x + DiscordButtonSurface.Width && y >= DiscordButtonPosition.y && y <= DiscordButtonPosition.y + DiscordButtonSurface.Height)
     {
         return true;
-    }*/
-    /*if (x >= FacebookButtonPosition.x && x <= FacebookButtonPosition.x + FacebookButtonSurface.Width && y >= FacebookButtonPosition.y && y <= FacebookButtonPosition.y + FacebookButtonSurface.Height && Engine->IsReady())
+    }
+    if (ForumButtonTexture && x >= ForumButtonPosition.x && x <= ForumButtonPosition.x + ForumButtonSurface.Width && y >= ForumButtonPosition.y && y <= ForumButtonPosition.y + ForumButtonSurface.Height)
     {
         return true;
-    }*/
+    }
+    if (FacebookButtonTexture && x >= FacebookButtonPosition.x && x <= FacebookButtonPosition.x + FacebookButtonSurface.Width && y >= FacebookButtonPosition.y && y <= FacebookButtonPosition.y + FacebookButtonSurface.Height)
+    {
+        return true;
+    }
    
     return false;
 }
@@ -890,7 +988,7 @@ void HandleMouse(ButtonState state, int x, int y)
         states[0] = STATE_NORMAL;
         if (state == STATE_UP) lastStartState = STATE_NORMAL;
     }
-    /*if (x >= HomePageButtonPosition.x && x <= HomePageButtonPosition.x + HomePageButtonSurface.Width && y >= HomePageButtonPosition.y && y <= HomePageButtonPosition.y + HomePageButtonSurface.Height && Engine->IsReady())
+    if (HomePageButtonTexture && x >= HomePageButtonPosition.x && x <= HomePageButtonPosition.x + HomePageButtonSurface.Width && y >= HomePageButtonPosition.y && y <= HomePageButtonPosition.y + HomePageButtonSurface.Height)
     {
         if (lastHomepageState != STATE_DOWN) states[1] = state;
         if (state == STATE_UP) HomepageClick();
@@ -899,7 +997,7 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[1] = STATE_NORMAL;
         if (state == STATE_UP) lastHomepageState = STATE_NORMAL;
-    }*/
+    }
     if (x >= SettingsButtonPosition.x && x <= SettingsButtonPosition.x + SettingsButtonSurface.Width && y >= SettingsButtonPosition.y && y <= SettingsButtonPosition.y + SettingsButtonSurface.Height && Engine->IsReady())
     {
         if (lastSettingsState != STATE_DOWN) states[2] = state;
@@ -920,7 +1018,18 @@ void HandleMouse(ButtonState state, int x, int y)
         states[3] = STATE_NORMAL;
         if (state == STATE_UP) lastCloseState = STATE_NORMAL;
     }
-    /*if (x >= DiscordButtonPosition.x && x <= DiscordButtonPosition.x + DiscordButtonSurface.Width && y >= DiscordButtonPosition.y && y <= DiscordButtonPosition.y + DiscordButtonSurface.Height && Engine->IsReady())
+    // S113: Compact buton mouse handler â€” IsReady() kontrolu YOK
+    if (CompactButtonTexture && x >= CompactButtonPosition.x && x <= CompactButtonPosition.x + CompactButtonSurface.Width && y >= CompactButtonPosition.y && y <= CompactButtonPosition.y + CompactButtonSurface.Height)
+    {
+        if (lastCompactState != STATE_DOWN) states[7] = state;
+        if (state == STATE_UP) CompactClick();
+        else if (lastCompactState != STATE_DOWN) lastCompactState = state;
+    }
+    else {
+        states[7] = STATE_NORMAL;
+        if (state == STATE_UP) lastCompactState = STATE_NORMAL;
+    }
+    if (DiscordButtonTexture && x >= DiscordButtonPosition.x && x <= DiscordButtonPosition.x + DiscordButtonSurface.Width && y >= DiscordButtonPosition.y && y <= DiscordButtonPosition.y + DiscordButtonSurface.Height)
     {
         if (lastDiscordState != STATE_DOWN) states[4] = state;
         if (state == STATE_UP) DiscordClick();
@@ -929,8 +1038,8 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[4] = STATE_NORMAL;
         if (state == STATE_UP) lastDiscordState = STATE_NORMAL;
-    }*/
-    /*if (x >= ForumButtonPosition.x && x <= ForumButtonPosition.x + ForumButtonSurface.Width && y >= ForumButtonPosition.y && y <= ForumButtonPosition.y + ForumButtonSurface.Height && Engine->IsReady())
+    }
+    if (ForumButtonTexture && x >= ForumButtonPosition.x && x <= ForumButtonPosition.x + ForumButtonSurface.Width && y >= ForumButtonPosition.y && y <= ForumButtonPosition.y + ForumButtonSurface.Height)
     {
         if (lastForumState != STATE_DOWN) states[5] = state;
         if (state == STATE_UP) ForumClick();
@@ -939,8 +1048,8 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[5] = STATE_NORMAL;
         if (state == STATE_UP) lastForumState = STATE_NORMAL;
-    }*/ 
-    /*if (x >= FacebookButtonPosition.x && x <= FacebookButtonPosition.x + FacebookButtonSurface.Width && y >= FacebookButtonPosition.y && y <= FacebookButtonPosition.y + FacebookButtonSurface.Height && Engine->IsReady())
+    }
+    if (FacebookButtonTexture && x >= FacebookButtonPosition.x && x <= FacebookButtonPosition.x + FacebookButtonSurface.Width && y >= FacebookButtonPosition.y && y <= FacebookButtonPosition.y + FacebookButtonSurface.Height)
     {
         if (lastFacebookState != STATE_DOWN) states[6] = state;
         if (state == STATE_UP) FacebookClick();
@@ -949,7 +1058,7 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[6] = STATE_NORMAL;
         if (state == STATE_UP) lastFacebookState = STATE_NORMAL;
-    }*/
+    }
 }
 
 static int xClick;
