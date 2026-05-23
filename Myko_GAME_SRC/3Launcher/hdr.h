@@ -26,6 +26,8 @@ public:
 	~CHDRSystem();
 	void Pack();
 	void Compact(const std::string& v);
+	// S113: progress callback (0-100)
+	void (*m_progressCallback)(int percent) = nullptr;
 private:
 	std::string GetDirectory(const std::string& path);
 	BOOL WriteDirectory(const std::string& dd);

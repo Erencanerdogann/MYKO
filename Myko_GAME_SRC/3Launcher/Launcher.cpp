@@ -10,6 +10,7 @@
 #include "LauncherEngine.h"
 #include "hdr.h"
 #include "CRC.h"
+#include <thread>
 #include "MD5.h"
 #include "sha.hpp"
 #include <dwmapi.h>
@@ -79,6 +80,10 @@ IDirect3DTexture9* ProgressFillTexture = NULL;
 IDirect3DTexture9* CompactButtonTexture = NULL;
 IDirect3DTexture9* CompactButtonDownTexture = NULL;
 IDirect3DTexture9* CompactButtonHoverTexture = NULL;
+// S113: Register butonu
+IDirect3DTexture9* RegisterButtonTexture = NULL;
+IDirect3DTexture9* RegisterButtonDownTexture = NULL;
+IDirect3DTexture9* RegisterButtonHoverTexture = NULL;
 
 
 // Sprites
@@ -95,6 +100,7 @@ D3DXVECTOR3 ForumButtonPosition(23.0f + iWOff, 511.0f, 0);
 D3DXVECTOR3 FacebookButtonPosition(161.0f + iWOff, 511.0f, 0);
 D3DXVECTOR3 ProgressPosition(24.0f + iWOff, 557.0f, 0);
 D3DXVECTOR3 CompactButtonPosition(900.0f + iWOff, 79.0f, 0);
+D3DXVECTOR3 RegisterButtonPosition(618.0f + iWOff, 86.0f, 0);
 RECT pbFill;
 
 // Surfaces
@@ -103,11 +109,13 @@ D3DSURFACE_DESC HomePageButtonSurface;
 D3DSURFACE_DESC SettingsButtonSurface;
 D3DSURFACE_DESC CloseButtonSurface;
 D3DSURFACE_DESC CompactButtonSurface;
+D3DSURFACE_DESC RegisterButtonSurface;
 // S113: Web link URL'leri (UIXSettings.ini'den yuklenir)
 char g_HomepageURL[512] = {0};
 char g_ForumURL[512] = {0};
 char g_DiscordURL[512] = {0};
 char g_FacebookURL[512] = {0};
+char g_RegisterURL[512] = {0};
 D3DSURFACE_DESC DiscordButtonSurface;
 D3DSURFACE_DESC ForumButtonSurface;
 D3DSURFACE_DESC FacebookButtonSurface;
@@ -125,12 +133,13 @@ enum ButtonState
 #define COL_H D3DCOLOR_ARGB(255, 255, 255, 255)
 #define COL_D D3DCOLOR_ARGB(255, 150, 150, 150)
 #define COL_X D3DCOLOR_ARGB(255, 80, 80, 80)
-ButtonState states[8] = {};
+ButtonState states[9] = {};
 static ButtonState lastStartState = STATE_NORMAL;
 static ButtonState lastHomepageState = STATE_NORMAL;
 static ButtonState lastSettingsState = STATE_NORMAL;
 static ButtonState lastCloseState = STATE_NORMAL;
 static ButtonState lastCompactState = STATE_NORMAL;
+static ButtonState lastRegisterState = STATE_NORMAL;
 static ButtonState lastDiscordState = STATE_NORMAL;
 static ButtonState lastForumState = STATE_NORMAL;
 static ButtonState lastFacebookState = STATE_NORMAL;
@@ -315,6 +324,10 @@ bool LoadTextures()
     D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonTexture);
     D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonHoverTexture);
     D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonDownTexture);
+    // S113: Register butonu (opsiyonel)
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RegisterButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RegisterButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RegisterButtonDownTexture);
 
     launcherdir = GetDir();
     WebLinkAdded();
@@ -337,6 +350,7 @@ bool LoadTextures()
     if (DiscordButtonTexture) DiscordButtonTexture->GetLevelDesc(0, &DiscordButtonSurface); else { DiscordButtonSurface.Width = 0; DiscordButtonSurface.Height = 0; }
     if (ForumButtonTexture) ForumButtonTexture->GetLevelDesc(0, &ForumButtonSurface); else { ForumButtonSurface.Width = 0; ForumButtonSurface.Height = 0; }
     if (FacebookButtonTexture) FacebookButtonTexture->GetLevelDesc(0, &FacebookButtonSurface); else { FacebookButtonSurface.Width = 0; FacebookButtonSurface.Height = 0; }
+    if (RegisterButtonTexture) RegisterButtonTexture->GetLevelDesc(0, &RegisterButtonSurface); else { RegisterButtonSurface.Width = 0; RegisterButtonSurface.Height = 0; }
     ProgressTexture->GetLevelDesc(0, &ProgressSurface);
 
     return true;
@@ -447,6 +461,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     tmpY = GetPrivateProfileIntA(xorstr("FACEBOOK_BUTTON"), xorstr("Y"), 389, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     FacebookButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
     GetPrivateProfileStringA(xorstr("FACEBOOK_BUTTON"), xorstr("URL"), "", g_FacebookURL, sizeof(g_FacebookURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+
+    tmpX = GetPrivateProfileIntA(xorstr("REGISTER_BUTTON"), xorstr("X"), 618, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("REGISTER_BUTTON"), xorstr("Y"), 86, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    RegisterButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    GetPrivateProfileStringA(xorstr("REGISTER_BUTTON"), xorstr("URL"), "", g_RegisterURL, sizeof(g_RegisterURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     // Close Button
     tmpX = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("X"), 765, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("Y"), 3, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
@@ -596,6 +615,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     LauncherSprite->Draw(states[5] == STATE_NORMAL ? ForumButtonTexture : (states[5] == STATE_DOWN ? (ForumButtonDownTexture ? ForumButtonDownTexture : ForumButtonTexture) : (ForumButtonHoverTexture ? ForumButtonHoverTexture : ForumButtonTexture)), NULL, NULL, &ForumButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 if (FacebookButtonTexture)
                     LauncherSprite->Draw(states[6] == STATE_NORMAL ? FacebookButtonTexture : (states[6] == STATE_DOWN ? (FacebookButtonDownTexture ? FacebookButtonDownTexture : FacebookButtonTexture) : (FacebookButtonHoverTexture ? FacebookButtonHoverTexture : FacebookButtonTexture)), NULL, NULL, &FacebookButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                if (RegisterButtonTexture)
+                    LauncherSprite->Draw(states[8] == STATE_NORMAL ? RegisterButtonTexture : (states[8] == STATE_DOWN ? (RegisterButtonDownTexture ? RegisterButtonDownTexture : RegisterButtonTexture) : (RegisterButtonHoverTexture ? RegisterButtonHoverTexture : RegisterButtonTexture)), NULL, NULL, &RegisterButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(ProgressTexture, NULL, NULL, &ProgressPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(ProgressFillTexture, &pbFill, NULL, &ProgressPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
             
@@ -881,27 +902,46 @@ void CloseClick()
         ::PostQuitMessage(0);
 }
 
-// S113: Compact butonu click — UI .src/.hdr sismeyi temizler
+// S113: Compact progress thread-safe callback
+static void CompactProgress(int percent)
+{
+    if (Engine) {
+        Engine->SetPercent((uint8)percent);
+        Engine->SetState(xorstr("Compact: %") + std::to_string(percent));
+    }
+}
+
+static bool g_compactRunning = false;
+
+// S113: Compact butonu click — UI .src/.hdr sismeyi temizler (ARKA THREAD)
 void CompactClick()
 {
-    if (lastCompactState == STATE_DOWN) {
+    if (lastCompactState == STATE_DOWN && !g_compactRunning) {
         states[7] = STATE_HOVER;
         lastCompactState = STATE_HOVER;
-        if (MessageBoxA(mainWindow, xorstr("UI cache temizlenecek (2-3 dakika surebilir). Devam edilsin mi?"), xorstr("Compact"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
-            CHDRSystem* compactor = new CHDRSystem;
-            CHAR cwd[MAX_PATH];
-            GetCurrentDirectoryA(MAX_PATH, cwd);
-            DWORD sizeBeforeLo = 0, sizeBeforeHi = 0;
-            HANDLE hSrc = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (hSrc != INVALID_HANDLE_VALUE) { sizeBeforeLo = GetFileSize(hSrc, &sizeBeforeHi); CloseHandle(hSrc); }
-            compactor->Compact("ui");
-            delete compactor;
-            DWORD sizeAfterLo = 0, sizeAfterHi = 0;
-            HANDLE hSrc2 = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (hSrc2 != INVALID_HANDLE_VALUE) { sizeAfterLo = GetFileSize(hSrc2, &sizeAfterHi); CloseHandle(hSrc2); }
-            char msg[512];
-            sprintf_s(msg, "CWD: %s\nui\\ui.src ONCE: %u byte\nui\\ui.src SONRA: %u byte", cwd, sizeBeforeLo, sizeAfterLo);
-            MessageBoxA(mainWindow, msg, xorstr("Compact - Debug"), MB_OK | MB_ICONINFORMATION);
+        if (MessageBoxA(mainWindow, xorstr("UI cache temizlenecek (2-3 dakika surebilir). Launcher arka planda calisir, kapatma. Devam?"), xorstr("Compact"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+            g_compactRunning = true;
+            std::thread([](){
+                CHDRSystem* compactor = new CHDRSystem;
+                compactor->m_progressCallback = CompactProgress;
+                CHAR cwd[MAX_PATH];
+                GetCurrentDirectoryA(MAX_PATH, cwd);
+                DWORD sizeBeforeLo = 0, sizeBeforeHi = 0;
+                HANDLE hSrc = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                if (hSrc != INVALID_HANDLE_VALUE) { sizeBeforeLo = GetFileSize(hSrc, &sizeBeforeHi); CloseHandle(hSrc); }
+                CompactProgress(0);
+                compactor->Compact("ui");
+                delete compactor;
+                DWORD sizeAfterLo = 0, sizeAfterHi = 0;
+                HANDLE hSrc2 = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                if (hSrc2 != INVALID_HANDLE_VALUE) { sizeAfterLo = GetFileSize(hSrc2, &sizeAfterHi); CloseHandle(hSrc2); }
+                CompactProgress(100);
+                if (Engine) Engine->SetState(xorstr("Compact tamamlandi."));
+                char msg[256];
+                sprintf_s(msg, "Once: %u MB\nSonra: %u MB", sizeBeforeLo / (1024*1024), sizeAfterLo / (1024*1024));
+                MessageBoxA(mainWindow, msg, xorstr("Compact tamamlandi"), MB_OK | MB_ICONINFORMATION);
+                g_compactRunning = false;
+            }).detach();
         }
     }
 }
@@ -933,6 +973,17 @@ void FacebookClick()
         lastFacebookState = STATE_HOVER;
         if (strlen(g_FacebookURL) > 0)
             ShellExecuteA(NULL, "open", g_FacebookURL, NULL, NULL, SW_SHOW);
+    }
+}
+
+// S113: Register butonu — tarayicida register sayfasi acar
+void RegisterClick()
+{
+    if (lastRegisterState == STATE_DOWN) {
+        states[8] = STATE_HOVER;
+        lastRegisterState = STATE_HOVER;
+        if (strlen(g_RegisterURL) > 0)
+            ShellExecuteA(NULL, "open", g_RegisterURL, NULL, NULL, SW_SHOW);
     }
 }
 
@@ -969,6 +1020,10 @@ bool isInArea(int x, int y)
         return true;
     }
     if (FacebookButtonTexture && x >= FacebookButtonPosition.x && x <= FacebookButtonPosition.x + FacebookButtonSurface.Width && y >= FacebookButtonPosition.y && y <= FacebookButtonPosition.y + FacebookButtonSurface.Height)
+    {
+        return true;
+    }
+    if (RegisterButtonTexture && x >= RegisterButtonPosition.x && x <= RegisterButtonPosition.x + RegisterButtonSurface.Width && y >= RegisterButtonPosition.y && y <= RegisterButtonPosition.y + RegisterButtonSurface.Height)
     {
         return true;
     }
@@ -1058,6 +1113,16 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[6] = STATE_NORMAL;
         if (state == STATE_UP) lastFacebookState = STATE_NORMAL;
+    }
+    if (RegisterButtonTexture && x >= RegisterButtonPosition.x && x <= RegisterButtonPosition.x + RegisterButtonSurface.Width && y >= RegisterButtonPosition.y && y <= RegisterButtonPosition.y + RegisterButtonSurface.Height)
+    {
+        if (lastRegisterState != STATE_DOWN) states[8] = state;
+        if (state == STATE_UP) RegisterClick();
+        else if (lastRegisterState != STATE_DOWN) lastRegisterState = state;
+    }
+    else {
+        states[8] = STATE_NORMAL;
+        if (state == STATE_UP) lastRegisterState = STATE_NORMAL;
     }
 }
 

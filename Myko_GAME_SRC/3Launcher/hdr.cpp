@@ -64,6 +64,10 @@ void CHDRSystem::Unpack(const std::string& v)
 	if (ReadFile(hFile, &rowCount, 4, &dwCount, FALSE) == TRUE)
 	{
 		for (DWORD i = 0; i < rowCount; i++) {
+			// S113: progress callback (0-50 araligi Unpack icin)
+			if (m_progressCallback && rowCount > 0 && i % 20 == 0)
+				m_progressCallback((int)(i * 50 / rowCount));
+
 			int nameLen = 0;
 			if (ReadFile(hFile, &nameLen, 4, &dwCount, FALSE) == FALSE)
 				break;
@@ -139,10 +143,22 @@ void CHDRSystem::Pack(const std::string& v, bool ignoreUnpack)
 		}
 	}
 
+	// S113: Toplam dosya sayisini once say (progress icin)
+	DWORD totalFiles = 0;
+	for (const auto& e : std::filesystem::recursive_directory_iterator(v + "\\")) {
+		if (!e.is_directory()) totalFiles++;
+	}
+	DWORD processedFiles = 0;
+
 	for (const auto& entry : std::filesystem::recursive_directory_iterator(v + "\\"))
 	{
 		if (!entry.is_directory())
 		{
+			// S113: progress (50-100 araligi Pack icin)
+			processedFiles++;
+			if (m_progressCallback && totalFiles > 0 && processedFiles % 20 == 0)
+				m_progressCallback(50 + (int)(processedFiles * 50 / totalFiles));
+
 			try {
 				auto fileName = entry.path().filename().string();
 				if (fileName.ends_with(".hdr") || fileName.ends_with(".src"))
