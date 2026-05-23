@@ -220,69 +220,69 @@ bool LoadTextures()
     bool textureFail = false;
     std::vector<std::string> unloadedResources;
 
-    HRESULT res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\background.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &LauncherBackgroundTexture);
+    HRESULT res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\Background.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &LauncherBackgroundTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\background.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\Background.code"));
     }
     // Start
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\StartMouseOut.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &StartButtonTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\StartMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &StartButtonTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\StartMouseOut.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\StartMouseOut.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\StartMouseOver.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &StartButtonHoverTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\StartMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &StartButtonHoverTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\StartMouseOver.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\StartMouseOver.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\StartMouseClick.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &StartButtonDownTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\StartMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &StartButtonDownTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\StartMouseClick.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\StartMouseClick.code"));
     } 
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\OptionsMouseOut.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &SettingsButtonTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\OptionsMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &SettingsButtonTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\OptionsMouseOut.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\OptionsMouseOut.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\OptionsMouseOver.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &SettingsButtonHoverTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\OptionsMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &SettingsButtonHoverTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\OptionsMouseOver.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\OptionsMouseOver.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\OptionsMouseClick.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &SettingsButtonDownTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\OptionsMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &SettingsButtonDownTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\OptionsMouseClick.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\OptionsMouseClick.code"));
     }
     // Close
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\CloseMouseOut.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CloseButtonTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CloseMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CloseButtonTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\CloseMouseOut.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\CloseMouseOut.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\CloseMouseOver.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CloseButtonHoverTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CloseMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CloseButtonHoverTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\CloseMouseOver.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\CloseMouseOver.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\CloseMouseClick.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CloseButtonDownTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CloseMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CloseButtonDownTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\CloseMouseClick.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\CloseMouseClick.code"));
     }
  
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\ProgressEmpty.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ProgressTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ProgressEmpty.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ProgressTexture);
     if (res != D3D_OK) {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\ProgressEmpty.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\ProgressEmpty.code"));
     }
-    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("ByNoisee\\Launcher\\ProgressValue.png"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ProgressFillTexture);
+    res = D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ProgressValue.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ProgressFillTexture);
     if (res != D3D_OK)
     {
         textureFail = true;
-        unloadedResources.push_back(xorstr("ByNoisee\\Launcher\\ProgressValue.png"));
+        unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\ProgressValue.code"));
     }
    
     launcherdir = GetDir();
@@ -333,9 +333,9 @@ int GetTextWidth(const char* szText, LPD3DXFONT pFont)
 }
 
 static int lisansTarih[] = { 01, 12, 2023 };
-// iki lisans ï¿½ekli de aynï¿½ anda ï¿½alï¿½ï¿½ï¿½r
+// iki lisans þekli de ayný anda çalýþýr
 static std::string ipLisanslari[] = { xorstr("50.114.185.109"), xorstr("50.114.185.109"), xorstr("50.114.185.109") };    //
-// x den ï¿½ncesine bakar
+// x den öncesine bakar
 static std::string subnetLisanlar[] = { xorstr("50.114.185.109") };
 
 bool IsLicensed(std::string ip)
@@ -368,7 +368,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     GetCurrentDirectoryA(MAX_PATH, WP);
 
-    std::string dosyalarNerdeLenAmq = xorstr("\\ByNoisee\\Launcher\\");
+    std::string dosyalarNerdeLenAmq = xorstr("\\CodeGuard\\Launcher\\");
 
     hBMP = (HBITMAP)LoadImage(NULL, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("bg.bmp")).c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
@@ -428,7 +428,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd = ::CreateWindowA(wc.lpszClassName, _T(xorstr("Launcher")), WS_POPUP, 100, 100, iW, iH, NULL, NULL, wc.hInstance, NULL);
     CenterWindow(hwnd, NULL, iW, iH);
     SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-    SetLayeredWindowAttributes(hwnd, RGB(255, 0, 234), 0, LWA_COLORKEY);  // launcher resminin olduï¿½u yerde silinecek olan renk
+    SetLayeredWindowAttributes(hwnd, RGB(255, 0, 234), 0, LWA_COLORKEY);  // launcher resminin olduðu yerde silinecek olan renk
     mainWindow = hwnd;
 
     if (!CreateDeviceD3D(hwnd))
@@ -447,6 +447,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
         return false;
     }
+
     mainInstance = hInstance;
     sayfa = 1;
 
@@ -635,7 +636,7 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         break;
     case WM_CREATE:
     {
-        //std::string Path = std::string(Engine->WorkingPath) + "\\ByNoisee\\Launcher\\" + "curse_loading.gif";
+        //std::string Path = std::string(Engine->WorkingPath) + "\\CodeGuard\\Launcher\\" + "curse_loading.gif";
         //gdiHelper.DisplayImageFromFile(
         //    Path.c_str(),						//File location
         //    hWnd,								//Handle to the Window
@@ -776,6 +777,13 @@ void StartClick()
         lastStartState = STATE_HOVER;
 		std::string param = std::to_string(GetCurrentProcessId());
 
+        /*string myname(std::string(Engine->WorkingPath) + xorstr("\\KnightOnLine.exe"));
+        if (!_fexists(myname))
+        {
+            MessageBoxA(NULL, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_OK | MB_ICONEXCLAMATION);
+            return;
+        }*/
+       
         thyke_t->SetupBanner();
     }
 }

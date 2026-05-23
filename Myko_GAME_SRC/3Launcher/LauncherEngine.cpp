@@ -1,5 +1,4 @@
 #include "LauncherEngine.h"
-#include "MD5.h"
 #include <regex>
 #include <TlHelp32.h>
 #define CURL_ICONV_CODESET_FOR_UTF8 "UTF-8"
@@ -257,7 +256,7 @@ bool Launcher::KnightOnlineCheck()
     return false;
 }
 
-bool Launcher::DownloadPatch(std::string server, std::string path, std::string file, std::string expectedHash)
+bool Launcher::DownloadPatch(std::string server, std::string path, std::string file)
 {
     if (Engine->mSocket->GetSocket() == (void*)INVALID_SOCKET)
         return false;
@@ -277,13 +276,6 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		m_currentFile = file;
 		FTPClient.DownloadFile(file, path + "/" + file);
 		FTPClient.CleanupSession();
-
-		// S113: MD5 hash dogrulama KALDIRILDI (KO original davranisina don)
-		// Sebep: bizim ekleme launcher patch zincirini bozuyor, 2372'de takiliyordu.
-		// LoginServer hala hash gonderir (uyumluluk) ama launcher gormezden gelir.
-		// Detay: MASTER_LIBRARY/PATCH_S113_DOGRU_ORNEK/NASIL_HAZIRLANIR.md
-		(void)expectedHash;
-
         std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
         m_settingsVersion = atoi(versionFromFile.c_str());
         Sleep(50);
@@ -379,9 +371,9 @@ bool Launcher::HandlePacket(Packet& pkt)
 		pkt >> ftpURL >> ftpPATH >> fileCount;
 		for (int i = 0; i < fileCount; i++)
 		{
-			std::string file, fileHash;
-			pkt >> file >> fileHash;
-			DownloadPatch(ftpURL, ftpPATH, file, fileHash);
+			std::string file;
+			pkt >> file;
+			DownloadPatch(ftpURL, ftpPATH, file);
 		}
         SetState(xorstr("Files are being packed..."));
         CHDRSystem* hdrPacker = new CHDRSystem;
