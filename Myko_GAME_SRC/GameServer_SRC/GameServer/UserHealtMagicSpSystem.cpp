@@ -24,7 +24,7 @@ void CUser::SiegeTransformHpChange(int amount)
 	else
 		m_sHp += amount;
 
-	result << m_MaxHp << m_sHp << uint16(-1);
+	result << m_MaxHp << m_sHp << uint16(0xFFFF);
 	Send(&result);
 
 	if (isInParty() && GetZoneID() != ZONE_CHAOS_DUNGEON)
