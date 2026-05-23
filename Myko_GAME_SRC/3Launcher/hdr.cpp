@@ -162,7 +162,7 @@ void CHDRSystem::Pack(const std::string& v, bool ignoreUnpack)
 			if (itr != m_hdrFileList.end())
 			{
 				DWORD offset = SetFilePointer(hSource, 0, 0, FILE_END);
-				DWORD length = entry.file_size();
+				DWORD length = static_cast<DWORD>(entry.file_size());
 
 				SetFilePointer(hFile, itr->second, NULL, FILE_BEGIN);
 				if (WriteFile(hFile, &offset, 4, &dwCount, FALSE) == FALSE)
@@ -173,7 +173,7 @@ void CHDRSystem::Pack(const std::string& v, bool ignoreUnpack)
 			else {
 				DWORD nameLen = name.length();
 				DWORD offset = SetFilePointer(hSource, 0, 0, FILE_END);
-				DWORD length = entry.file_size();
+				DWORD length = static_cast<DWORD>(entry.file_size());
 
 				SetFilePointer(hFile, NULL, NULL, FILE_END);
 				if (WriteFile(hFile, &nameLen, 4, &dwCount, FALSE) == FALSE)

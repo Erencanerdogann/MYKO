@@ -1,4 +1,5 @@
 #include "LauncherEngine.h"
+#include "MD5.h"
 #include <regex>
 #include <TlHelp32.h>
 #define CURL_ICONV_CODESET_FOR_UTF8 "UTF-8"
@@ -218,7 +219,7 @@ int ProgCallback(void* ptr, double dTotalToDownload, double dNowDownloaded, doub
     if (Engine->mSocket->GetSocket() == (void*)INVALID_SOCKET)
         return 0;
 
-    Engine->SetPercent(round(dNowDownloaded * 100 / dTotalToDownload));
+    Engine->SetPercent(static_cast<uint8>(round(dNowDownloaded * 100 / dTotalToDownload)));
     Engine->SetState(std::format("Downloading {}: {:.2f}/{:.2f} MB.", Engine->m_currentFile.c_str(), parseMB(dNowDownloaded), parseMB(dTotalToDownload)));
     return 0;
 }
@@ -256,7 +257,7 @@ bool Launcher::KnightOnlineCheck()
     return false;
 }
 
-bool Launcher::DownloadPatch(std::string server, std::string path, std::string file)
+bool Launcher::DownloadPatch(std::string server, std::string path, std::string file, std::string expectedHash)
 {
     if (Engine->mSocket->GetSocket() == (void*)INVALID_SOCKET)
         return false;
@@ -276,6 +277,20 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		m_currentFile = file;
 		FTPClient.DownloadFile(file, path + "/" + file);
 		FTPClient.CleanupSession();
+
+		// MD5 hash dogrulama — DB hash bos olabilir (geri donus uyumlu), o zaman atla
+		if (!expectedHash.empty())
+		{
+			MD5 md5check;
+			std::string fileHash = md5check.FileMD5Check(file.c_str());
+			if (fileHash != expectedHash)
+			{
+				SetState(xorstr("Patch hash mismatch: ") + file);
+				std::remove(file.c_str());
+				return false;
+			}
+		}
+
         std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
         m_settingsVersion = atoi(versionFromFile.c_str());
         Sleep(50);
@@ -371,9 +386,9 @@ bool Launcher::HandlePacket(Packet& pkt)
 		pkt >> ftpURL >> ftpPATH >> fileCount;
 		for (int i = 0; i < fileCount; i++)
 		{
-			std::string file;
-			pkt >> file;
-			DownloadPatch(ftpURL, ftpPATH, file);
+			std::string file, fileHash;
+			pkt >> file >> fileHash;
+			DownloadPatch(ftpURL, ftpPATH, file, fileHash);
 		}
         SetState(xorstr("Files are being packed..."));
         CHDRSystem* hdrPacker = new CHDRSystem;

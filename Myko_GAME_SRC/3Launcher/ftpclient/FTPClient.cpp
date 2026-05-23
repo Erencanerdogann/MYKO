@@ -1122,7 +1122,7 @@ size_t CFTPClient::ReadFromFileCallback(void* ptr, size_t size, size_t nmemb, vo
    if (pFileStream->is_open())
    {
       pFileStream->read(reinterpret_cast<char*>(ptr), size * nmemb);
-      return pFileStream->gcount();
+      return static_cast<size_t>(pFileStream->gcount());
    }
    return 0;
 }
