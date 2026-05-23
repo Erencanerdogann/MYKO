@@ -4748,14 +4748,14 @@ bool MagicInstance::ExecuteType8()
 					if (pTUser->GetZoneID() <= (uint8)Nation::ELMORAD || pTUser->GetMap()->isWarZone() || pTUser->GetMap()->canAttackOtherNation()) {
 						_START_POSITION* pStartPosition = g_pMain->m_StartPositionArray.GetData(pTUser->GetZoneID());
 						if (pStartPosition)
-							TO_USER(pTUser)->Warp((uint16)((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusX : pStartPosition->sElmoradX) + myrand(0, pStartPosition->bRangeX)) * 10, (uint16)((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusZ : pStartPosition->sElmoradZ) + myrand(0, pStartPosition->bRangeZ)) * 10);
+							TO_USER(pTUser)->Warp(static_cast<uint16>(((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusX : pStartPosition->sElmoradX) + myrand(0, pStartPosition->bRangeX)) * 10), static_cast<uint16>(((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusZ : pStartPosition->sElmoradZ) + myrand(0, pStartPosition->bRangeZ)) * 10));
 						else return false;
 					}
 					else
 					{
 						_START_POSITION* pStartPosition = g_pMain->m_StartPositionArray.GetData(pTUser->GetZoneID());
 						if (pStartPosition)
-							TO_USER(pTUser)->Warp((uint16)((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusX : pStartPosition->sElmoradX) + myrand(0, pStartPosition->bRangeX)) * 10, (uint16)((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusZ : pStartPosition->sElmoradZ) + myrand(0, pStartPosition->bRangeZ)) * 10);
+							TO_USER(pTUser)->Warp(static_cast<uint16>(((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusX : pStartPosition->sElmoradX) + myrand(0, pStartPosition->bRangeX)) * 10), static_cast<uint16>(((pTUser->GetNation() == (uint8)Nation::KARUS ? pStartPosition->sKarusZ : pStartPosition->sElmoradZ) + myrand(0, pStartPosition->bRangeZ)) * 10));
 
 					}
 				}
