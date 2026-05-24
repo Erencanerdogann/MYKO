@@ -792,21 +792,16 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         //    false								//looped
         //);
         
-        RECT clientRect;
-        GetClientRect(hWnd, &clientRect);
-
-        int xPos = (GetSystemMetrics(SM_CXSCREEN) - clientRect.right) / 2;
-        int yPos = (GetSystemMetrics(SM_CYSCREEN) - clientRect.bottom) / 2;
-
+        // S113: Image penceredeki (0,0) noktasinda cizilir, ekran degil
         gdiHelper.DisplayImageFromResource(
             mainInstance,
             MAKEINTRESOURCEW(IDB_LOADING),
             (LPCWSTR)RT_RCDATA,
             hWnd,
-            YOUR_UNIQUE_ID,						//Unique ID of your control, declare your own.
-            xPos,									//xPosition
-            yPos,									//yPosition
-            175,								//width 
+            YOUR_UNIQUE_ID,						//Unique ID of your control
+            0,									//xPosition (penceredeki sol)
+            0,									//yPosition (penceredeki ust)
+            175,								//width
             263							    //height
         );
     }
@@ -870,11 +865,9 @@ int thyke_Test::SetupBanner()
     const HWND hDesktop = GetDesktopWindow();
     GetWindowRect(hDesktop, &desktop);
 
-    //Center the Window
-    RECT rc;
-    GetWindowRect(hwnd, &rc);
-    int xPos = (GetSystemMetrics(SM_CXSCREEN) - rc.right) / 2;
-    int yPos = (GetSystemMetrics(SM_CYSCREEN) - rc.bottom) / 2;
+    // S113: SAG ALT kose (eskiden orta idi)
+    int xPos = GetSystemMetrics(SM_CXSCREEN) - 175 - 30;  // sag kenardan 30px ic
+    int yPos = GetSystemMetrics(SM_CYSCREEN) - 263 - 60;  // alt kenardan 60px ic (taskbar uzeri)
     SetWindowPos(hwnd, HWND_TOP, xPos, yPos, 175, 263, SWP_NOZORDER);
 
     //SetWindowPos(FindWindow(Nil, PCHAR(program1)), HWND_TOP, 0, 0, Screen.Width, Screen.Height, SWP_SHOWWINDOW)
