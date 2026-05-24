@@ -110,6 +110,10 @@ D3DSURFACE_DESC SettingsButtonSurface;
 D3DSURFACE_DESC CloseButtonSurface;
 D3DSURFACE_DESC CompactButtonSurface;
 D3DSURFACE_DESC RegisterButtonSurface;
+// S113: Yeni tasarim — full-frame sprite + ayri hittest bolgesi (UIXSettings HIT_X/HIT_Y/HIT_W/HIT_H)
+int g_StartHitX = 0, g_StartHitY = 0, g_StartHitW = 0, g_StartHitH = 0;
+int g_SettingsHitX = 0, g_SettingsHitY = 0, g_SettingsHitW = 0, g_SettingsHitH = 0;
+int g_CloseHitX = 0, g_CloseHitY = 0, g_CloseHitW = 0, g_CloseHitH = 0;
 // S113: Web link URL'leri (UIXSettings.ini'den yuklenir)
 char g_HomepageURL[512] = {0};
 char g_ForumURL[512] = {0};
@@ -306,28 +310,17 @@ bool LoadTextures()
         textureFail = true;
         unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\ProgressValue.code"));
     }
-    // S113: Compact butonu — eger .code yoksa hata YAZMA, sessiz atla (opsiyonel buton)
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonDownTexture);
-
-    // S113: Web link butonlari — opsiyonel (.code yoksa sessiz atla, gozukmez)
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonDownTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonDownTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &DiscordButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &DiscordButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &DiscordButtonDownTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &FacebookButtonDownTexture);
-    // S113: Register butonu (opsiyonel)
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RegisterButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RegisterButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RegisterButtonDownTexture);
+    // S113 YENI TASARIM: Compact + Web link + Register butonlari KAPATILDI (texture NULL -> if-check ile sessiz atlanir)
+    /*
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOut.code"), ..., &CompactButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOver.code"), ..., &CompactButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseClick.code"), ..., &CompactButtonDownTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOut/Over/Click.code"), ..., &HomePageButton*);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOut/Over/Click.code"), ..., &ForumButton*);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseOut/Over/Click.code"), ..., &DiscordButton*);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOut/Over/Click.code"), ..., &FacebookButton*);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseOut/Over/Click.code"), ..., &RegisterButton*);
+    */
 
     launcherdir = GetDir();
     WebLinkAdded();
@@ -408,6 +401,9 @@ HBITMAP hBMP;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    // S113: DPI scaling kapali — yuksek DPI ekranlarda Windows otomatik scaling kapatilir, ham 945x580 cizilir
+    SetProcessDPIAware();
+
     CreateMutexA(0, FALSE, xorstr("Local\\$launcher$"));
     if (GetLastError() == ERROR_ALREADY_EXISTS)
         return false;
@@ -431,10 +427,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     tmpX = GetPrivateProfileIntA(xorstr("START_BUTTON"), xorstr("X"), 608, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("START_BUTTON"), xorstr("Y"), 509, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     StartButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    // S113: hittest (HIT_X/Y/W/H — yoksa position+surface size kullan, eski uyumlu)
+    g_StartHitX = GetPrivateProfileIntA(xorstr("START_BUTTON"), xorstr("HIT_X"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_StartHitY = GetPrivateProfileIntA(xorstr("START_BUTTON"), xorstr("HIT_Y"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_StartHitW = GetPrivateProfileIntA(xorstr("START_BUTTON"), xorstr("HIT_W"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_StartHitH = GetPrivateProfileIntA(xorstr("START_BUTTON"), xorstr("HIT_H"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
 
     tmpX = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("X"), 161, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("Y"), 511, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     SettingsButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    g_SettingsHitX = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("HIT_X"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_SettingsHitY = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("HIT_Y"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_SettingsHitW = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("HIT_W"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_SettingsHitH = GetPrivateProfileIntA(xorstr("SETTINGS_BUTTON"), xorstr("HIT_H"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
 
     // S113: Compact butonu pozisyon (default sag ust, Close butonunun yaninda)
     tmpX = GetPrivateProfileIntA(xorstr("COMPACT_BUTTON"), xorstr("X"), 900, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
@@ -470,6 +475,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     tmpX = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("X"), 765, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("Y"), 3, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     CloseButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    g_CloseHitX = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("HIT_X"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_CloseHitY = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("HIT_Y"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_CloseHitW = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("HIT_W"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_CloseHitH = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("HIT_H"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
 
     tmpX = GetPrivateProfileIntA(xorstr("PROGRESSBAR"), xorstr("X"), 24, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("PROGRESSBAR"), xorstr("Y"), 557, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
@@ -505,7 +514,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd = ::CreateWindowA(wc.lpszClassName, _T(xorstr("Launcher")), WS_POPUP, 100, 100, iW, iH, NULL, NULL, wc.hInstance, NULL);
     CenterWindow(hwnd, NULL, iW, iH);
     SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-    SetLayeredWindowAttributes(hwnd, RGB(255, 0, 234), 0, LWA_COLORKEY);  // launcher resminin oldu�u yerde silinecek olan renk
+    SetLayeredWindowAttributes(hwnd, RGB(1, 1, 1), 0, LWA_COLORKEY);  // S113: cok koyu siyah (1,1,1) color-key — bg.png anti-alias bozulmasin diye gercek siyah (0,0,0) degil
     mainWindow = hwnd;
 
     if (!CreateDeviceD3D(hwnd))
@@ -591,7 +600,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             g_pd3dDevice->SetRenderState(D3DRS_ZENABLE, false);
             g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
             g_pd3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
-            g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 255, 255, 255), 1.0f, 0);
+            g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 1, 1, 1), 1.0f, 0);
             if (g_pd3dDevice->BeginScene() >= 0)
             {
                 pbFill.left = 0;
@@ -624,7 +633,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
                 int width = GetTextWidth(Engine->GetState().c_str(), m_font);
 
-                TextStatePos.left = TextStateBaseX;
+                // S113: TextStateBaseX = X CENTER pozisyonu. Text genisliginin yarisi kadar sola kaydir.
+                TextStatePos.left = TextStateBaseX - width / 2;
 
                 m_font->DrawTextA(NULL, Engine->GetState().c_str(), -1, &TextStatePos, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 
@@ -988,9 +998,16 @@ void RegisterClick()
 }
 
 
+// S113: Hittest yardimcisi — HIT_X >=0 ise HIT bolge, yoksa eski position+surface
+static bool inHit(int x, int y, int hitX, int hitY, int hitW, int hitH, const D3DXVECTOR3& pos, const D3DSURFACE_DESC& surf) {
+    if (hitX >= 0 && hitY >= 0 && hitW > 0 && hitH > 0)
+        return x >= hitX && x <= hitX + hitW && y >= hitY && y <= hitY + hitH;
+    return x >= pos.x && x <= pos.x + surf.Width && y >= pos.y && y <= pos.y + surf.Height;
+}
+
 bool isInArea(int x, int y)
 {
-    if (x >= StartButtonPosition.x && x <= StartButtonPosition.x + StartButtonSurface.Width && y >= StartButtonPosition.y && y <= StartButtonPosition.y + StartButtonSurface.Height && Engine->IsReady())
+    if (inHit(x, y, g_StartHitX, g_StartHitY, g_StartHitW, g_StartHitH, StartButtonPosition, StartButtonSurface) && Engine->IsReady())
     {
         return true;
     }
@@ -998,11 +1015,11 @@ bool isInArea(int x, int y)
     {
         return true;
     }
-    if (x >= SettingsButtonPosition.x && x <= SettingsButtonPosition.x + SettingsButtonSurface.Width && y >= SettingsButtonPosition.y && y <= SettingsButtonPosition.y + SettingsButtonSurface.Height && Engine->IsReady())
+    if (inHit(x, y, g_SettingsHitX, g_SettingsHitY, g_SettingsHitW, g_SettingsHitH, SettingsButtonPosition, SettingsButtonSurface) && Engine->IsReady())
     {
         return true;
     }
-    if (x >= CloseButtonPosition.x && x <= CloseButtonPosition.x + CloseButtonSurface.Width && y >= CloseButtonPosition.y && y <= CloseButtonPosition.y + CloseButtonSurface.Height)
+    if (inHit(x, y, g_CloseHitX, g_CloseHitY, g_CloseHitW, g_CloseHitH, CloseButtonPosition, CloseButtonSurface))
     {
         return true;
     }
@@ -1033,7 +1050,7 @@ bool isInArea(int x, int y)
 
 void HandleMouse(ButtonState state, int x, int y)
 {
-    if (x >= StartButtonPosition.x && x <= StartButtonPosition.x + StartButtonSurface.Width && y >= StartButtonPosition.y && y <= StartButtonPosition.y + StartButtonSurface.Height && Engine->IsReady())
+    if (inHit(x, y, g_StartHitX, g_StartHitY, g_StartHitW, g_StartHitH, StartButtonPosition, StartButtonSurface) && Engine->IsReady())
     {
         if (lastStartState != STATE_DOWN) states[0] = state;
         if (state == STATE_UP) StartClick();
@@ -1053,7 +1070,7 @@ void HandleMouse(ButtonState state, int x, int y)
         states[1] = STATE_NORMAL;
         if (state == STATE_UP) lastHomepageState = STATE_NORMAL;
     }
-    if (x >= SettingsButtonPosition.x && x <= SettingsButtonPosition.x + SettingsButtonSurface.Width && y >= SettingsButtonPosition.y && y <= SettingsButtonPosition.y + SettingsButtonSurface.Height && Engine->IsReady())
+    if (inHit(x, y, g_SettingsHitX, g_SettingsHitY, g_SettingsHitW, g_SettingsHitH, SettingsButtonPosition, SettingsButtonSurface) && Engine->IsReady())
     {
         if (lastSettingsState != STATE_DOWN) states[2] = state;
         if (state == STATE_UP) SettingsClick();
@@ -1063,7 +1080,7 @@ void HandleMouse(ButtonState state, int x, int y)
         states[2] = STATE_NORMAL;
         if (state == STATE_UP) lastSettingsState = STATE_NORMAL;
     }
-    if (x >= CloseButtonPosition.x && x <= CloseButtonPosition.x + CloseButtonSurface.Width && y >= CloseButtonPosition.y && y <= CloseButtonPosition.y + CloseButtonSurface.Height)
+    if (inHit(x, y, g_CloseHitX, g_CloseHitY, g_CloseHitW, g_CloseHitH, CloseButtonPosition, CloseButtonSurface))
     {
         if (lastCloseState != STATE_DOWN) states[3] = state;
         if (state == STATE_UP) CloseClick();
