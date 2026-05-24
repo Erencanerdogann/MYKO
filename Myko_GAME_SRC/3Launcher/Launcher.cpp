@@ -84,6 +84,10 @@ IDirect3DTexture9* CompactButtonHoverTexture = NULL;
 IDirect3DTexture9* RegisterButtonTexture = NULL;
 IDirect3DTexture9* RegisterButtonDownTexture = NULL;
 IDirect3DTexture9* RegisterButtonHoverTexture = NULL;
+// S113: Repair butonu (patch reset)
+IDirect3DTexture9* RepairButtonTexture = NULL;
+IDirect3DTexture9* RepairButtonDownTexture = NULL;
+IDirect3DTexture9* RepairButtonHoverTexture = NULL;
 
 
 // Sprites
@@ -101,6 +105,7 @@ D3DXVECTOR3 FacebookButtonPosition(161.0f + iWOff, 511.0f, 0);
 D3DXVECTOR3 ProgressPosition(24.0f + iWOff, 557.0f, 0);
 D3DXVECTOR3 CompactButtonPosition(900.0f + iWOff, 79.0f, 0);
 D3DXVECTOR3 RegisterButtonPosition(618.0f + iWOff, 86.0f, 0);
+D3DXVECTOR3 RepairButtonPosition(800.0f + iWOff, 40.0f, 0);
 RECT pbFill;
 
 // Surfaces
@@ -110,6 +115,8 @@ D3DSURFACE_DESC SettingsButtonSurface;
 D3DSURFACE_DESC CloseButtonSurface;
 D3DSURFACE_DESC CompactButtonSurface;
 D3DSURFACE_DESC RegisterButtonSurface;
+D3DSURFACE_DESC RepairButtonSurface;
+int g_RepairHitX = 0, g_RepairHitY = 0, g_RepairHitW = 0, g_RepairHitH = 0;
 // S113: Yeni tasarim — full-frame sprite + ayri hittest bolgesi (UIXSettings HIT_X/HIT_Y/HIT_W/HIT_H)
 int g_StartHitX = 0, g_StartHitY = 0, g_StartHitW = 0, g_StartHitH = 0;
 int g_SettingsHitX = 0, g_SettingsHitY = 0, g_SettingsHitW = 0, g_SettingsHitH = 0;
@@ -137,13 +144,14 @@ enum ButtonState
 #define COL_H D3DCOLOR_ARGB(255, 255, 255, 255)
 #define COL_D D3DCOLOR_ARGB(255, 150, 150, 150)
 #define COL_X D3DCOLOR_ARGB(255, 80, 80, 80)
-ButtonState states[9] = {};
+ButtonState states[10] = {};
 static ButtonState lastStartState = STATE_NORMAL;
 static ButtonState lastHomepageState = STATE_NORMAL;
 static ButtonState lastSettingsState = STATE_NORMAL;
 static ButtonState lastCloseState = STATE_NORMAL;
 static ButtonState lastCompactState = STATE_NORMAL;
 static ButtonState lastRegisterState = STATE_NORMAL;
+static ButtonState lastRepairState = STATE_NORMAL;
 static ButtonState lastDiscordState = STATE_NORMAL;
 static ButtonState lastForumState = STATE_NORMAL;
 static ButtonState lastFacebookState = STATE_NORMAL;
@@ -310,17 +318,20 @@ bool LoadTextures()
         textureFail = true;
         unloadedResources.push_back(xorstr("CodeGuard\\Launcher\\ProgressValue.code"));
     }
-    // S113 YENI TASARIM: Compact + Web link + Register butonlari KAPATILDI (texture NULL -> if-check ile sessiz atlanir)
-    /*
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOut.code"), ..., &CompactButtonTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOver.code"), ..., &CompactButtonHoverTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseClick.code"), ..., &CompactButtonDownTexture);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOut/Over/Click.code"), ..., &HomePageButton*);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOut/Over/Click.code"), ..., &ForumButton*);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\DiscordMouseOut/Over/Click.code"), ..., &DiscordButton*);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\FacebookMouseOut/Over/Click.code"), ..., &FacebookButton*);
-    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RegisterMouseOut/Over/Click.code"), ..., &RegisterButton*);
-    */
+    // S113: Compact + Home + Forum AKTIF (texture yoksa sessiz atla, gozukmez)
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\CompactMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &CompactButtonDownTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\HomeMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &HomePageButtonDownTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\ForumMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &ForumButtonDownTexture);
+    // S113: Repair butonu (patch reset)
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RepairMouseOut.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RepairButtonTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RepairMouseOver.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RepairButtonHoverTexture);
+    D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RepairMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RepairButtonDownTexture);
 
     launcherdir = GetDir();
     WebLinkAdded();
@@ -344,6 +355,7 @@ bool LoadTextures()
     if (ForumButtonTexture) ForumButtonTexture->GetLevelDesc(0, &ForumButtonSurface); else { ForumButtonSurface.Width = 0; ForumButtonSurface.Height = 0; }
     if (FacebookButtonTexture) FacebookButtonTexture->GetLevelDesc(0, &FacebookButtonSurface); else { FacebookButtonSurface.Width = 0; FacebookButtonSurface.Height = 0; }
     if (RegisterButtonTexture) RegisterButtonTexture->GetLevelDesc(0, &RegisterButtonSurface); else { RegisterButtonSurface.Width = 0; RegisterButtonSurface.Height = 0; }
+    if (RepairButtonTexture) RepairButtonTexture->GetLevelDesc(0, &RepairButtonSurface); else { RepairButtonSurface.Width = 0; RepairButtonSurface.Height = 0; }
     ProgressTexture->GetLevelDesc(0, &ProgressSurface);
 
     return true;
@@ -471,6 +483,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     tmpY = GetPrivateProfileIntA(xorstr("REGISTER_BUTTON"), xorstr("Y"), 86, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     RegisterButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
     GetPrivateProfileStringA(xorstr("REGISTER_BUTTON"), xorstr("URL"), "", g_RegisterURL, sizeof(g_RegisterURL), (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+
+    // S113: Repair butonu pozisyon + HIT
+    tmpX = GetPrivateProfileIntA(xorstr("REPAIR_BUTTON"), xorstr("X"), 800, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    tmpY = GetPrivateProfileIntA(xorstr("REPAIR_BUTTON"), xorstr("Y"), 40, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    RepairButtonPosition = D3DXVECTOR3(tmpX, tmpY, 0);
+    g_RepairHitX = GetPrivateProfileIntA(xorstr("REPAIR_BUTTON"), xorstr("HIT_X"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_RepairHitY = GetPrivateProfileIntA(xorstr("REPAIR_BUTTON"), xorstr("HIT_Y"), -1, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_RepairHitW = GetPrivateProfileIntA(xorstr("REPAIR_BUTTON"), xorstr("HIT_W"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
+    g_RepairHitH = GetPrivateProfileIntA(xorstr("REPAIR_BUTTON"), xorstr("HIT_H"), 0, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     // Close Button
     tmpX = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("X"), 765, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
     tmpY = GetPrivateProfileIntA(xorstr("CLOSE_BUTTON"), xorstr("Y"), 3, (std::string(WP) + dosyalarNerdeLenAmq + xorstr("UIXSettings.ini")).c_str());
@@ -525,6 +546,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
     ::ShowWindow(hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(hwnd);
+
+    // S113: HIZLI ACILIS — texture yuklemeden once 1 frame Clear + Present yap, pencere bos kara durmasin
+    g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 1, 1, 1), 1.0f, 0);
+    g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
 
     if (!LoadTextures())
     {
@@ -626,6 +651,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     LauncherSprite->Draw(states[6] == STATE_NORMAL ? FacebookButtonTexture : (states[6] == STATE_DOWN ? (FacebookButtonDownTexture ? FacebookButtonDownTexture : FacebookButtonTexture) : (FacebookButtonHoverTexture ? FacebookButtonHoverTexture : FacebookButtonTexture)), NULL, NULL, &FacebookButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 if (RegisterButtonTexture)
                     LauncherSprite->Draw(states[8] == STATE_NORMAL ? RegisterButtonTexture : (states[8] == STATE_DOWN ? (RegisterButtonDownTexture ? RegisterButtonDownTexture : RegisterButtonTexture) : (RegisterButtonHoverTexture ? RegisterButtonHoverTexture : RegisterButtonTexture)), NULL, NULL, &RegisterButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
+                if (RepairButtonTexture)
+                    LauncherSprite->Draw(states[9] == STATE_NORMAL ? RepairButtonTexture : (states[9] == STATE_DOWN ? (RepairButtonDownTexture ? RepairButtonDownTexture : RepairButtonTexture) : (RepairButtonHoverTexture ? RepairButtonHoverTexture : RepairButtonTexture)), NULL, NULL, &RepairButtonPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(ProgressTexture, NULL, NULL, &ProgressPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
                 LauncherSprite->Draw(ProgressFillTexture, &pbFill, NULL, &ProgressPosition, D3DCOLOR_ARGB(255, 255, 255, 255));
             
@@ -638,6 +665,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
                 m_font->DrawTextA(NULL, Engine->GetState().c_str(), -1, &TextStatePos, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 
+                // S113: Tooltip — buton hover'inda kucuk metin (buton ustunde)
+                struct TT { ButtonState* state; const char* text; const D3DXVECTOR3* pos; int hitX; int hitY; };
+                TT tooltips[] = {
+                    {&states[1], "Web Sitesi",                          &HomePageButtonPosition,  g_StartHitX, 0},  // dummy hitX, gercek pos kullanilir
+                    {&states[5], "Forum",                                &ForumButtonPosition,     0, 0},
+                    {&states[7], "UI Cache Temizle",                     &CompactButtonPosition,   0, 0},
+                    {&states[9], "Patch Sifirla (Repair)",               &RepairButtonPosition,    g_RepairHitX, g_RepairHitY}
+                };
+                for (auto& t : tooltips) {
+                    if (*t.state == STATE_HOVER) {
+                        RECT tr;
+                        tr.left = (LONG)t.pos->x - 60;
+                        tr.top  = (LONG)t.pos->y - 25;
+                        tr.right = tr.left + 200;
+                        tr.bottom = tr.top + 22;
+                        // Kara gölge + ana metin (basit shadow)
+                        RECT trs = tr; trs.left += 1; trs.top += 1;
+                        m_font->DrawTextA(NULL, t.text, -1, &trs, 0, D3DCOLOR_ARGB(255, 0, 0, 0));
+                        m_font->DrawTextA(NULL, t.text, -1, &tr,  0, D3DCOLOR_ARGB(255, 200, 168, 75));
+                    }
+                }
 
                 g_pd3dDevice->EndScene();
             }
@@ -997,6 +1045,48 @@ void RegisterClick()
     }
 }
 
+// S113: Repair butonu — patch reset (Server.ini=2369 + .src/.hdr sil)
+void RepairClick()
+{
+    if (lastRepairState == STATE_DOWN) {
+        states[9] = STATE_HOVER;
+        lastRepairState = STATE_HOVER;
+        if (MessageBoxA(mainWindow, xorstr("PATCH DOSYALARI SIFIRLANACAK!\n\nTum patch yeniden indirilecek (100 MB+ ag trafigi olabilir).\nKO oyununu kapatip Launcher'i yeniden acmaniz gerekir.\n\nDevam edilsin mi?"), xorstr("Repair - Patch Sifirlama"), MB_YESNO | MB_ICONWARNING) == IDYES) {
+            CHAR cwd[MAX_PATH];
+            GetCurrentDirectoryA(MAX_PATH, cwd);
+            // 1. Server.ini Files=2369 yap (baseline)
+            WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(cwd) + "\\Server.ini").c_str());
+            // 2. Tum .src/.hdr dosyalarini sil (UI, Data, fx, Object, Item, vs)
+            const char* dirs[] = {"ui", "Data", "fx", "Object", "Item", "Snd", NULL};
+            int silinen = 0;
+            for (int i = 0; dirs[i]; i++) {
+                std::string base = std::string(cwd) + "\\" + dirs[i] + "\\";
+                for (const char* ext : {".src", ".hdr"}) {
+                    std::string p = base + dirs[i] + ext;
+                    if (DeleteFileA(p.c_str())) silinen++;
+                }
+            }
+            char msg[256];
+            sprintf_s(msg, "Patch sifirlandi. %d dosya silindi.\nServer.ini = Files=2369\n\nLauncher 2 saniye sonra yeniden acilacak...", silinen);
+            MessageBoxA(mainWindow, msg, xorstr("Repair tamam"), MB_OK | MB_ICONINFORMATION);
+
+            // S113: helper.bat olustur, kendini yeniden baslat
+            std::string batPath = std::string(cwd) + "\\_repair_restart.bat";
+            FILE* bat = nullptr;
+            fopen_s(&bat, batPath.c_str(), "w");
+            if (bat) {
+                fprintf(bat, "@echo off\r\n");
+                fprintf(bat, "timeout /t 2 /nobreak >nul\r\n");
+                fprintf(bat, "start \"\" \"%s\\Launcher.exe\"\r\n", cwd);
+                fprintf(bat, "del \"%%~f0\"\r\n");  // kendini sil
+                fclose(bat);
+                ShellExecuteA(NULL, "open", batPath.c_str(), NULL, cwd, SW_HIDE);
+                ::PostQuitMessage(0);
+            }
+        }
+    }
+}
+
 
 // S113: Hittest yardimcisi — HIT_X >=0 ise HIT bolge, yoksa eski position+surface
 static bool inHit(int x, int y, int hitX, int hitY, int hitW, int hitH, const D3DXVECTOR3& pos, const D3DSURFACE_DESC& surf) {
@@ -1041,6 +1131,10 @@ bool isInArea(int x, int y)
         return true;
     }
     if (RegisterButtonTexture && x >= RegisterButtonPosition.x && x <= RegisterButtonPosition.x + RegisterButtonSurface.Width && y >= RegisterButtonPosition.y && y <= RegisterButtonPosition.y + RegisterButtonSurface.Height)
+    {
+        return true;
+    }
+    if (RepairButtonTexture && inHit(x, y, g_RepairHitX, g_RepairHitY, g_RepairHitW, g_RepairHitH, RepairButtonPosition, RepairButtonSurface))
     {
         return true;
     }
@@ -1140,6 +1234,16 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[8] = STATE_NORMAL;
         if (state == STATE_UP) lastRegisterState = STATE_NORMAL;
+    }
+    if (RepairButtonTexture && inHit(x, y, g_RepairHitX, g_RepairHitY, g_RepairHitW, g_RepairHitH, RepairButtonPosition, RepairButtonSurface))
+    {
+        if (lastRepairState != STATE_DOWN) states[9] = state;
+        if (state == STATE_UP) RepairClick();
+        else if (lastRepairState != STATE_DOWN) lastRepairState = state;
+    }
+    else {
+        states[9] = STATE_NORMAL;
+        if (state == STATE_UP) lastRepairState = STATE_NORMAL;
     }
 }
 
