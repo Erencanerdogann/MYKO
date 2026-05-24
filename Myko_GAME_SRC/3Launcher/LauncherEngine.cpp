@@ -157,6 +157,22 @@ Launcher::Launcher()
     // S114: TBL HASH CHECK — gomulu resource'tan beklenen hash'leri oku, lokal Data\*.tbl ile karsilastir
     // Mismatch varsa kullanici Repair'a yonlendirilir (KO KAPATILMAZ — yumusak mod)
     CheckTBLHashes();
+
+    // S114: KOXP/CHEAT TOOL SCAN — process + window + DLL + driver
+    // Tespit edildiyse uyari + Launcher kapanir (oyun acilamaz)
+    {
+        std::string detected;
+        if (ScanCheatTools(detected)) {
+            std::string msg = "MalaysiaKO - Anti-Cheat Uyarisi\n\n";
+            msg += "Bilgisayarinizda makro/cheat yazilim tespit edildi:\n\n";
+            msg += "  >> " + detected + "\n\n";
+            msg += "Bu yazilim oyun kurallarina aykiridir.\n";
+            msg += "Hesabiniz BAN riski tasiyor.\n\n";
+            msg += "Lutfen bu programi kapatip Launcher'i yeniden acin.";
+            MessageBoxA(NULL, msg.c_str(), xorstr("Anti-Cheat"), MB_OK | MB_ICONERROR);
+            ExitProcess(0);
+        }
+    }
 }
 
 // S114: KOXP/cheat tool tarayicisi — 4 katman (process + window + DLL disk + driver service)
