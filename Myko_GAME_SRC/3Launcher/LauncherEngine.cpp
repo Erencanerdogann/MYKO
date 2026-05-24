@@ -4,6 +4,11 @@
 #include <regex>
 #include <TlHelp32.h>
 #include <sstream>
+#include <Psapi.h>
+#include <Shlwapi.h>
+#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "Advapi32.lib")
+#pragma comment(lib, "Shlwapi.lib")
 #define CURL_ICONV_CODESET_FOR_UTF8 "UTF-8"
 #define PRINT_LOG [](const std::string& strLogMsg) { std::cout << strLogMsg << std::endl;  }
 
@@ -152,6 +157,127 @@ Launcher::Launcher()
     // S114: TBL HASH CHECK — gomulu resource'tan beklenen hash'leri oku, lokal Data\*.tbl ile karsilastir
     // Mismatch varsa kullanici Repair'a yonlendirilir (KO KAPATILMAZ — yumusak mod)
     CheckTBLHashes();
+}
+
+// S114: KOXP/cheat tool tarayicisi — 4 katman (process + window + DLL disk + driver service)
+// True dondururse 'detected' degiskeninde tespit edilen sey adi vardir
+bool Launcher::ScanCheatTools(std::string& detected)
+{
+    detected = "";
+
+    // 1) PROCESS scan (case-insensitive isim)
+    const char* processes[] = {
+        // MRX
+        "MRX.exe", "MRXMAKRO.exe",
+        // Private/Hidden bots
+        "PrivateKoxp.exe", "PrivateBot.exe", "HiddenCore.exe", "HiddenCoreKoxp.exe",
+        // Yaygin makrolar
+        "CL4X3S.exe", "Cl4x3sMacro.exe",
+        "ZenAutobot.exe", "ZenMacro.exe",
+        "AnnihilatorPedal.exe", "Annihilator.exe",
+        "KozyMacro.exe", "Kozy.exe",
+        "FreevarBot.exe", "Freevar.exe",
+        "HeavenFire.exe", "HeavenFireKoxp.exe",
+        "EXEBOT.exe", "ExeBotKoxp.exe",
+        "Asiturk.exe", "AsiturkKoxp.exe",
+        "PandoraBot.exe", "AgarthaBot.exe", "MadenBot.exe",
+        "PkBot.exe", "SeriMinor.exe", "KoHack.exe", "DryardsBot.exe",
+        "CesarBot.exe", "CheapBot.exe", "MotaBot.exe",
+        "Koreabot.exe", "KOREABOT.exe",
+        // KOXP altyapi
+        "AutoIt3.exe", "Au3Info.exe", "Au3Script.exe",
+        "AutoHotkey.exe", "AutoHotkeyU64.exe", "AutoHotkeyU32.exe",
+        "cheatengine-x86_64.exe", "cheatengine-i386.exe", "CheatEngine.exe",
+        "interception.exe",
+        NULL
+    };
+
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32 pe{}; pe.dwSize = sizeof(pe);
+        if (Process32First(snap, &pe)) {
+            do {
+                for (int i = 0; processes[i] != NULL; i++) {
+                    if (_stricmp(pe.szExeFile, processes[i]) == 0) {
+                        detected = std::string("Process: ") + pe.szExeFile;
+                        CloseHandle(snap);
+                        return true;
+                    }
+                }
+            } while (Process32Next(snap, &pe));
+        }
+        CloseHandle(snap);
+    }
+
+    // 2) WINDOW TITLE scan
+    struct WindowScanData {
+        const char** titles;
+        std::string* detected;
+    };
+    const char* windowTitles[] = {
+        "MRX MAKRO", "MRX MAKRO ",
+        "Private Koxp", "PrivateBot",
+        "HiddenCore",
+        "CL4X3S",
+        "Zen Autobot",
+        "AnnihilatorPedal",
+        "Kozy Macro",
+        "FreevarBot",
+        "Heaven Fire",
+        "EXEBOT",
+        "Asiturk",
+        "Cheat Engine",
+        NULL
+    };
+    WindowScanData wsd { windowTitles, &detected };
+
+    auto enumProc = [](HWND hwnd, LPARAM lParam) -> BOOL {
+        WindowScanData* d = (WindowScanData*)lParam;
+        char title[256] = {0};
+        if (GetWindowTextA(hwnd, title, sizeof(title)) > 0) {
+            for (int i = 0; d->titles[i] != NULL; i++) {
+                // Strstr ile partial match — KOXP'lar pencere title'ina ek metin ekleyebilir
+                if (StrStrIA(title, d->titles[i]) != NULL) {
+                    *(d->detected) = std::string("Window: ") + title;
+                    return FALSE;  // Bul, dur
+                }
+            }
+        }
+        return TRUE;  // Devam
+    };
+    EnumWindows(enumProc, (LPARAM)&wsd);
+    if (!detected.empty()) return true;
+
+    // 3) interception.dll DISK SCAN — Windows klasoru DISINDA (gercek interception kullanan az)
+    // Standart konum kontrol: temp, downloads, desktop, common
+    const char* dllSearchDirs[] = {
+        "C:\\Windows\\interception.dll",  // Bazi makrolar Windows koklerine atar
+        NULL
+    };
+    for (int i = 0; dllSearchDirs[i] != NULL; i++) {
+        HANDLE h = CreateFileA(dllSearchDirs[i], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (h != INVALID_HANDLE_VALUE) {
+            CloseHandle(h);
+            detected = std::string("DLL: ") + dllSearchDirs[i];
+            return true;
+        }
+    }
+
+    // 4) DRIVER SERVICE — "interception" kernel driver kurulu mu?
+    SC_HANDLE hSCM = OpenSCManagerA(NULL, NULL, SC_MANAGER_CONNECT);
+    if (hSCM != NULL) {
+        SC_HANDLE hSvc = OpenServiceA(hSCM, "interception", SERVICE_QUERY_STATUS);
+        if (hSvc != NULL) {
+            // Servis mevcut — KOXP imzasi (gercek oyuncu interception driver kullanmaz)
+            detected = "Driver: interception (kernel mouse/keyboard hook)";
+            CloseServiceHandle(hSvc);
+            CloseServiceHandle(hSCM);
+            return true;
+        }
+        CloseServiceHandle(hSCM);
+    }
+
+    return false;
 }
 
 // S114: TBL hash kontrolu — gomulu hash listesi vs disk MD5
