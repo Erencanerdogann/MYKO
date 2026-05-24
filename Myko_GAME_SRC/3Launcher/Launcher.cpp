@@ -875,20 +875,32 @@ int thyke_Test::SetupBanner()
     ShowWindow(hwnd, TRUE);
     UpdateWindow(hwnd);
 
+    // S114: GIF tam oynasin diye MIN 6 saniye splash
+    DWORD startTick = GetTickCount();
+    const DWORD MIN_SPLASH_MS = 6000;
+
     MSG msg;
     BOOL bRet;
     ZeroMemory(&msg, sizeof(msg));
 
-    while ((bRet = GetMessage(&msg, 0, 0, 0)) != 0) {
-
-        if (bRet == -1)
-        {
-            goto end;
-        }
-        else
-        {
+    while (true) {
+        if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_QUIT) {
+                // Min sure dolmadiysa bekle
+                DWORD elapsed = GetTickCount() - startTick;
+                if (elapsed < MIN_SPLASH_MS) {
+                    Sleep(MIN_SPLASH_MS - elapsed);
+                }
+                break;
+            }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
+        } else {
+            Sleep(10);  // CPU yormasin
+            // Min sure dolduysa otomatik cik
+            if (GetTickCount() - startTick >= MIN_SPLASH_MS) {
+                PostQuitMessage(0);
+            }
         }
     }
 
