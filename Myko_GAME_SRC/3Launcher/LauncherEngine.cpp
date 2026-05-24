@@ -291,11 +291,18 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 			}
 		}
 
-        std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
-        m_settingsVersion = atoi(versionFromFile.c_str());
         Sleep(50);
-		zip_extract(file.c_str(), WorkingPath, on_extract_entry, NULL);
+		// S113: zip_extract return value KONTROL et — fail ise Server.ini'ye YAZMA, dosya kalsin (retry icin)
+		int extract_result = zip_extract(file.c_str(), WorkingPath, on_extract_entry, NULL);
+		if (extract_result != 0) {
+			SetState(xorstr("Patch extract failed: ") + file);
+			// zip dosyasini SILME — bir sonraki acilista yeniden dene
+			return false;
+		}
 		std::remove(file.c_str());
+		// Extract OK ise Server.ini'ye yaz
+		std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
+		m_settingsVersion = atoi(versionFromFile.c_str());
 		WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), std::to_string(m_settingsVersion).c_str(), (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
 		if (m_settingsVersion == m_iVersion)
 			return true;
