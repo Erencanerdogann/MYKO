@@ -852,7 +852,9 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame)
 {
     // S114: Caller'in istegine gore GIF + davranis konfigure
     g_currentGifResId = gifResId;
-    g_currentGifLooped = (gifResId == IDB_LOADING);  // SCANNING sonsuz loop
+    // S114: TUM GIF'ler sonsuz loop. SetupBanner minMs ile pencereyi kapatir.
+    // Boylece SAFE GIF'i (1.2sn) MIN_MS dolmadan bitmesin kullanici tam goremesin.
+    g_currentGifLooped = true;
     // SAFE -> 1 (KO basla + exit), ERROR -> 2 (sadece exit, KO YOK)
     if (gifResId == IDB_LOADING_ERROR)      g_gifEndAction = 2;
     else if (gifResId == IDB_LOADING_SAFE)  g_gifEndAction = 1;
@@ -976,16 +978,37 @@ void StartClick()
         lastStartState = STATE_HOVER;
 
         // S114: 3-asama GIF anti-cheat akisi
+        // Faz 0: Taze scan — kullanici Launcher acikken sonradan cheat acmis olabilir
+        // Background thread, SCANNING GIF (4sn) icinde rahat biter (~50-200ms)
+        std::thread([](){
+            if (!Engine) return;
+            std::string detected;
+            Engine->m_scanThreatDetected = Engine->ScanCheatTools(detected);
+            Engine->m_scanThreatName = detected;
+        }).detach();
+
         // Faz 1: SCANNING GIF (4 sn looped) — kullaniciya tarama animasyonu goster
         thyke_t->SetupBanner(IDB_LOADING, 4000, false);
 
         // Faz 2: Sonuca gore SAFE veya ERROR
         // Tarama LauncherEngine constructor'da yapildi, sonuc Engine->m_scanThreatDetected'de
-        if (Engine->m_scanThreatDetected) {
-            // ERROR: 3 sn THREAT DETECTED GIF, sonra Launcher kapan (KO BASLA YOK)
+        // TBL mismatch >0 ise tehdit say (cheat sup hesi VEYA bozuk dosya — KO acilmasi tehlikeli)
+        bool threat = Engine->m_scanThreatDetected || (Engine->m_tblMismatchCount > 0);
+        if (threat) {
+            // ERROR: 3 sn THREAT DETECTED GIF
             thyke_t->SetupBanner(IDB_LOADING_ERROR, 3000, false);
-            // SetupBanner icindeki GDIHelper run() loop'u GIF 1 dongu bittikten sonra
-            // g_gifEndAction==2 ile ExitProcess yapar; oraya gelmezse asagiya dusup biz exit
+            // GIF kapandi - kullaniciya neyin tespit edildigini bilgilendir, sonra kapan
+            std::string msg = "MalaysiaKO Anti-Cheat\n\nOyuna giris engellendi.\n\n";
+            if (Engine->m_scanThreatDetected && !Engine->m_scanThreatName.empty()) {
+                msg += "Tespit: " + Engine->m_scanThreatName + "\n";
+            }
+            if (Engine->m_tblMismatchCount > 0) {
+                char tbuf[128];
+                sprintf_s(tbuf, "TBL dosya butunlugu: %d dosya degistirilmis\n", Engine->m_tblMismatchCount);
+                msg += tbuf;
+            }
+            msg += "\nLutfen sebep oluyor olabilecek programi kapatip Launcher'i yeniden acin.";
+            MessageBoxA(NULL, msg.c_str(), "MalaysiaKO Anti-Cheat", MB_OK | MB_ICONERROR);
             ExitProcess(0);
         } else {
             // SAFE: 2.5 sn SECURE GIF, sonra KO basla

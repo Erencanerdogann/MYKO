@@ -25,6 +25,10 @@ public:
 	// S114: Scan sonucu cache (START click sirasinda GIF goster icin)
 	bool m_scanThreatDetected = false;
 	std::string m_scanThreatName;
+	// S114: TBL hash sonucu (cheat suphesi degil ama dosya butunlugu)
+	int m_tblMismatchCount = 0;
+	int m_tblMissingCount = 0;
+	std::string m_tblMismatchList;
 	short GetVersion() { return m_iVersion; }
 	std::string GetState() { return m_stateString;  }
 	void SetState(std::string state) { m_stateString = state; }

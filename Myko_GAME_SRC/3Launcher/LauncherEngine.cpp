@@ -350,37 +350,10 @@ void Launcher::CheckTBLHashes()
         }
     }
 
-    // 3. Mismatch varsa kullaniciya YUMUSAK uyari (Launcher KAPATILMAZ)
-    if (mismatchCount > 0 || missingCount > 0) {
-        char msg[1024];
-        sprintf_s(msg,
-            "Anti-Cheat Uyarisi\n\n"
-            "%d oyun dosyasi beklenen halinden farkli.\n"
-            "%d oyun dosyasi eksik.\n\n"
-            "Bu degisiklik:\n"
-            " - Cheat/hack programlarindan kaynaklanabilir\n"
-            " - Disk bozulmasi olabilir\n"
-            " - Eski/manuel duzenleme olabilir\n\n"
-            "Setup'i Repair modunda calistirmak ister misiniz?\n"
-            "(EVET: Setup Repair sayfasi acilir | HAYIR: Launcher devam, R butonu kullanabilirsiniz)",
-            mismatchCount, missingCount
-        );
-        int response = MessageBoxA(NULL, msg, xorstr("MalaysiaKO - Dosya Bütünlüğü"), MB_YESNO | MB_ICONWARNING);
-        if (response == IDYES) {
-            // Setup EXE'yi /repair parametresi ile aç (kullanici 1 sayfa atlatip Onar'i sececek)
-            std::string setupPath = std::string(WorkingPath) + "\\MalaysiaKO_Setup.exe";
-            HANDLE h = CreateFileA(setupPath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
-                CloseHandle(h);
-                ShellExecuteA(NULL, "open", setupPath.c_str(), "/repair", WorkingPath, SW_SHOWNORMAL);
-                // Launcher kapaniyor — Setup tek basina calismaya devam
-                ExitProcess(0);
-            } else {
-                // Setup yok, sadece bilgilendir
-                MessageBoxA(NULL, xorstr("Setup dosyasi bulunamadi (MalaysiaKO_Setup.exe). Launcher'da R (Repair) butonuna basabilirsiniz."), xorstr("Setup Yok"), MB_OK | MB_ICONINFORMATION);
-            }
-        }
-    }
+    // S114: Sonuc cache (MessageBox YOK — START sonrasi GIF + UI ile gosterilir)
+    m_tblMismatchCount = mismatchCount;
+    m_tblMissingCount  = missingCount;
+    m_tblMismatchList  = mismatchList;
 }
 
 static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
