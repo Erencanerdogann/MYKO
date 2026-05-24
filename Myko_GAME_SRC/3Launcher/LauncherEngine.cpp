@@ -125,33 +125,26 @@ Launcher::Launcher()
         SetVal(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH", m_base);
     }
 
-    // S113: L1 SELF-HEAL — kritik .src dosyalari boyut kontrolu
-    // Bos veya cok kucuk (<1 KB) ise Server.ini'yi geriye sar (Launcher yeniden indirir)
-    struct { const char* path; int64_t min_size; } critical_files[] = {
-        { "UI\\ui.src",         1024*1024 },  // UI 1 MB+
-        { "Data\\Data.src",     1024 },        // Data 1 KB+
-        { NULL, 0 }
-    };
-    bool needsHeal = false;
-    for (int i = 0; critical_files[i].path; i++) {
-        std::string p = std::string(WorkingPath) + "\\" + critical_files[i].path;
+    // S113: L1 SELF-HEAL — KRITIK kontrol: sadece UI/ui.src boyut
+    // Bos veya cok kucuk (<1 MB) ise Server.ini'yi geriye sar (Launcher yeniden indirir)
+    // NOT: Sadece UI bakiliyor, baska klasor (Data/fx vs) bazi KO versiyonlarinda yok
+    {
+        std::string p = std::string(WorkingPath) + "\\UI\\ui.src";
         HANDLE h = CreateFileA(p.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        bool needsHeal = false;
         if (h == INVALID_HANDLE_VALUE) {
             needsHeal = true;
-            continue;
+        } else {
+            DWORD szHi = 0;
+            DWORD szLo = GetFileSize(h, &szHi);
+            CloseHandle(h);
+            int64_t size = ((int64_t)szHi << 32) | szLo;
+            if (size < 1024 * 1024) needsHeal = true;  // <1 MB = bozuk
         }
-        DWORD szHi = 0;
-        DWORD szLo = GetFileSize(h, &szHi);
-        CloseHandle(h);
-        int64_t size = ((int64_t)szHi << 32) | szLo;
-        if (size < critical_files[i].min_size) {
-            needsHeal = true;
+        if (needsHeal) {
+            WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
+            m_settingsVersion = 2369;
         }
-    }
-    if (needsHeal) {
-        // Server.ini = 2369 (baseline) — patch zinciri yeniden inecek
-        WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
-        m_settingsVersion = 2369;
     }
 }
 
@@ -325,25 +318,10 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		int extract_result = zip_extract(file.c_str(), WorkingPath, on_extract_entry, NULL);
 		if (extract_result != 0) {
 			SetState(xorstr("Patch extract failed: ") + file);
-			// L2/L3 SELF-HEAL — fail sayisini takip et, 3+ fail = otomatik patch reset
-			std::string failCountPath = std::string(WorkingPath) + "\\_patch_fail_count";
-			int failCount = GetPrivateProfileIntA(xorstr("FAIL"), xorstr("count"), 0, failCountPath.c_str());
-			failCount++;
-			WritePrivateProfileStringA(xorstr("FAIL"), xorstr("count"), std::to_string(failCount).c_str(), failCountPath.c_str());
-			if (failCount >= 3) {
-				// L3: Otomatik patch reset — SADECE Server.ini sifirla (.src/.hdr DOKUNMA)
-				SetState(xorstr("Auto-recovery: patch sifirlaniyor..."));
-				WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
-				// Fail count reset
-				DeleteFileA(failCountPath.c_str());
-			}
-			// zip dosyasini SILME — bir sonraki acilista yeniden dene
+			// zip dosyasini SILME — bir sonraki acilista yeniden dene (L1 acilista UI bozulmasini tespit eder)
 			return false;
 		}
 		std::remove(file.c_str());
-		// Extract OK — fail count reset
-		std::string failCountPath = std::string(WorkingPath) + "\\_patch_fail_count";
-		DeleteFileA(failCountPath.c_str());
 		// Extract OK ise Server.ini'ye yaz
 		std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
 		m_settingsVersion = atoi(versionFromFile.c_str());

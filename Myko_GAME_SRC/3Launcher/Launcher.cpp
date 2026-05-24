@@ -1045,7 +1045,7 @@ void RegisterClick()
     }
 }
 
-// S113: Repair butonu — patch reset (Server.ini=2369 + .src/.hdr sil)
+// S113: Repair butonu — sadece Server.ini=2369 (.src/.hdr DOKUNMA, append-only ile uzerine yazilir)
 void RepairClick()
 {
     if (lastRepairState == STATE_DOWN) {
