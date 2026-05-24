@@ -78,6 +78,8 @@ IDB_BITMAP1             BITMAP                  "bitmap1.bmp"
 //
 
 IDB_LOADING			RCDATA					        "loading.gif"
+IDB_LOADING_SAFE	RCDATA					        "loading_safe.gif"
+IDB_LOADING_ERROR	RCDATA					        "loading_error.gif"
 IDR_TBL_HASHES		RCDATA					        "tbl_hashes.txt"
 
 /////////////////////////////////////////////////////////////////////////////
