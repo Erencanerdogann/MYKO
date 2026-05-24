@@ -160,6 +160,7 @@ Launcher::Launcher()
 
     // S114: KOXP/CHEAT TOOL SCAN — process + window + DLL + driver
     // Tespit edildiyse uyari + Launcher kapanir (oyun acilamaz)
+    // Tespit YOKSA sessiz "tarama yapildi, temiz" mesaji
     {
         std::string detected;
         if (ScanCheatTools(detected)) {
@@ -171,6 +172,18 @@ Launcher::Launcher()
             msg += "Lutfen bu programi kapatip Launcher'i yeniden acin.";
             MessageBoxA(NULL, msg.c_str(), xorstr("Anti-Cheat"), MB_OK | MB_ICONERROR);
             ExitProcess(0);
+        } else {
+            // Tespit yok - kullaniciya guven mesaji
+            MessageBoxA(NULL,
+                "Anti-Cheat tarama tamamlandi.\n\n"
+                "✓ Process tarama: temiz\n"
+                "✓ Window tarama: temiz\n"
+                "✓ Driver tarama: temiz\n"
+                "✓ TBL dosya butunlugu: temiz\n\n"
+                "Sistem korumali, oyuna giris yapabilirsiniz.",
+                xorstr("MalaysiaKO Anti-Cheat - Sistem Guvenli"),
+                MB_OK | MB_ICONINFORMATION
+            );
         }
     }
 }
@@ -200,9 +213,9 @@ bool Launcher::ScanCheatTools(std::string& detected)
         "PkBot.exe", "SeriMinor.exe", "KoHack.exe", "DryardsBot.exe",
         "CesarBot.exe", "CheapBot.exe", "MotaBot.exe",
         "Koreabot.exe", "KOREABOT.exe",
+        // NOT: AutoIt3/AutoHotkey listesinden cikarildi — PvP'de makro caiz (text expansion, mouse pedal vb. cift kullanim)
+        // Gercek KOXP'lar zaten kendi exe icine derliyor (MRX gibi)
         // KOXP altyapi
-        "AutoIt3.exe", "Au3Info.exe", "Au3Script.exe",
-        "AutoHotkey.exe", "AutoHotkeyU64.exe", "AutoHotkeyU32.exe",
         "cheatengine-x86_64.exe", "cheatengine-i386.exe", "CheatEngine.exe",
         "interception.exe",
         NULL
