@@ -880,8 +880,12 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame)
     wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
     if (!RegisterClassEx(&wcex)) {
-        MessageBox(NULL, _T("Call to RegisterClassEx failed!"), szTitle, NULL);
-        return 1;
+        // S114: Cifte cagrida ERROR_CLASS_ALREADY_EXISTS olabilir, devam et
+        DWORD err = GetLastError();
+        if (err != ERROR_CLASS_ALREADY_EXISTS) {
+            MessageBox(NULL, _T("Call to RegisterClassEx failed!"), szTitle, NULL);
+            return 1;
+        }
     }
 
     HWND hwnd = CreateWindow(szWindowClass, szTitle, WS_POPUP/*WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME*/, 0, 0, 175, 263, NULL, NULL, wcex.hInstance, NULL);
@@ -936,9 +940,24 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame)
     }
 
 end:
-    ::DestroyWindow(hwnd);
+    if (IsWindow(hwnd)) ::DestroyWindow(hwnd);
     ::UnregisterClass(wcex.lpszClassName, wcex.hInstance);
     GdiplusShutdown(gdiplusToken); //dont forget to shut down the gdi+ token.
+
+    // S114: GIF kapandi, simdi caller'in istedigi action'i yap
+    // launchGame=true ise KO basla + exit (SAFE durumu)
+    // gifResId=ERROR ise sadece exit (KO yok)
+    // SCANNING (loop, action=0) ise hicbir sey yapma, donsun
+    if (g_gifEndAction == 1 && launchGame) {
+        std::string param = std::to_string(GetCurrentProcessId());
+        if ((long)ShellExecuteA(NULL, NULL, xorstr("KnightOnLine.exe"), param.c_str(), NULL, SW_RESTORE) == ERROR_FILE_NOT_FOUND) {
+            MessageBoxA(mainWindow, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_ICONINFORMATION);
+            return 0;
+        }
+        ExitProcess(0);
+    } else if (g_gifEndAction == 2) {
+        ExitProcess(0);
+    }
     return 1;
 }
 

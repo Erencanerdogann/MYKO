@@ -27,20 +27,16 @@ GDIHelper::GDIHelper() {}
 
 /** Function to destroy objects and arrays, call this function on WM_DESTROY of WinProc. **/
 void GDIHelper::Destroy() {
-    if(m_pDimensionIDs) {
-        delete[] m_pDimensionIDs;
-    }
-
-    if(m_pItem) {
-        free(m_pItem);
-    }
-
-    if(m_pImage) {
-        delete m_pImage;
-    }
+    // S114: NULL setle ki ikinci SetupBanner cagrida double-free olmasin
+    if(m_pDimensionIDs) { delete[] m_pDimensionIDs; m_pDimensionIDs = NULL; }
+    if(m_pItem)         { free(m_pItem); m_pItem = NULL; }
+    if(m_pImage)        { delete m_pImage; m_pImage = NULL; }
     m_bIsPlaying = FALSE;
     isPlayable = FALSE;
-    RemoveWindowSubclass(staticControl, &StaticControlProc, unique_id);
+    if (staticControl) {
+        RemoveWindowSubclass(staticControl, &StaticControlProc, unique_id);
+        staticControl = NULL;
+    }
 }
 
 extern HWND hLoadHwnd;
@@ -70,26 +66,9 @@ void GDIHelper::run()
        
         if (!isLooped && m_iCurrentFrame == 0)
         {
-            ShowWindow(hLoadHwnd, SW_HIDE);
-            ShowWindow(staticControl, SW_HIDE);
-            gdiHelper.Destroy();
-
-            // S114: GIF bitince ne yapilacak g_gifEndAction belirler
-            if (g_gifEndAction == 1) {
-                // SAFE: KO basla + Launcher kapan
-                std::string param = std::to_string(GetCurrentProcessId());
-                if ((long)ShellExecuteA(NULL, NULL, xorstr("KnightOnLine.exe"), param.c_str(), NULL, SW_RESTORE) == ERROR_FILE_NOT_FOUND)
-                    MessageBoxA(mainWindow, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_ICONINFORMATION);
-                ::PostQuitMessage(0);
-                TerminateProcess(GetCurrentProcess(), 0);
-                ExitProcess(0);
-            } else if (g_gifEndAction == 2) {
-                // ERROR: sadece Launcher'i kapat (KO basla YOK)
-                ::PostQuitMessage(0);
-                TerminateProcess(GetCurrentProcess(), 0);
-                ExitProcess(0);
-            }
-            // g_gifEndAction == 0 ise (loop), bu blok zaten isLooped=true ile gelmedi — fallthrough
+            // S114: GIF 1 dongu bitti, sadece pencereye PostQuit gonder.
+            // KO baslatma / Launcher kapatma SetupBanner cagrisinda yapilir (StartClick'te).
+            ::PostMessage(hLoadHwnd, WM_CLOSE, 0, 0);
             break;
         }
     }
