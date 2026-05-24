@@ -785,8 +785,12 @@ static TCHAR szWindowClass[] = _T("Knight OnLine Code Guard");
 static TCHAR szTitle[] = _T("Knight OnLine Code Guard");
 HWND hLoadHwnd;
 LRESULT CALLBACK WndProc222(HWND, UINT, WPARAM, LPARAM);
-const int IMAGE_WIDTH = 175;  
+const int IMAGE_WIDTH = 175;
 const int IMAGE_HEIGHT = 263;
+// S114: Aktif GIF resource ID + loop flag (SetupBanner cagrisi oncesi set edilir)
+static int g_currentGifResId = IDB_LOADING;
+static bool g_currentGifLooped = false;
+extern int g_gifEndAction;  // GDIHelper.cpp: 0=loop, 1=KO+exit, 2=sadece exit
 
 LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
@@ -811,24 +815,25 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         //);
         
         // S113: Image penceredeki (0,0) noktasinda cizilir, ekran degil
+        // S114: Global g_currentGifResId'den dinamik GIF (SCANNING/SAFE/ERROR)
         gdiHelper.DisplayImageFromResource(
             mainInstance,
-            MAKEINTRESOURCEW(IDB_LOADING),
+            MAKEINTRESOURCEW(g_currentGifResId),
             (LPCWSTR)RT_RCDATA,
             hWnd,
             YOUR_UNIQUE_ID,						//Unique ID of your control
             0,									//xPosition (penceredeki sol)
             0,									//yPosition (penceredeki ust)
             175,								//width
-            263							    //height
+            263,							    //height
+            g_currentGifLooped					// S114: SCANNING -> true (sonsuz), SAFE/ERROR -> false (1 dongu sonra action)
         );
     }
     break;
     case WM_DESTROY:
     {
-        /* Don't forget to call destroy. (2) */
+        // S114: TerminateProcess KALDIRILDI - SCANNING bittikten sonra StartClick devam etmeli
         gdiHelper.Destroy();
-        TerminateProcess(GetCurrentProcess(), 0);
         PostQuitMessage(0);
         break;
     }
@@ -843,8 +848,16 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-int thyke_Test::SetupBanner()
+int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame)
 {
+    // S114: Caller'in istegine gore GIF + davranis konfigure
+    g_currentGifResId = gifResId;
+    g_currentGifLooped = (gifResId == IDB_LOADING);  // SCANNING sonsuz loop
+    // SAFE -> 1 (KO basla + exit), ERROR -> 2 (sadece exit, KO YOK)
+    if (gifResId == IDB_LOADING_ERROR)      g_gifEndAction = 2;
+    else if (gifResId == IDB_LOADING_SAFE)  g_gifEndAction = 1;
+    else                                    g_gifEndAction = 0;  // SCANNING: GIF loop, MIN_MS bitince SetupBanner kapatir
+
     ShowWindow(mainWindow, FALSE);
 
     // Initialize GDI+.
@@ -893,9 +906,9 @@ int thyke_Test::SetupBanner()
     ShowWindow(hwnd, TRUE);
     UpdateWindow(hwnd);
 
-    // S114: GIF tam oynasin diye MIN 6 saniye splash
+    // S114: Caller'in verdigi minMs kadar splash kalir
     DWORD startTick = GetTickCount();
-    const DWORD MIN_SPLASH_MS = 6000;
+    const DWORD MIN_SPLASH_MS = minMs;
 
     MSG msg;
     BOOL bRet;
@@ -942,16 +955,25 @@ void StartClick()
     {
         states[0] = STATE_HOVER;
         lastStartState = STATE_HOVER;
-		std::string param = std::to_string(GetCurrentProcessId());
 
-        /*string myname(std::string(Engine->WorkingPath) + xorstr("\\KnightOnLine.exe"));
-        if (!_fexists(myname))
-        {
-            MessageBoxA(NULL, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_OK | MB_ICONEXCLAMATION);
-            return;
-        }*/
-       
-        thyke_t->SetupBanner();
+        // S114: 3-asama GIF anti-cheat akisi
+        // Faz 1: SCANNING GIF (4 sn looped) — kullaniciya tarama animasyonu goster
+        thyke_t->SetupBanner(IDB_LOADING, 4000, false);
+
+        // Faz 2: Sonuca gore SAFE veya ERROR
+        // Tarama LauncherEngine constructor'da yapildi, sonuc Engine->m_scanThreatDetected'de
+        if (Engine->m_scanThreatDetected) {
+            // ERROR: 3 sn THREAT DETECTED GIF, sonra Launcher kapan (KO BASLA YOK)
+            thyke_t->SetupBanner(IDB_LOADING_ERROR, 3000, false);
+            // SetupBanner icindeki GDIHelper run() loop'u GIF 1 dongu bittikten sonra
+            // g_gifEndAction==2 ile ExitProcess yapar; oraya gelmezse asagiya dusup biz exit
+            ExitProcess(0);
+        } else {
+            // SAFE: 2.5 sn SECURE GIF, sonra KO basla
+            thyke_t->SetupBanner(IDB_LOADING_SAFE, 2500, true);
+            // SetupBanner icindeki GDIHelper run() loop'u GIF 1 dongu bittikten sonra
+            // g_gifEndAction==1 ile KnightOnLine.exe baslatip ExitProcess yapar
+        }
     }
 }
 

@@ -44,6 +44,8 @@ void GDIHelper::Destroy() {
 }
 
 extern HWND hLoadHwnd;
+// S114: GIF bitince ne yapilacak (0=loop devam, 1=KO basla+exit, 2=sadece exit pencere kapan)
+int g_gifEndAction = 1;
 
 /** Private function, call this function as thread to animate the GIF image. **/
 void GDIHelper::run()
@@ -72,13 +74,22 @@ void GDIHelper::run()
             ShowWindow(staticControl, SW_HIDE);
             gdiHelper.Destroy();
 
-            std::string param = std::to_string(GetCurrentProcessId());
-            if ((long)ShellExecuteA(NULL, NULL, xorstr("KnightOnLine.exe"), param.c_str(), NULL, SW_RESTORE) == ERROR_FILE_NOT_FOUND)
-                MessageBoxA(mainWindow, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_ICONINFORMATION);
-               
-            ::PostQuitMessage(0);
-            TerminateProcess(GetCurrentProcess(), 0);
-            ExitProcess(0);
+            // S114: GIF bitince ne yapilacak g_gifEndAction belirler
+            if (g_gifEndAction == 1) {
+                // SAFE: KO basla + Launcher kapan
+                std::string param = std::to_string(GetCurrentProcessId());
+                if ((long)ShellExecuteA(NULL, NULL, xorstr("KnightOnLine.exe"), param.c_str(), NULL, SW_RESTORE) == ERROR_FILE_NOT_FOUND)
+                    MessageBoxA(mainWindow, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_ICONINFORMATION);
+                ::PostQuitMessage(0);
+                TerminateProcess(GetCurrentProcess(), 0);
+                ExitProcess(0);
+            } else if (g_gifEndAction == 2) {
+                // ERROR: sadece Launcher'i kapat (KO basla YOK)
+                ::PostQuitMessage(0);
+                TerminateProcess(GetCurrentProcess(), 0);
+                ExitProcess(0);
+            }
+            // g_gifEndAction == 0 ise (loop), bu blok zaten isLooped=true ile gelmedi — fallthrough
             break;
         }
     }
@@ -188,8 +199,9 @@ void GDIHelper::thyke_display(string file_name, HWND hWndKO, HWND &hWnd, UINT_PT
 }
 
 /** Function to Load Image from Resources. **/
-void GDIHelper::DisplayImageFromResource(HMODULE hMod, const wchar_t* resid, const wchar_t* restype, HWND hWnd, UINT_PTR uunique_id, int xxPosition, int yyPosition, int wwidth, int hheight) {
+void GDIHelper::DisplayImageFromResource(HMODULE hMod, const wchar_t* resid, const wchar_t* restype, HWND hWnd, UINT_PTR uunique_id, int xxPosition, int yyPosition, int wwidth, int hheight, bool looped) {
 
+    isLooped = looped;
     IStream* pStream = nullptr;
     Gdiplus::Bitmap* pBmp = nullptr;
     HGLOBAL hGlobal = nullptr;

@@ -8,7 +8,8 @@ class GDIHelper {
 
 public:
 	GDIHelper();
-	void DisplayImageFromResource(HMODULE hMod, const wchar_t* resid, const wchar_t* restype, HWND hWnd, UINT_PTR unique_id, int xPosition, int yPosition, int width, int hheight);
+	// S114: looped=true ise GIF sonsuz doner (SCANNING). SetupBanner MIN_MS sonra kapatir.
+	void DisplayImageFromResource(HMODULE hMod, const wchar_t* resid, const wchar_t* restype, HWND hWnd, UINT_PTR unique_id, int xPosition, int yPosition, int width, int hheight, bool looped = false);
 	void DisplayImageFromFile(string file_location, HWND hWnd, UINT_PTR unique_id, int xPosition, int yPosition, int width, int height, bool looped);
 	
 	void thyke_display(string file_location, HWND hWndKO, HWND &hWnd, UINT_PTR unique_id, int xPosition, int yPosition, int width, int height, bool looped);

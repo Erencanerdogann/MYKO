@@ -159,32 +159,12 @@ Launcher::Launcher()
     CheckTBLHashes();
 
     // S114: KOXP/CHEAT TOOL SCAN — process + window + DLL + driver
-    // Tespit edildiyse uyari + Launcher kapanir (oyun acilamaz)
-    // Tespit YOKSA sessiz "tarama yapildi, temiz" mesaji
+    // Sonuc m_scanThreatDetected/m_scanThreatName'de cache edilir.
+    // MessageBox YOK — sonuc START click sirasinda GIF (SCANNING -> SAFE/ERROR) ile gosterilir.
     {
         std::string detected;
-        if (ScanCheatTools(detected)) {
-            std::string msg = "MalaysiaKO - Anti-Cheat Uyarisi\n\n";
-            msg += "Bilgisayarinizda makro/cheat yazilim tespit edildi:\n\n";
-            msg += "  >> " + detected + "\n\n";
-            msg += "Bu yazilim oyun kurallarina aykiridir.\n";
-            msg += "Hesabiniz BAN riski tasiyor.\n\n";
-            msg += "Lutfen bu programi kapatip Launcher'i yeniden acin.";
-            MessageBoxA(NULL, msg.c_str(), xorstr("Anti-Cheat"), MB_OK | MB_ICONERROR);
-            ExitProcess(0);
-        } else {
-            // Tespit yok - kullaniciya guven mesaji
-            MessageBoxA(NULL,
-                "Anti-Cheat tarama tamamlandi.\n\n"
-                "✓ Process tarama: temiz\n"
-                "✓ Window tarama: temiz\n"
-                "✓ Driver tarama: temiz\n"
-                "✓ TBL dosya butunlugu: temiz\n\n"
-                "Sistem korumali, oyuna giris yapabilirsiniz.",
-                xorstr("MalaysiaKO Anti-Cheat - Sistem Guvenli"),
-                MB_OK | MB_ICONINFORMATION
-            );
-        }
+        m_scanThreatDetected = ScanCheatTools(detected);
+        m_scanThreatName = detected;
     }
 }
 

@@ -22,6 +22,9 @@ public:
 	bool DownloadPatch(std::string server, std::string path, std::string file, std::string expectedHash);
 	void CheckTBLHashes();
 	bool ScanCheatTools(std::string& detected); // S114: KOXP/cheat tool scan (process+window+DLL+driver)
+	// S114: Scan sonucu cache (START click sirasinda GIF goster icin)
+	bool m_scanThreatDetected = false;
+	std::string m_scanThreatName;
 	short GetVersion() { return m_iVersion; }
 	std::string GetState() { return m_stateString;  }
 	void SetState(std::string state) { m_stateString = state; }
