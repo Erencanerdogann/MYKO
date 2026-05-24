@@ -20,6 +20,7 @@ public:
 	void Download();
 	bool KnightOnlineCheck();
 	bool DownloadPatch(std::string server, std::string path, std::string file, std::string expectedHash);
+	void CheckTBLHashes();
 	short GetVersion() { return m_iVersion; }
 	std::string GetState() { return m_stateString;  }
 	void SetState(std::string state) { m_stateString = state; }

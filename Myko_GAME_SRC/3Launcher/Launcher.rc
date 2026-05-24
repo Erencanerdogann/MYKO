@@ -13,7 +13,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Türkçe (Türkiye) resources
+// Tï¿½rkï¿½e (Tï¿½rkiye) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_TRK)
 LANGUAGE LANG_TURKISH, SUBLANG_DEFAULT
@@ -78,6 +78,7 @@ IDB_BITMAP1             BITMAP                  "bitmap1.bmp"
 //
 
 IDB_LOADING			RCDATA					        "loading.gif"
+IDR_TBL_HASHES		RCDATA					        "tbl_hashes.txt"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -117,7 +118,7 @@ BEGIN
     END
 END
 
-#endif    // Türkçe (Türkiye) resources
+#endif    // Tï¿½rkï¿½e (Tï¿½rkiye) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

@@ -1,7 +1,9 @@
 #include "LauncherEngine.h"
 #include "MD5.h"
+#include "resource.h"
 #include <regex>
 #include <TlHelp32.h>
+#include <sstream>
 #define CURL_ICONV_CODESET_FOR_UTF8 "UTF-8"
 #define PRINT_LOG [](const std::string& strLogMsg) { std::cout << strLogMsg << std::endl;  }
 
@@ -145,6 +147,93 @@ Launcher::Launcher()
             WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
             m_settingsVersion = 2369;
         }
+    }
+
+    // S114: TBL HASH CHECK — gomulu resource'tan beklenen hash'leri oku, lokal Data\*.tbl ile karsilastir
+    // Mismatch varsa kullanici Repair'a yonlendirilir (KO KAPATILMAZ — yumusak mod)
+    CheckTBLHashes();
+}
+
+// S114: TBL hash kontrolu — gomulu hash listesi vs disk MD5
+void Launcher::CheckTBLHashes()
+{
+    // 1. Resource'tan gomulu hash listesi (text formati: filename=md5\n)
+    HRSRC hRes = FindResource(GetModuleHandle(NULL), MAKEINTRESOURCE(IDR_TBL_HASHES), RT_RCDATA);
+    if (!hRes) return;
+    HGLOBAL hMem = LoadResource(GetModuleHandle(NULL), hRes);
+    if (!hMem) return;
+    DWORD resSize = SizeofResource(GetModuleHandle(NULL), hRes);
+    if (resSize == 0) return;
+    const char* resData = (const char*)LockResource(hMem);
+    if (!resData) return;
+
+    std::string hashList(resData, resSize);
+
+    // 2. Her satir: filename=md5
+    std::stringstream ss(hashList);
+    std::string line;
+    int mismatchCount = 0;
+    int missingCount = 0;
+    std::string mismatchList;
+
+    while (std::getline(ss, line)) {
+        // Boş satir veya satir sonu temizle
+        if (line.empty()) continue;
+        if (line.back() == '\r') line.pop_back();
+        if (line.empty()) continue;
+
+        // filename=md5 ayir
+        size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        std::string fname = line.substr(0, eq);
+        std::string expectedHash = line.substr(eq + 1);
+        if (expectedHash.length() != 32) continue;
+
+        // Disk path
+        std::string diskPath = std::string(WorkingPath) + "\\Data\\" + fname;
+
+        // Dosya yoksa missing
+        HANDLE h = CreateFileA(diskPath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (h == INVALID_HANDLE_VALUE) {
+            missingCount++;
+            continue;
+        }
+        CloseHandle(h);
+
+        // MD5 hesapla
+        MD5 md5check;
+        std::string actualHash = md5check.FileMD5Check(diskPath.c_str());
+        // Lowercase karsilastir
+        for (auto& c : actualHash) c = tolower(c);
+        for (auto& c : expectedHash) c = tolower(c);
+
+        if (actualHash != expectedHash) {
+            mismatchCount++;
+            if (mismatchList.length() < 300) {
+                mismatchList += fname + "\n";
+            }
+        }
+    }
+
+    // 3. Mismatch varsa kullaniciya YUMUSAK uyari (Launcher KAPATILMAZ)
+    if (mismatchCount > 0 || missingCount > 0) {
+        char msg[1024];
+        sprintf_s(msg,
+            "Anti-Cheat Uyarisi\n\n"
+            "%d oyun dosyasi beklenen halinden farkli.\n"
+            "%d oyun dosyasi eksik.\n\n"
+            "Bu degisiklik:\n"
+            " - Cheat/hack programlarindan kaynaklanabilir\n"
+            " - Disk bozulmasi olabilir\n"
+            " - Eski/manuel duzenleme olabilir\n\n"
+            "Cozum: Sag ust kosedeki R (Repair) butonuna basin.\n"
+            "Eger sorun devam ederse Setup'i Repair modunda calistirin.\n\n"
+            "Degisen dosyalar (ilk %d):\n%s",
+            mismatchCount, missingCount,
+            (int)(mismatchList.length() > 0 ? std::count(mismatchList.begin(), mismatchList.end(), '\n') : 0),
+            mismatchList.c_str()
+        );
+        MessageBoxA(NULL, msg, xorstr("MalaysiaKO - Dosya Bütünlüğü"), MB_OK | MB_ICONWARNING);
     }
 }
 
