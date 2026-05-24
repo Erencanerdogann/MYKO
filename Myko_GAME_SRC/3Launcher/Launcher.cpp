@@ -606,6 +606,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     GetCurrentDirectoryA(MAX_PATH, Engine->WorkingPath);
     thyke_t = new thyke_Test;
 
+    // S114: Periyodik KOXP tarama - her 30 saniyede bir yeniden kontrol
+    DWORD lastCheatScanTick = GetTickCount();
+    const DWORD CHEAT_SCAN_INTERVAL_MS = 30000;
+
     // Main loop
     MSG msg = { 0 };
     while (WM_QUIT != msg.message)
@@ -616,6 +620,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessage(&msg);
         }
         else {
+            // S114: 30 sn'de bir cheat scan
+            if (GetTickCount() - lastCheatScanTick >= CHEAT_SCAN_INTERVAL_MS) {
+                lastCheatScanTick = GetTickCount();
+                std::string detected;
+                if (Engine && Engine->ScanCheatTools(detected)) {
+                    std::string msg2 = "MalaysiaKO - Anti-Cheat Uyarisi\n\n";
+                    msg2 += "Cheat/makro yazilim tespit edildi:\n  >> " + detected + "\n\n";
+                    msg2 += "Launcher kapatiliyor.";
+                    MessageBoxA(NULL, msg2.c_str(), "Anti-Cheat", MB_OK | MB_ICONERROR);
+                    PostQuitMessage(0);
+                    continue;
+                }
+            }
+
 
             if (GetAsyncKeyState(VK_LBUTTON))
                 SetCursor(hCursorClick);
