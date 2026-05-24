@@ -1051,23 +1051,13 @@ void RepairClick()
     if (lastRepairState == STATE_DOWN) {
         states[9] = STATE_HOVER;
         lastRepairState = STATE_HOVER;
-        if (MessageBoxA(mainWindow, xorstr("PATCH DOSYALARI SIFIRLANACAK!\n\nTum patch yeniden indirilecek (100 MB+ ag trafigi olabilir).\nKO oyununu kapatip Launcher'i yeniden acmaniz gerekir.\n\nDevam edilsin mi?"), xorstr("Repair - Patch Sifirlama"), MB_YESNO | MB_ICONWARNING) == IDYES) {
+        if (MessageBoxA(mainWindow, xorstr("PATCH SIFIRLANACAK!\n\nTum patch yeniden indirilecek (.src/.hdr dosyalarinin UZERINE yazilir).\nLauncher yeniden acilacak.\n\nDevam edilsin mi?"), xorstr("Repair - Patch Sifirlama"), MB_YESNO | MB_ICONWARNING) == IDYES) {
             CHAR cwd[MAX_PATH];
             GetCurrentDirectoryA(MAX_PATH, cwd);
-            // 1. Server.ini Files=2369 yap (baseline)
+            // S113: SADECE Server.ini sifirla (.src/.hdr DOKUNMA — silmek UI'i komple bozar)
             WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(cwd) + "\\Server.ini").c_str());
-            // 2. Tum .src/.hdr dosyalarini sil (UI, Data, fx, Object, Item, vs)
-            const char* dirs[] = {"ui", "Data", "fx", "Object", "Item", "Snd", NULL};
-            int silinen = 0;
-            for (int i = 0; dirs[i]; i++) {
-                std::string base = std::string(cwd) + "\\" + dirs[i] + "\\";
-                for (const char* ext : {".src", ".hdr"}) {
-                    std::string p = base + dirs[i] + ext;
-                    if (DeleteFileA(p.c_str())) silinen++;
-                }
-            }
             char msg[256];
-            sprintf_s(msg, "Patch sifirlandi. %d dosya silindi.\nServer.ini = Files=2369\n\nLauncher 2 saniye sonra yeniden acilacak...", silinen);
+            sprintf_s(msg, "Patch sifirlandi.\nServer.ini = Files=2369\n\nLauncher 2 saniye sonra yeniden acilacak, tum patch'ler yeniden indirilecek.");
             MessageBoxA(mainWindow, msg, xorstr("Repair tamam"), MB_OK | MB_ICONINFORMATION);
 
             // S113: helper.bat olustur, kendini yeniden baslat

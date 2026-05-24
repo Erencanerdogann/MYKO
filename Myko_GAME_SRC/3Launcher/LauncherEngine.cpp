@@ -331,17 +331,9 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 			failCount++;
 			WritePrivateProfileStringA(xorstr("FAIL"), xorstr("count"), std::to_string(failCount).c_str(), failCountPath.c_str());
 			if (failCount >= 3) {
-				// L3: Otomatik patch reset — Repair'in sessiz versiyonu
+				// L3: Otomatik patch reset — SADECE Server.ini sifirla (.src/.hdr DOKUNMA)
 				SetState(xorstr("Auto-recovery: patch sifirlaniyor..."));
 				WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
-				const char* dirs[] = {"ui", "Data", "fx", "Object", "Item", "Snd", NULL};
-				for (int i = 0; dirs[i]; i++) {
-					std::string base = std::string(WorkingPath) + "\\" + dirs[i] + "\\";
-					for (const char* ext : {".src", ".hdr"}) {
-						std::string p = base + dirs[i] + ext;
-						DeleteFileA(p.c_str());
-					}
-				}
 				// Fail count reset
 				DeleteFileA(failCountPath.c_str());
 			}
