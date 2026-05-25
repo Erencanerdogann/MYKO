@@ -219,7 +219,7 @@ int CDBProcess::HwidCheckLogin(const std::string & hwid, const std::string & ip)
 	dbCommand->AddParameter(SQL_PARAM_INPUT, ip.c_str(), ip.length());
 	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &result);
 
-	if (!dbCommand->Execute(_T("{CALL SP_HWID_CHECK_LOGIN(?, ?, ?, ?)}"))) {
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_CHECK_LOGIN(?, ?, ?, ?)}"))) {
 		g_pMain->ReportSQLError(conn->GetError());
 		return 0;  // DB hata -> guvenli yon
 	}

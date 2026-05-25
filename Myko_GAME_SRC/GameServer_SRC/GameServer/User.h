@@ -1646,6 +1646,8 @@ public:
 	COMMAND_HANDLER(HandleIPBanCommand);
 	COMMAND_HANDLER(HandleIPUnbanCommand);
 	COMMAND_HANDLER(HandleBanListCommand);
+	COMMAND_HANDLER(HandleHwidBanCommand);   // S114 K3 FAZ 5
+	COMMAND_HANDLER(HandleHwidUnbanCommand); // S114 K3 FAZ 5
 
 	COMMAND_HANDLER(HandleCountZoneCommand);
 	COMMAND_HANDLER(HandleCountLevelCommand);

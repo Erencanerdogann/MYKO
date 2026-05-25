@@ -196,6 +196,9 @@ public:
 	int8 CheckBanStatus(std::string & strAccountID, std::string & strIPAddress);
 	int8 AddBanToDB(std::string strAccountID, std::string strIPAddress, uint8 nBanType, std::string strReason, std::string strBannedBy, int nDurationMinutes);
 	int8 RemoveBanFromDB(std::string strAccountID, std::string strIPAddress, std::string strRemovedBy);
+	// S114 K3 FAZ 5: HWID Ban — KO_LOG.dbo SP'leri
+	int HwidBanByAccount(const std::string& account, const std::string& reason, const std::string& gm);
+	int HwidUnban(const std::string& hwid);
 	uint8 UpdateCharacterName(std::string & strAccountID, std::string & strUserID, std::string & strNewUserID);
 	uint8 UpdateCharacterClanName(std::string strClanID, std::string strNewClanID, CUser* puser);
 	ServerUniteSelectingCharNameErrorOpcode UpdateSelectingCharacterName(std::string & strAccountID, std::string & strUserID, std::string & strNewUserID);
