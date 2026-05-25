@@ -22,6 +22,9 @@ public:
 	bool DownloadPatch(std::string server, std::string path, std::string file, std::string expectedHash);
 	void CheckTBLHashes();
 	bool ScanCheatTools(std::string& detected); // S114: KOXP/cheat tool scan (process+window+DLL+driver)
+	// S114 K3: HWID_A hesap (HDD volume + MAC -> MD5). Login pakete eklenir, server ban listesine bakar.
+	std::string ComputeHwidA();
+	std::string m_hwidA;  // Cache (her acilista 1 kez hesap)
 	// S114: Scan sonucu cache (START click sirasinda GIF goster icin)
 	bool m_scanThreatDetected = false;
 	std::string m_scanThreatName;

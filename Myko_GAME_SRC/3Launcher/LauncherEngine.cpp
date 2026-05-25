@@ -6,6 +6,7 @@
 #include <sstream>
 #include <Psapi.h>
 #include <Shlwapi.h>
+#include <iphlpapi.h>  // S114 K3: GetAdaptersInfo (HWID MAC)
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "Shlwapi.lib")
@@ -94,6 +95,9 @@ Launcher::Launcher()
     m_bPatchesGot = false;
     m_iVersion = 0;
     m_stateString = xorstr("Checking version and preparing to launch game.");
+
+    // S114 K3: HWID_A hesap (1 kez, login pakete eklenecek)
+    ComputeHwidA();
 
     const size_t IPSize = 256;
     char* sIP = new char[IPSize];
@@ -287,6 +291,53 @@ bool Launcher::ScanCheatTools(std::string& detected)
     }
 
     return false;
+}
+
+// =============================================================
+// S114 K3: HWID_A hesap (HDD volume serial + MAC adresi -> MD5)
+// 1 kez hesaplanir (m_hwidA cache), login paketinde server'a yollanir.
+// Server TB_HWID_BANS_A tablosunda check eder, banli ise login reddedilir.
+// =============================================================
+std::string Launcher::ComputeHwidA()
+{
+    if (!m_hwidA.empty()) return m_hwidA;  // cache
+
+    // 1) C:\ surucusunun volume serial numarasi
+    char volBuf[16] = {0};
+    DWORD volSerial = 0;
+    if (GetVolumeInformationA("C:\\", NULL, 0, &volSerial, NULL, NULL, NULL, 0)) {
+        sprintf_s(volBuf, "%08X", volSerial);
+    }
+
+    // 2) Birinci network adapter MAC adresi
+    char macBuf[32] = {0};
+    IP_ADAPTER_INFO* pAdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
+    ULONG bufLen = sizeof(IP_ADAPTER_INFO);
+    if (GetAdaptersInfo(pAdapterInfo, &bufLen) == ERROR_BUFFER_OVERFLOW) {
+        free(pAdapterInfo);
+        pAdapterInfo = (IP_ADAPTER_INFO*)malloc(bufLen);
+    }
+    if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &bufLen) == NO_ERROR) {
+        IP_ADAPTER_INFO* p = pAdapterInfo;
+        // Ilk fiziksel adapter (loopback/virtual atla)
+        while (p) {
+            if (p->Type != MIB_IF_TYPE_LOOPBACK && p->AddressLength == 6) {
+                sprintf_s(macBuf, "%02X%02X%02X%02X%02X%02X",
+                    p->Address[0], p->Address[1], p->Address[2],
+                    p->Address[3], p->Address[4], p->Address[5]);
+                break;
+            }
+            p = p->Next;
+        }
+    }
+    if (pAdapterInfo) free(pAdapterInfo);
+
+    // 3) Birlestir + MD5 (salt eklenir, brute force engeli)
+    std::string combined = std::string(volBuf) + "|" + macBuf + "|MYKO_K3_SALT";
+    MD5 md5;
+    m_hwidA = std::string(md5.digestMemory((BYTE*)combined.c_str(), (int)combined.size()));
+
+    return m_hwidA;
 }
 
 // S114: TBL hash kontrolu — gomulu hash listesi vs disk MD5
