@@ -321,6 +321,8 @@ void LoginSession::HandleLogin(Packet& pkt)
 				con_yellow(); printf("[HWID_FORCE_LOG] No recent HWID for IP=%s account=%s (mode=1, would be kicked in mode 2)\n",
 					clientIP.c_str(), account.c_str()); con_white();
 				LOG_LOGIN("[HWID_FORCE_LOG] No HWID IP=%s Account=%s", clientIP.c_str(), account.c_str());
+				// DB log (TB_HWID_FORCE_LOG)
+				g_pMain->m_DBProcess.HwidForceLog(account, clientIP, 1, "LOG", "NO_HWID_REPORT");
 			}
 			else
 			{
@@ -328,6 +330,8 @@ void LoginSession::HandleLogin(Packet& pkt)
 				con_red(); printf("[HWID_FORCE_KICK] No recent HWID for IP=%s account=%s (mode=2)\n",
 					clientIP.c_str(), account.c_str()); con_white();
 				LOG_LOGIN("[HWID_FORCE_KICK] IP=%s Account=%s rejected", clientIP.c_str(), account.c_str());
+				// DB log (TB_HWID_FORCE_LOG)
+				g_pMain->m_DBProcess.HwidForceLog(account, clientIP, 2, "KICK", "NO_HWID_REPORT");
 				Packet banResult(pkt.GetOpcode());
 				banResult << uint16(0) << uint8(0x04); // AUTH_BANNED
 				Send(&banResult);

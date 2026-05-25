@@ -229,6 +229,39 @@ int CDBProcess::HwidLinkAccount(const std::string & account, const std::string &
 	return updated;
 }
 
+// S115 HWID ZORLA: Bizim Launcher haricinde (KOXP launcher / hack) login denemesini logla
+// Mode 1 = LOG only, Mode 2 = KICK
+int CDBProcess::HwidForceLog(const std::string & account, const std::string & ip,
+                             uint8 mode, const std::string & action,
+                             const std::string & reason)
+{
+	try {
+		OdbcConnection* conn = GetConnection();
+		if (conn == nullptr) return 0;
+		unique_ptr<OdbcCommand> dbCommand(conn->CreateCommand());
+		if (dbCommand.get() == nullptr) return 0;
+
+		std::string acc = account.empty() ? std::string("_unknown_") : account;
+		std::string i   = ip.empty() ? std::string("0.0.0.0") : ip;
+		std::string act = action;
+		std::string rsn = reason;
+		int modeInt = mode;
+
+		dbCommand->AddParameter(SQL_PARAM_INPUT, acc.c_str(), acc.length());
+		dbCommand->AddParameter(SQL_PARAM_INPUT, i.c_str(), i.length());
+		dbCommand->AddParameter(SQL_PARAM_INPUT, &modeInt);
+		dbCommand->AddParameter(SQL_PARAM_INPUT, act.c_str(), act.length());
+		dbCommand->AddParameter(SQL_PARAM_INPUT, rsn.c_str(), rsn.length());
+
+		if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_FORCE_LOG_INSERT(?, ?, ?, ?, ?)}"))) {
+			return 0;  // sessiz fail
+		}
+	} catch (...) {
+		return 0;
+	}
+	return 1;
+}
+
 // S114 K3 FAZ 4: HWID check (Launcher LS_HWID_REPORT 0x04)
 // account="" (henuz login olmadi, sadece Launcher HWID rapor ediyor)
 // Returns 0=OK + log kayit, 1=BANNED

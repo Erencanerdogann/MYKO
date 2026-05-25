@@ -24,6 +24,10 @@ public:
 	int HwidCheckLogin(const std::string & hwid, const std::string & ip);
 	// S114 K3 FAZ 5: KO login basarisi sonrasi _pending_ HWID kaydini account ile esleStir
 	int HwidLinkAccount(const std::string & account, const std::string & ip);
+	// S115 HWID ZORLA: Bizim Launcher haricinde login denemesi yapani log'la
+	// action: "LOG" (mode 1) / "KICK" (mode 2). reason: "NO_HWID_REPORT" vb
+	int HwidForceLog(const std::string & account, const std::string & ip,
+	                 uint8 mode, const std::string & action, const std::string & reason);
 
 	CDBProcess();
 	~CDBProcess();
