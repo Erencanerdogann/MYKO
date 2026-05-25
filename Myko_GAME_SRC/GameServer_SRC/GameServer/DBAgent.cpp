@@ -1796,46 +1796,6 @@ int8 CDBAgent::AddBanToDB(std::string strAccountID, std::string strIPAddress, ui
 	return bRet;
 }
 
-// S114 K3 FAZ 5: HWID Ban — KO_LOG.dbo.SP_HWID_BAN_BY_ACCOUNT
-// Returns: 0=OK, 1=NO_LOG_FOUND, 2=ALREADY_BANNED, -1=DB error
-int CDBAgent::HwidBanByAccount(const std::string& account, const std::string& reason, const std::string& gm)
-{
-	int result = -1;
-	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
-	if (dbCommand.get() == nullptr) return -1;
-
-	dbCommand->AddParameter(SQL_PARAM_INPUT, account.c_str(), account.length());
-	dbCommand->AddParameter(SQL_PARAM_INPUT, reason.c_str(), reason.length());
-	dbCommand->AddParameter(SQL_PARAM_INPUT, gm.c_str(), gm.length());
-	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &result);
-
-	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_BAN_BY_ACCOUNT(?, ?, ?, ?)}"))) {
-		ReportSQLError(GetGameDB()->GetError());
-		return -1;
-	}
-	while (dbCommand->MoveNext()) {}
-	return result;
-}
-
-// S114 K3 FAZ 5: HWID Unban — KO_LOG.dbo.SP_HWID_UNBAN
-// Returns: silinen satir sayisi (0=yoktu)
-int CDBAgent::HwidUnban(const std::string& hwid)
-{
-	int rows = 0;
-	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
-	if (dbCommand.get() == nullptr) return -1;
-
-	dbCommand->AddParameter(SQL_PARAM_INPUT, hwid.c_str(), hwid.length());
-	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &rows);
-
-	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_UNBAN(?, ?)}"))) {
-		ReportSQLError(GetGameDB()->GetError());
-		return -1;
-	}
-	while (dbCommand->MoveNext()) {}
-	return rows;
-}
-
 int8 CDBAgent::RemoveBanFromDB(std::string strAccountID, std::string strIPAddress, std::string strRemovedBy)
 {
 	int8 bRet = 0;
