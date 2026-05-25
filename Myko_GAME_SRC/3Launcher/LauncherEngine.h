@@ -31,6 +31,13 @@ public:
 	bool DownloadUpdateFile(const std::string& expectedMd5, size_t expectedSize,
 	                        std::string& outTempPath);
 	bool LaunchUpdaterAndExit(const std::string& tempNewExePath);
+
+	// S115 CRASH REPORTER: dump uret + sunucuya yolla
+	static void InstallCrashHandler();
+	static bool UploadCrashDump(const std::string& dumpPath,
+	                            const std::string& exeName,
+	                            const std::string& account = "",
+	                            const std::string& version = "");
 	bool HandlePacket(Packet& pkt);
 	void Update();
 	void Download();

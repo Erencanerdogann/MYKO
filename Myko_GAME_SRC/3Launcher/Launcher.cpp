@@ -413,6 +413,11 @@ HBITMAP hBMP;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    // S115 CRASH REPORTER: Unhandled exception filter kur. Launcher.exe crash olursa
+    // dump uretip sunucuya yollar. Diger init'lerden ONCE kurulmali ki erken
+    // crash'leri yakalasin.
+    Launcher::InstallCrashHandler();
+
     // S113: DPI scaling kapali — yuksek DPI ekranlarda Windows otomatik scaling kapatilir, ham 945x580 cizilir
     SetProcessDPIAware();
 

@@ -10,10 +10,12 @@
 #include <thread>      // S114 K3 FIX: async HWID
 #include <winhttp.h>   // S115 AUTO-UPDATE: HTTP download
 #include <fstream>     // S115 AUTO-UPDATE: dosya yazma
+#include <dbghelp.h>   // S115 CRASH REPORTER: MiniDumpWriteDump
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "winhttp.lib")  // S115 AUTO-UPDATE
+#pragma comment(lib, "dbghelp.lib")  // S115 CRASH REPORTER
 #define CURL_ICONV_CODESET_FOR_UTF8 "UTF-8"
 #define PRINT_LOG [](const std::string& strLogMsg) { std::cout << strLogMsg << std::endl;  }
 
@@ -1013,6 +1015,168 @@ bool Launcher::LaunchUpdaterAndExit(const std::string& tempNewExePath)
     // Launcher'i sonlandir - helper devraldi
     ExitProcess(0);
     return true;
+}
+
+// ============================================================
+// S115 CRASH REPORTER
+// ============================================================
+// Crash anında MiniDumpWriteDump ile dump uret, sunucuya HTTP POST.
+// Sunucu: nginx -> PHP /crash_upload.php -> disk + DB
+// ============================================================
+
+// Server IP'sini al (Launcher kapanmis olabilir, Server.ini'den oku)
+static std::string GetServerIPForCrash()
+{
+    char path[MAX_PATH] = { 0 };
+    GetCurrentDirectoryA(MAX_PATH, path);
+    std::string iniPath = std::string(path) + "\\Server.ini";
+    char buf[128] = { 0 };
+    GetPrivateProfileStringA("Server", "IP0", "104.238.23.99", buf, 128, iniPath.c_str());
+    return std::string(buf);
+}
+
+bool Launcher::UploadCrashDump(const std::string& dumpPath,
+                               const std::string& exeName,
+                               const std::string& account,
+                               const std::string& version)
+{
+    // Dump dosyasini oku
+    std::ifstream ifs(dumpPath, std::ios::binary | std::ios::ate);
+    if (!ifs) return false;
+    std::streamsize sz = ifs.tellg();
+    if (sz <= 0 || sz > 2 * 1024 * 1024) return false; // boyut limit
+    ifs.seekg(0, std::ios::beg);
+    std::vector<char> fileData((size_t)sz);
+    if (!ifs.read(fileData.data(), sz)) return false;
+    ifs.close();
+
+    // OS versiyon
+    char osBuf[128] = { 0 };
+    OSVERSIONINFOA osvi = { 0 };
+    osvi.dwOSVersionInfoSize = sizeof(osvi);
+#pragma warning(push)
+#pragma warning(disable: 4996) // GetVersionEx deprecated
+    if (GetVersionExA(&osvi))
+    {
+        snprintf(osBuf, 128, "Windows %lu.%lu build %lu",
+                 osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
+    }
+#pragma warning(pop)
+
+    // Multipart form-data hazirla
+    std::string boundary = "----MalaysiaKOCrashBoundary7d8f3a";
+    std::string body;
+    body.reserve(fileData.size() + 1024);
+
+    auto addField = [&](const std::string& name, const std::string& val) {
+        body += "--" + boundary + "\r\n";
+        body += "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n";
+        body += val + "\r\n";
+    };
+
+    addField("exe_name", exeName);
+    addField("account",  account);
+    addField("version",  version);
+    addField("os",       osBuf);
+
+    // Dosya field
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"file\"; filename=\"crash.dmp\"\r\n";
+    body += "Content-Type: application/octet-stream\r\n\r\n";
+    body.append(fileData.data(), fileData.size());
+    body += "\r\n--" + boundary + "--\r\n";
+
+    // HTTP POST
+    std::string serverIP = GetServerIPForCrash();
+    if (serverIP.empty()) return false;
+    std::wstring wHost(serverIP.begin(), serverIP.end());
+
+    HINTERNET hSession = WinHttpOpen(L"MalaysiaKO-Launcher-CrashReporter/1.0",
+        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession, 3000, 3000, 5000, 5000);
+
+    HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(), 80, 0);
+    if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
+
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST",
+        L"/crash_upload.php", NULL, WINHTTP_NO_REFERER,
+        WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+    if (!hRequest) {
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return false;
+    }
+
+    std::wstring wHeader = L"Content-Type: multipart/form-data; boundary=";
+    wHeader.append(boundary.begin(), boundary.end());
+
+    BOOL sendOk = WinHttpSendRequest(hRequest, wHeader.c_str(),
+        (DWORD)-1, (LPVOID)body.data(), (DWORD)body.size(),
+        (DWORD)body.size(), 0);
+
+    bool success = false;
+    if (sendOk && WinHttpReceiveResponse(hRequest, NULL))
+    {
+        DWORD status = 0, statusSize = sizeof(status);
+        if (WinHttpQueryHeaders(hRequest,
+                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize,
+                WINHTTP_NO_HEADER_INDEX))
+        {
+            success = (status == 200);
+        }
+    }
+
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    return success;
+}
+
+// Unhandled exception handler - SetUnhandledExceptionFilter ile kurulur
+static LONG WINAPI LauncherCrashFilter(EXCEPTION_POINTERS* ep)
+{
+    // Dump path: %TEMP%\malaysiako_launcher_crash_<pid>_<tick>.dmp
+    char tempDir[MAX_PATH] = { 0 };
+    GetTempPathA(MAX_PATH, tempDir);
+    char dumpPath[MAX_PATH] = { 0 };
+    snprintf(dumpPath, MAX_PATH, "%smalaysiako_launcher_crash_%lu_%lu.dmp",
+             tempDir, GetCurrentProcessId(), GetTickCount());
+
+    HANDLE hFile = CreateFileA(dumpPath, GENERIC_WRITE, 0, NULL,
+                               CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE)
+    {
+        MINIDUMP_EXCEPTION_INFORMATION mei = { 0 };
+        mei.ThreadId = GetCurrentThreadId();
+        mei.ExceptionPointers = ep;
+        mei.ClientPointers = FALSE;
+
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
+                          hFile, MiniDumpNormal,
+                          ep ? &mei : NULL, NULL, NULL);
+        CloseHandle(hFile);
+
+        // Account ve version Engine'den okumayi dene (varsa)
+        std::string account, version;
+        // Engine objesi crash sirasinda erisilebilir olmayabilir -> try/catch
+        try {
+            if (Engine) {
+                version = std::to_string(LAUNCHER_BUILD_VERSION_MAJOR) + "." +
+                          std::to_string(LAUNCHER_BUILD_VERSION_MINOR);
+            }
+        } catch (...) { /* gec */ }
+
+        // Upload (5sn timeout, fail olursa gec)
+        Launcher::UploadCrashDump(dumpPath, "Launcher.exe", account, version);
+    }
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+void Launcher::InstallCrashHandler()
+{
+    SetUnhandledExceptionFilter(LauncherCrashFilter);
 }
 
 Launcher::~Launcher()
