@@ -9,8 +9,8 @@
 
 // S115 AUTO-UPDATE: Bu Launcher'in build versiyonu. Her yeni build'de ARTIR.
 // Sunucudaki version.txt'de bu degerden buyuk varsa, Launcher otomatik gunceller.
-#define LAUNCHER_BUILD_VERSION_MAJOR 1
-#define LAUNCHER_BUILD_VERSION_MINOR 6
+#define LAUNCHER_BUILD_VERSION_MAJOR 2
+#define LAUNCHER_BUILD_VERSION_MINOR 3
 
 class Launcher
 {

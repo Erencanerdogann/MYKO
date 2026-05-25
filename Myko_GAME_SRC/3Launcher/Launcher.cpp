@@ -889,7 +889,12 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool ask
     g_askConfirm = askConfirm;
     g_confirmResult = -1;
 
-    ShowWindow(mainWindow, FALSE);
+    // S115 FIX: Compact GIF + compact-sonu SAFE icin ana pencere acik kalir.
+    // Diger GIF'ler (START akisindaki SCANNING/SAFE/ERROR) icin ana pencere gizlenir (eski davranis).
+    extern volatile bool g_compactSafeShowing;
+    if (gifResId != IDB_LOADING_COMPACT && !g_compactSafeShowing) {
+        ShowWindow(mainWindow, FALSE);
+    }
 
     // Initialize GDI+.
     GdiplusStartupInput gdiplusStartupInput;
@@ -951,12 +956,19 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool ask
     // askConfirm modunda kullanici tus basana kadar bekler (yuksek timeout)
     const DWORD MIN_SPLASH_MS = askConfirm ? 600000 : minMs;
 
+    // S115 FIX: Compact GIF icin dinamik bitis — g_compactRunning false olunca cik.
+    // ui.src 1+ GB olabilir, Compact 2-3 dakika surer. Sabit timeout yetmez.
+    // Compact bittiginde arka thread g_compactRunning=false yapar, banner kapanir.
+    extern volatile bool g_compactRunning;
+    bool waitsCompact = (gifResId == IDB_LOADING_COMPACT);
+
     MSG msg;
     BOOL bRet;
     ZeroMemory(&msg, sizeof(msg));
 
     while (true) {
-        if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
+        bool hadMsg = PeekMessage(&msg, 0, 0, 0, PM_REMOVE) != 0;
+        if (hadMsg) {
             if (msg.message == WM_QUIT) {
                 // Min sure dolmadiysa bekle
                 DWORD elapsed = GetTickCount() - startTick;
@@ -969,10 +981,22 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool ask
             DispatchMessage(&msg);
         } else {
             Sleep(10);  // CPU yormasin
-            // Min sure dolduysa otomatik cik
-            if (GetTickCount() - startTick >= MIN_SPLASH_MS) {
-                PostQuitMessage(0);
-            }
+        }
+
+        // S115 FIX v3: Kontrol HER LOOP iterasyonunda (mesaj olsa da olmasa da).
+        // GIF animasyon timer mesajlari surekli geldigi icin else dalinda kontrol
+        // ASLA calismiyordu. Bu blok if/else'den BAGIMSIZ tetiklenir.
+        DWORD elapsed = GetTickCount() - startTick;
+
+        // Compact tamamlandiysa minimum 2sn beklet, sonra cik (DestroyWindow ile zorla)
+        if (waitsCompact && !g_compactRunning && elapsed >= 2000) {
+            if (IsWindow(hwnd)) ::DestroyWindow(hwnd);  // WM_QUIT yerine direkt yok et
+            break;
+        }
+        // Min sure dolduysa otomatik cik (max guvenlik)
+        if (elapsed >= MIN_SPLASH_MS) {
+            if (IsWindow(hwnd)) ::DestroyWindow(hwnd);
+            break;
         }
     }
 
@@ -980,6 +1004,15 @@ end:
     if (IsWindow(hwnd)) ::DestroyWindow(hwnd);
     ::UnregisterClass(wcex.lpszClassName, wcex.hInstance);
     GdiplusShutdown(gdiplusToken); //dont forget to shut down the gdi+ token.
+
+    // S115 FIX v3: Compact GIF veya compact-sonu SAFE kapandiktan sonra ana Launcher
+    // penceresini one al. Compact akisi Launcher'i kapatmaz.
+    if ((gifResId == IDB_LOADING_COMPACT || g_compactSafeShowing) && IsWindow(mainWindow)) {
+        ShowWindow(mainWindow, SW_SHOW);
+        SetForegroundWindow(mainWindow);
+        SetActiveWindow(mainWindow);
+        ::InvalidateRect(mainWindow, NULL, TRUE);
+    }
 
     // S114 K3: askConfirm modu — Y/N sonucu dondur
     if (askConfirm) {
@@ -1099,42 +1132,59 @@ static void CompactProgress(int percent)
     }
 }
 
-static bool g_compactRunning = false;
+volatile bool g_compactRunning = false;  // S115 FIX: SetupBanner ile paylasilir (volatile - thread bilgisi cache'lemesin)
+volatile bool g_compactSafeShowing = false;  // S115 FIX: SAFE GIF compact-sonu modu (ShowWindow ve endAction'i atla)
 
 // S113: Compact butonu click — UI .src/.hdr sismeyi temizler (ARKA THREAD)
+// S115 FIX v2:
+//   - MessageBox YOK (ana thread blocking + D3D race riski)
+//   - SetupBanner async thread (ana D3D loop bloklanmasin, banner ayri thread)
+//   - GIF compact bitene kadar dinamik acik (g_compactRunning flag)
+//   - Eski S113 kodunun calisma mantiginda + GIF eklenmis hali
 void CompactClick()
 {
     if (lastCompactState == STATE_DOWN && !g_compactRunning) {
         states[7] = STATE_HOVER;
         lastCompactState = STATE_HOVER;
-        // S114 K3: MessageBox kaldirildi — direkt compact + turuncu GIF
-        {
-            g_compactRunning = true;
-            // Compact arka thread'de calisir
-            std::thread([](){
-                CHDRSystem* compactor = new CHDRSystem;
-                compactor->m_progressCallback = CompactProgress;
-                CHAR cwd[MAX_PATH];
-                GetCurrentDirectoryA(MAX_PATH, cwd);
-                DWORD sizeBeforeLo = 0, sizeBeforeHi = 0;
-                HANDLE hSrc = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-                if (hSrc != INVALID_HANDLE_VALUE) { sizeBeforeLo = GetFileSize(hSrc, &sizeBeforeHi); CloseHandle(hSrc); }
-                CompactProgress(0);
-                compactor->Compact("ui");
-                delete compactor;
-                DWORD sizeAfterLo = 0, sizeAfterHi = 0;
-                HANDLE hSrc2 = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-                if (hSrc2 != INVALID_HANDLE_VALUE) { sizeAfterLo = GetFileSize(hSrc2, &sizeAfterHi); CloseHandle(hSrc2); }
-                CompactProgress(100);
-                if (Engine) Engine->SetState(xorstr("Compact tamamlandi."));
-                char msg[256];
-                sprintf_s(msg, "Once: %u MB\nSonra: %u MB", sizeBeforeLo / (1024*1024), sizeAfterLo / (1024*1024));
-                MessageBoxA(mainWindow, msg, xorstr("Compact tamamlandi"), MB_OK | MB_ICONINFORMATION);
-                g_compactRunning = false;
-            }).detach();
-            // S114 K3: Turuncu COMPACT GIF (10 sn sirasinda gosterilir, arka thread devam eder)
-            thyke_t->SetupBanner(IDB_LOADING_COMPACT, 10000, false);
-        }
+
+        g_compactRunning = true;
+        if (Engine) Engine->SetState(xorstr("Compact basliyor (2-3 dk surebilir)..."));
+
+        // Thread A — Compact (arka thread)
+        std::thread([](){
+            CHDRSystem* compactor = new CHDRSystem;
+            compactor->m_progressCallback = CompactProgress;
+            CHAR cwd[MAX_PATH];
+            GetCurrentDirectoryA(MAX_PATH, cwd);
+            DWORD sizeBeforeLo = 0, sizeBeforeHi = 0;
+            HANDLE hSrc = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hSrc != INVALID_HANDLE_VALUE) { sizeBeforeLo = GetFileSize(hSrc, &sizeBeforeHi); CloseHandle(hSrc); }
+            CompactProgress(0);
+            compactor->Compact("ui");
+            delete compactor;
+            DWORD sizeAfterLo = 0, sizeAfterHi = 0;
+            HANDLE hSrc2 = CreateFileA((std::string(cwd) + "\\ui\\ui.src").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hSrc2 != INVALID_HANDLE_VALUE) { sizeAfterLo = GetFileSize(hSrc2, &sizeAfterHi); CloseHandle(hSrc2); }
+            CompactProgress(100);
+            char msg[256];
+            sprintf_s(msg, "Compact bitti. Once: %u MB, Sonra: %u MB",
+                      sizeBeforeLo / (1024*1024), sizeAfterLo / (1024*1024));
+            if (Engine) Engine->SetState(msg);
+            g_compactRunning = false;
+        }).detach();
+
+        // Thread B — Banner GIF (AYRI thread, ana D3D loop bloklanmaz)
+        // S115 FIX: 2 asama
+        //   1) Compact suresince turuncu COMPACT GIF (g_compactRunning false olunca cikar)
+        //   2) Compact bitti — yesil SAFE GIF 2sn "basarili" feedback
+        // launchGame=false: SAFE sonunda KO baslatmaz. compactDone bayragi ile
+        // SAFE icinde ShowWindow(mainWindow, FALSE) atlanir + ExitProcess olmaz.
+        std::thread([](){
+            thyke_t->SetupBanner(IDB_LOADING_COMPACT, 300000, false);
+            g_compactSafeShowing = true;  // SAFE GIF compact sonrasi modu
+            thyke_t->SetupBanner(IDB_LOADING_SAFE, 2000, false);
+            g_compactSafeShowing = false;
+        }).detach();
     }
 }
 

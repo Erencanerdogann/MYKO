@@ -100,7 +100,11 @@ Launcher::Launcher()
     m_bVersionGot = false;
     m_bPatchesGot = false;
     m_iVersion = 0;
-    m_stateString = xorstr("Checking version and preparing to launch game.");
+    // S115: Launcher kendi build versiyonu state'e eklendi (gozle gorulebilir surum farki icin)
+    char verBuf[64];
+    snprintf(verBuf, sizeof(verBuf), "[Launcher v%d.%d] Checking version...",
+             LAUNCHER_BUILD_VERSION_MAJOR, LAUNCHER_BUILD_VERSION_MINOR);
+    m_stateString = verBuf;
 
     // S114 K3 FIX: HWID hesabi ASYNC thread'de (GetAdaptersInfo yavas — Launcher UI bloklamasin)
     std::thread([this]() { this->ComputeHwidA(); }).detach();
