@@ -203,6 +203,30 @@ bool CDBProcess::LoadUserCountList()
 	return true;
 }
 
+// S114 K3 FAZ 4: HWID check (Launcher LS_HWID_REPORT 0x04)
+// account="" (henuz login olmadi, sadece Launcher HWID rapor ediyor)
+// Returns 0=OK + log kayit, 1=BANNED
+int CDBProcess::HwidCheckLogin(const std::string & hwid, const std::string & ip)
+{
+	int result = 0;
+	OdbcConnection* conn = GetConnection();
+	unique_ptr<OdbcCommand> dbCommand(conn->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;  // DB hata -> guvenli yon, log gec (oyun kapanmasin)
+
+	std::string empty_acc = "";  // Launcher henuz hangi account bilemiyor
+	dbCommand->AddParameter(SQL_PARAM_INPUT, empty_acc.c_str(), empty_acc.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, hwid.c_str(), hwid.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, ip.c_str(), ip.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &result);
+
+	if (!dbCommand->Execute(_T("{CALL SP_HWID_CHECK_LOGIN(?, ?, ?, ?)}"))) {
+		g_pMain->ReportSQLError(conn->GetError());
+		return 0;  // DB hata -> guvenli yon
+	}
+
+	return result;
+}
+
 uint16 CDBProcess::AccountLogin(string & strAccountID, string & strPasswd, std::string & OTP_Key)
 {
 	uint16 result = 2;

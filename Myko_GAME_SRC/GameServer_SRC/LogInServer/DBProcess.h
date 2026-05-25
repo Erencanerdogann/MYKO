@@ -19,6 +19,9 @@ public:
 	uint16 AccountLoginOTP(std::string & strAccountID, std::string & strPasswd);
 	int16 AccountPremium(std::string & strAccountID);
 	std::string GetConnectedServerIP(std::string & strAccountID);
+	// S114 K3 FAZ 4: HWID ban check (Launcher 0x4 paket icin)
+	// Returns: 0=OK, 1=BANNED
+	int HwidCheckLogin(const std::string & hwid, const std::string & ip);
 
 	CDBProcess();
 	~CDBProcess();

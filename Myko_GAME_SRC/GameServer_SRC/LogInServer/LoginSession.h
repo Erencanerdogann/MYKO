@@ -14,6 +14,7 @@ public:
 	void HandlePatches(Packet & pkt);
 	void HandleLogin(Packet & pkt);
 	void HandleLauncherPing(Packet & pkt);
+	void HandleHwidReport(Packet & pkt);  // S114 K3 FAZ 4: HWID ban check
 	void HandleServerlist(Packet & pkt);
 	void HandleNews(Packet & pkt);
 	void HandleSetEncryptionPublicKey(Packet & pkt);
@@ -31,6 +32,7 @@ enum LogonOpcodes
 	LS_VERSION_REQ				= 0x01,
 	LS_DOWNLOADINFO_REQ			= 0x02,
 	LS_KOREAKOLAUNCHER_PING		= 0x03,
+	LS_HWID_REPORT				= 0x04,  // S114 K3 FAZ 4 (Launcher -> server: hwid check)
 	LS_CRYPTION					= 0xF2,
 	LS_LOGIN_REQ				= 0xF3,
 	LS_MGAME_LOGIN				= 0xF4,

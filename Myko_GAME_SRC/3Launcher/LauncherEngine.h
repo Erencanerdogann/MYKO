@@ -15,6 +15,7 @@ public:
 	void RequestVersion();
 	void RequestPatch();
 	void RequestNotices();
+	void ReportHwid();  // S114 K3 FAZ 4: HWID'i server'a yolla, ban kontrolu
 	bool HandlePacket(Packet& pkt);
 	void Update();
 	void Download();

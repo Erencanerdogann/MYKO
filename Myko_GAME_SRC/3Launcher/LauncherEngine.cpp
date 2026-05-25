@@ -438,6 +438,24 @@ void Launcher::RequestPatch()
     mSocket->Send(byBuffs, iOffset);
 }
 
+// S114 K3 FAZ 4: HWID_REPORT paketi (opcode 0x4)
+// Format: [0x4][hwid_string]
+// Server: TB_HWID_BANS_A check -> 0x84 cevap (0=OK, 1=BANNED)
+void Launcher::ReportHwid()
+{
+    if (Engine->mSocket->GetSocket() == (void*)INVALID_SOCKET)
+        return;
+
+    std::string hwid = ComputeHwidA();
+    if (hwid.empty()) return;
+
+    int iOffset = 0;
+    uint8_t byBuffs[64];  // 1 opcode + 2 len + 32 hwid + buffer
+    CAPISocket::MP_AddByte(byBuffs, iOffset, 0x4);
+    CAPISocket::MP_AddString(byBuffs, iOffset, hwid);
+    mSocket->Send(byBuffs, iOffset);
+}
+
 void Launcher::RequestNotices()
 {
     if (Engine->mSocket->GetSocket() == (void*)INVALID_SOCKET)
@@ -460,6 +478,7 @@ bool Launcher::Start()
     }
 
     RequestVersion();
+    ReportHwid();  // S114 K3 FAZ 4: HWID rapor + ban check
 
     while (true)
     {
@@ -698,6 +717,24 @@ bool Launcher::HandlePacket(Packet& pkt)
             m_lNotices.push_back(notice);
         }
         std::reverse(m_lNotices.begin(), m_lNotices.end());
+    }
+    break;
+    // S114 K3 FAZ 4: HWID_REPORT cevap (opcode 0x84)
+    // 0=OK (devam), 1=BANNED (Launcher kapanir)
+    case 0x84:
+    {
+        uint8 result = 0;
+        pkt >> result;
+        if (result == 1) {
+            MessageBoxA(NULL,
+                "MalaysiaKO Anti-Cheat\n\n"
+                "Bu bilgisayar oyuna giris yapamaz.\n"
+                "Daha onceki cheat/makro kullanim sebebiyle PC banlanmis.\n\n"
+                "Itiraz icin Discord'a yaz: discord.gg/malaysiako",
+                "MalaysiaKO - PC Banli",
+                MB_OK | MB_ICONERROR);
+            ExitProcess(0);
+        }
     }
     break;
 	default:

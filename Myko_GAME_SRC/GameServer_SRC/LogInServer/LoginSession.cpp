@@ -67,6 +67,7 @@ void InitPacketHandlers(void)
 	memset(&PacketHandlers, 0, sizeof(LSPacketHandler) * NUM_LS_OPCODES);
 	PacketHandlers[LS_VERSION_REQ]			= &LoginSession::HandleVersion;
 	PacketHandlers[LS_DOWNLOADINFO_REQ]		= &LoginSession::HandlePatches;
+	PacketHandlers[LS_HWID_REPORT]			= &LoginSession::HandleHwidReport;  // S114 K3 FAZ 4
 	PacketHandlers[LS_LOGIN_REQ]			= &LoginSession::HandleLogin;
 	PacketHandlers[LS_SERVERLIST]			= &LoginSession::HandleServerlist;
 	PacketHandlers[LS_NEWS]					= &LoginSession::HandleNews;
@@ -389,6 +390,36 @@ void LoginSession::HandleServerlist(Packet & pkt)
 
 	g_pMain->GetServerList(result);
 	Send(&result);
+}
+#pragma endregion
+
+#pragma region LoginSession::HandleHwidReport(Packet & pkt)
+// S114 K3 FAZ 4: Launcher -> server HWID rapor.
+// Format gelen:  [0x04] [hwid_string]
+// Format giden:  [0x84] [uint8 result]  // 0=OK, 1=BANNED
+void LoginSession::HandleHwidReport(Packet & pkt)
+{
+	std::string hwid;
+	pkt >> hwid;
+
+	// HWID format check (32 char hex MD5)
+	if (hwid.length() != 32) {
+		Packet result(0x84);
+		result << uint8(0);  // hata -> guvenli OK
+		Send(&result);
+		return;
+	}
+
+	std::string ip = GetRemoteIP();
+	int banResult = g_pMain->m_DBProcess.HwidCheckLogin(hwid, ip);
+
+	Packet result(0x84);
+	result << uint8(banResult);  // 0=OK, 1=BANNED
+	Send(&result);
+
+	if (banResult == 1) {
+		printf("[HWID BAN] Reject login: hwid=%s ip=%s\n", hwid.c_str(), ip.c_str());
+	}
 }
 #pragma endregion
 
