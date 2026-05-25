@@ -67,6 +67,11 @@ public:
 	void WriteUserLogFile(std::string & logMessage);
 
 	FILE *m_fpUser;
+
+	// S115 HWID ZORLA: Eski Launcher (HWID rapor etmeyen) login engelle
+	// 0 = off, 1 = sadece log, 2 = zorla (reject)
+	int m_HwidForceMode;
+	int m_HwidReportWindowSec;  // HWID rapor edilmesi gereken pencere (default 30 sn)
 };
 
 extern LoginServer * g_pMain;

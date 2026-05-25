@@ -2,6 +2,8 @@
 #include "stdafx.h"
 #include "../shared/DateTime.h"
 #include <chrono>
+#include <unordered_map>  // S115 HWID ZORLA: g_hwidReportTimes
+#include <mutex>          // S115 HWID ZORLA: g_hwidReportMutex
 #include "../GameServer/ConsoleColor.h"
 
 LSPacketHandler PacketHandlers[NUM_LS_OPCODES];
@@ -60,6 +62,41 @@ static void ResetIPLoginFails(const std::string &ip, const std::string &account 
 #pragma endregion
 
 #pragma endregion
+
+// =====================================================================
+// S115 HWID ZORLA — IP basina son HWID rapor zamani
+// =====================================================================
+// Map: ip -> son HWID report time (epoch sn)
+// HandleLogin: m_HwidForceMode > 0 ise, IP'nin son HWID raporu pencerede mi
+//             kontrol et. Yoksa log (mode 1) veya reject (mode 2).
+// HandleHwidReport: her rapor geldikce time guncellenir.
+// Memory: 1000+ kayit varsa 5 dk eski cleanup.
+// =====================================================================
+static std::mutex g_hwidReportMutex;
+static std::unordered_map<std::string, time_t> g_hwidReportTimes;
+
+static void RecordHwidReport(const std::string& ip)
+{
+	std::lock_guard<std::mutex> lk(g_hwidReportMutex);
+	g_hwidReportTimes[ip] = time(nullptr);
+
+	if (g_hwidReportTimes.size() > 1000) {
+		time_t cutoff = time(nullptr) - 300;
+		for (auto it = g_hwidReportTimes.begin(); it != g_hwidReportTimes.end(); ) {
+			if (it->second < cutoff) it = g_hwidReportTimes.erase(it);
+			else ++it;
+		}
+	}
+}
+
+static bool HasRecentHwidReport(const std::string& ip, int windowSec)
+{
+	std::lock_guard<std::mutex> lk(g_hwidReportMutex);
+	auto it = g_hwidReportTimes.find(ip);
+	if (it == g_hwidReportTimes.end()) return false;
+	return (time(nullptr) - it->second) <= windowSec;
+}
+// =====================================================================
 
 #pragma region InitPacketHandlers
 void InitPacketHandlers(void)
@@ -269,6 +306,36 @@ void LoginSession::HandleLogin(Packet& pkt)
 		return;
 	}
 
+	// S115 HWID ZORLA — eski Launcher (HWID rapor etmeyen) login engelle
+	// Mode 0: off | Mode 1: sadece log | Mode 2: zorla (AUTH_BANNED don)
+	int hwidMode = g_pMain->m_HwidForceMode;
+	if (hwidMode > 0)
+	{
+		bool hwidRecent = HasRecentHwidReport(clientIP,
+			g_pMain->m_HwidReportWindowSec);
+		if (!hwidRecent)
+		{
+			if (hwidMode == 1)
+			{
+				// LOG ONLY — login normal devam etsin ama kayit at
+				con_yellow(); printf("[HWID_FORCE_LOG] No recent HWID for IP=%s account=%s (mode=1, would be kicked in mode 2)\n",
+					clientIP.c_str(), account.c_str()); con_white();
+				LOG_LOGIN("[HWID_FORCE_LOG] No HWID IP=%s Account=%s", clientIP.c_str(), account.c_str());
+			}
+			else
+			{
+				// MODE 2 — REJECT
+				con_red(); printf("[HWID_FORCE_KICK] No recent HWID for IP=%s account=%s (mode=2)\n",
+					clientIP.c_str(), account.c_str()); con_white();
+				LOG_LOGIN("[HWID_FORCE_KICK] IP=%s Account=%s rejected", clientIP.c_str(), account.c_str());
+				Packet banResult(pkt.GetOpcode());
+				banResult << uint16(0) << uint8(0x04); // AUTH_BANNED
+				Send(&banResult);
+				return;
+			}
+		}
+	}
+
 	if (account.size() == 0
 		|| account.size() > MAX_ID_SIZE
 		|| password.size() == 0
@@ -432,6 +499,11 @@ void LoginSession::HandleHwidReport(Packet & pkt)
 
 	if (banResult == 1) {
 		printf("[HWID BAN] Reject login: hwid=%s ip=%s\n", hwid.c_str(), ip.c_str());
+	}
+	else {
+		// S115 HWID ZORLA: Bu IP'nin son HWID rapor zamanini guncelle.
+		// HandleLogin'de bu kayit pencerede mi diye kontrol edilir (eski Launcher tespiti).
+		RecordHwidReport(ip);
 	}
 }
 #pragma endregion

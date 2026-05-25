@@ -197,6 +197,15 @@ void LoginServer::GetInfoFromIni()
 	else ini.GetString("ODBC", "PWD", "password",  m_ODBCPwd,   false);
 	m_LoginServerPort = ini.GetInt("SETTINGS", "PORT", 15100);
 
+	// S115 HWID ZORLA — eski Launcher (HWID rapor etmeyen) login engelle
+	// Default 0 (off) — guvenli baslangic. Acilis sonrasi 1 (log), sonra 2 (zorla).
+	m_HwidForceMode        = ini.GetInt("HWID", "ForceMode", 0);
+	m_HwidReportWindowSec  = ini.GetInt("HWID", "ReportWindowSec", 30);
+	if (m_HwidReportWindowSec < 5)  m_HwidReportWindowSec = 5;
+	if (m_HwidReportWindowSec > 300) m_HwidReportWindowSec = 300;
+	printf("[CONFIG] HWID ForceMode=%d, ReportWindowSec=%d\n",
+	       m_HwidForceMode, m_HwidReportWindowSec);
+
 	char key[20];
 
 	// Read news from INI (max 3 blocks)
