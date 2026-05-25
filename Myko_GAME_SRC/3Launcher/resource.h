@@ -10,6 +10,8 @@
 #define IDR_TBL_HASHES                  106
 #define IDB_LOADING_SAFE                107
 #define IDB_LOADING_ERROR               108
+#define IDB_LOADING_COMPACT             109
+#define IDB_LOADING_REPAIR              110
 
 // Next default values for new objects
 // 

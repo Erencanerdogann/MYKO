@@ -399,13 +399,23 @@ void LoginSession::HandleServerlist(Packet & pkt)
 // Format giden:  [0x84] [uint8 result]  // 0=OK, 1=BANNED
 void LoginSession::HandleHwidReport(Packet & pkt)
 {
-	std::string hwid;
-	pkt >> hwid;
+	// Launcher MP_AddString ile RAW 32 byte yolluyor (length prefix YOK)
+	// Fixed 32 byte oku
+	char hwidBuf[33] = {0};
+	if (pkt.rpos() + 32 > pkt.size()) {
+		// Paket eksik
+		Packet result(0x84);
+		result << uint8(0);
+		Send(&result);
+		return;
+	}
+	pkt.read(hwidBuf, 32);
+	std::string hwid(hwidBuf, 32);
 
 	// HWID format check (32 char hex MD5)
 	if (hwid.length() != 32) {
 		Packet result(0x84);
-		result << uint8(0);  // hata -> guvenli OK
+		result << uint8(0);
 		Send(&result);
 		return;
 	}

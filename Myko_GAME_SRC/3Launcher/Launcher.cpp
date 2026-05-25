@@ -620,6 +620,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessage(&msg);
         }
         else {
+            // S114 K3: HWID ban check — server'dan 0x84 result=1 geldiyse ERROR GIF goster + kapan
+            if (Engine && Engine->m_hwidBanned) {
+                Engine->m_hwidBanned = false;  // tekrar girmesin
+                thyke_t->SetupBanner(IDB_LOADING_ERROR, 3000, false);
+                ExitProcess(0);
+            }
             // S114: 30 sn'de bir cheat scan
             if (GetTickCount() - lastCheatScanTick >= CHEAT_SCAN_INTERVAL_MS) {
                 lastCheatScanTick = GetTickCount();
@@ -791,6 +797,9 @@ const int IMAGE_HEIGHT = 263;
 static int g_currentGifResId = IDB_LOADING;
 static bool g_currentGifLooped = false;
 extern int g_gifEndAction;  // GDIHelper.cpp: 0=loop, 1=KO+exit, 2=sadece exit
+// S114 K3: Y/N seçim modu — askConfirm true ise klavye Y/N bekler
+static bool g_askConfirm = false;
+static int g_confirmResult = -1;  // -1=bekliyor, 0=hayir, 1=evet
 
 LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
@@ -800,6 +809,21 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         break;
     case WM_COMMAND:
         break;
+    case WM_KEYDOWN:
+    {
+        // S114 K3: Y/N onay modu — askConfirm aktif ise Y/N tuslari ile sec
+        if (g_askConfirm) {
+            if (wParam == 'Y' || wParam == 'y') {
+                g_confirmResult = 1;
+                ::PostMessage(hWnd, WM_CLOSE, 0, 0);
+            }
+            else if (wParam == 'N' || wParam == 'n' || wParam == VK_ESCAPE) {
+                g_confirmResult = 0;
+                ::PostMessage(hWnd, WM_CLOSE, 0, 0);
+            }
+        }
+        break;
+    }
     case WM_CREATE:
     {
         //std::string Path = std::string(Engine->WorkingPath) + "\\CodeGuard\\Launcher\\" + "curse_loading.gif";
@@ -848,17 +872,17 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame)
+int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool askConfirm)
 {
     // S114: Caller'in istegine gore GIF + davranis konfigure
     g_currentGifResId = gifResId;
-    // S114: TUM GIF'ler sonsuz loop. SetupBanner minMs ile pencereyi kapatir.
-    // Boylece SAFE GIF'i (1.2sn) MIN_MS dolmadan bitmesin kullanici tam goremesin.
     g_currentGifLooped = true;
-    // SAFE -> 1 (KO basla + exit), ERROR -> 2 (sadece exit, KO YOK)
     if (gifResId == IDB_LOADING_ERROR)      g_gifEndAction = 2;
     else if (gifResId == IDB_LOADING_SAFE)  g_gifEndAction = 1;
-    else                                    g_gifEndAction = 0;  // SCANNING: GIF loop, MIN_MS bitince SetupBanner kapatir
+    else                                    g_gifEndAction = 0;
+    // S114 K3: askConfirm true ise Y/N modu, klavye bekler
+    g_askConfirm = askConfirm;
+    g_confirmResult = -1;
 
     ShowWindow(mainWindow, FALSE);
 
@@ -911,10 +935,16 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame)
 
     ShowWindow(hwnd, TRUE);
     UpdateWindow(hwnd);
+    // S114 K3: askConfirm modu — klavye odagi pencereye, ESC/Y/N icin
+    if (askConfirm) {
+        SetForegroundWindow(hwnd);
+        SetFocus(hwnd);
+    }
 
     // S114: Caller'in verdigi minMs kadar splash kalir
     DWORD startTick = GetTickCount();
-    const DWORD MIN_SPLASH_MS = minMs;
+    // askConfirm modunda kullanici tus basana kadar bekler (yuksek timeout)
+    const DWORD MIN_SPLASH_MS = askConfirm ? 600000 : minMs;
 
     MSG msg;
     BOOL bRet;
@@ -946,16 +976,20 @@ end:
     ::UnregisterClass(wcex.lpszClassName, wcex.hInstance);
     GdiplusShutdown(gdiplusToken); //dont forget to shut down the gdi+ token.
 
+    // S114 K3: askConfirm modu — Y/N sonucu dondur
+    if (askConfirm) {
+        bool wasAsking = g_askConfirm;
+        g_askConfirm = false;
+        return (g_confirmResult == 1) ? 1 : 0;  // 1=EVET, 0=HAYIR/ESC/Kapatildi
+    }
+
     // S114: GIF kapandi, simdi caller'in istedigi action'i yap
     // launchGame=true ise KO basla + exit (SAFE durumu)
     // gifResId=ERROR ise sadece exit (KO yok)
     // SCANNING (loop, action=0) ise hicbir sey yapma, donsun
     if (g_gifEndAction == 1 && launchGame) {
-        // S114 K3: Launcher param formati: "<pid> /HWID:<md5>"
-        // KO client launch parametrelerini parse edip login paketine HWID ekleyecek.
-        std::string hwid = (Engine ? Engine->ComputeHwidA() : "");
+        // S114 K3 KANIT FIX: Sadece pid yolla, /HWID parametresi KO client'in account parse'ini bozuyor olabilir
         std::string param = std::to_string(GetCurrentProcessId());
-        if (!hwid.empty()) param += " /HWID:" + hwid;
         if ((long)ShellExecuteA(NULL, NULL, xorstr("KnightOnLine.exe"), param.c_str(), NULL, SW_RESTORE) == ERROR_FILE_NOT_FOUND) {
             MessageBoxA(mainWindow, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_ICONINFORMATION);
             return 0;
@@ -1068,8 +1102,10 @@ void CompactClick()
     if (lastCompactState == STATE_DOWN && !g_compactRunning) {
         states[7] = STATE_HOVER;
         lastCompactState = STATE_HOVER;
-        if (MessageBoxA(mainWindow, xorstr("UI cache temizlenecek (2-3 dakika surebilir). Launcher arka planda calisir, kapatma. Devam?"), xorstr("Compact"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+        // S114 K3: MessageBox kaldirildi — direkt compact + turuncu GIF
+        {
             g_compactRunning = true;
+            // Compact arka thread'de calisir
             std::thread([](){
                 CHDRSystem* compactor = new CHDRSystem;
                 compactor->m_progressCallback = CompactProgress;
@@ -1091,6 +1127,8 @@ void CompactClick()
                 MessageBoxA(mainWindow, msg, xorstr("Compact tamamlandi"), MB_OK | MB_ICONINFORMATION);
                 g_compactRunning = false;
             }).detach();
+            // S114 K3: Turuncu COMPACT GIF (10 sn sirasinda gosterilir, arka thread devam eder)
+            thyke_t->SetupBanner(IDB_LOADING_COMPACT, 10000, false);
         }
     }
 }
@@ -1142,14 +1180,14 @@ void RepairClick()
     if (lastRepairState == STATE_DOWN) {
         states[9] = STATE_HOVER;
         lastRepairState = STATE_HOVER;
-        if (MessageBoxA(mainWindow, xorstr("PATCH SIFIRLANACAK!\n\nTum patch yeniden indirilecek (.src/.hdr dosyalarinin UZERINE yazilir).\nLauncher yeniden acilacak.\n\nDevam edilsin mi?"), xorstr("Repair - Patch Sifirlama"), MB_YESNO | MB_ICONWARNING) == IDYES) {
+        // S114 K3: MessageBox kaldirildi — direkt repair + turuncu GIF
+        {
             CHAR cwd[MAX_PATH];
             GetCurrentDirectoryA(MAX_PATH, cwd);
             // S113: SADECE Server.ini sifirla (.src/.hdr DOKUNMA — silmek UI'i komple bozar)
             WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), "2369", (std::string(cwd) + "\\Server.ini").c_str());
-            char msg[256];
-            sprintf_s(msg, "Patch sifirlandi.\nServer.ini = Files=2369\n\nLauncher 2 saniye sonra yeniden acilacak, tum patch'ler yeniden indirilecek.");
-            MessageBoxA(mainWindow, msg, xorstr("Repair tamam"), MB_OK | MB_ICONINFORMATION);
+            // S114 K3: Turuncu REPAIR GIF (3 sn) - MessageBox yerine
+            thyke_t->SetupBanner(IDB_LOADING_REPAIR, 3000, false);
 
             // S113: helper.bat olustur, kendini yeniden baslat
             std::string batPath = std::string(cwd) + "\\_repair_restart.bat";

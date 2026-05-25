@@ -298,18 +298,15 @@ bool Launcher::ScanCheatTools(std::string& detected)
 // 1 kez hesaplanir (m_hwidA cache), login paketinde server'a yollanir.
 // Server TB_HWID_BANS_A tablosunda check eder, banli ise login reddedilir.
 // =============================================================
+// S114 K3 FAZ 2: HWID_A hesap (volume + MAC + salt -> MD5)
 std::string Launcher::ComputeHwidA()
 {
-    if (!m_hwidA.empty()) return m_hwidA;  // cache
-
-    // 1) C:\ surucusunun volume serial numarasi
+    if (!m_hwidA.empty()) return m_hwidA;
     char volBuf[16] = {0};
     DWORD volSerial = 0;
     if (GetVolumeInformationA("C:\\", NULL, 0, &volSerial, NULL, NULL, NULL, 0)) {
         sprintf_s(volBuf, "%08X", volSerial);
     }
-
-    // 2) Birinci network adapter MAC adresi
     char macBuf[32] = {0};
     IP_ADAPTER_INFO* pAdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
     ULONG bufLen = sizeof(IP_ADAPTER_INFO);
@@ -319,7 +316,6 @@ std::string Launcher::ComputeHwidA()
     }
     if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &bufLen) == NO_ERROR) {
         IP_ADAPTER_INFO* p = pAdapterInfo;
-        // Ilk fiziksel adapter (loopback/virtual atla)
         while (p) {
             if (p->Type != MIB_IF_TYPE_LOOPBACK && p->AddressLength == 6) {
                 sprintf_s(macBuf, "%02X%02X%02X%02X%02X%02X",
@@ -331,12 +327,9 @@ std::string Launcher::ComputeHwidA()
         }
     }
     if (pAdapterInfo) free(pAdapterInfo);
-
-    // 3) Birlestir + MD5 (salt eklenir, brute force engeli)
     std::string combined = std::string(volBuf) + "|" + macBuf + "|MYKO_K3_SALT";
     MD5 md5;
     m_hwidA = std::string(md5.digestMemory((BYTE*)combined.c_str(), (int)combined.size()));
-
     return m_hwidA;
 }
 
@@ -478,6 +471,7 @@ bool Launcher::Start()
     }
 
     RequestVersion();
+    Sleep(200);  // CheckedConnect rate limiter (100ms/10 paket)
     ReportHwid();  // S114 K3 FAZ 4: HWID rapor + ban check
 
     while (true)
@@ -726,14 +720,8 @@ bool Launcher::HandlePacket(Packet& pkt)
         uint8 result = 0;
         pkt >> result;
         if (result == 1) {
-            MessageBoxA(NULL,
-                "MalaysiaKO Anti-Cheat\n\n"
-                "Bu bilgisayar oyuna giris yapamaz.\n"
-                "Daha onceki cheat/makro kullanim sebebiyle PC banlanmis.\n\n"
-                "Itiraz icin Discord'a yaz: discord.gg/malaysiako",
-                "MalaysiaKO - PC Banli",
-                MB_OK | MB_ICONERROR);
-            ExitProcess(0);
+            // S114 K3: HWID banli — flag set, Launcher.cpp ana loop'u ERROR GIF gosterip cikar
+            m_hwidBanned = true;
         }
     }
     break;

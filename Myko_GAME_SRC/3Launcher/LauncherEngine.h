@@ -29,6 +29,8 @@ public:
 	// S114: Scan sonucu cache (START click sirasinda GIF goster icin)
 	bool m_scanThreatDetected = false;
 	std::string m_scanThreatName;
+	// S114 K3: HWID ban flag (server'dan 0x84 result=1 alinca set olur)
+	bool m_hwidBanned = false;
 	// S114: TBL hash sonucu (cheat suphesi degil ama dosya butunlugu)
 	int m_tblMismatchCount = 0;
 	int m_tblMissingCount = 0;
