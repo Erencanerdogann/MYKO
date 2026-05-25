@@ -328,6 +328,9 @@ void LoginSession::HandleLogin(Packet& pkt)
 	if (resultCode == AUTH_SUCCESS || resultCode == AUTH_OTP || resultCode == AUTH_AGREEMENT)
 	{
 		ResetIPLoginFails(clientIP, account);
+		// S114 K3 FAZ 5: Login basarisi sonrasi _pending_ HWID kaydini account ile esleStir
+		// (Launcher 0x04 ile account="" yazdi, simdi gercek account ile UPDATE)
+		g_pMain->m_DBProcess.HwidLinkAccount(account, clientIP);
 	}
 	else if (resultCode == AUTH_NOT_FOUND || resultCode == AUTH_INVALID || resultCode == AUTH_FAILED)
 	{

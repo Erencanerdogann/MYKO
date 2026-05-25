@@ -203,6 +203,32 @@ bool CDBProcess::LoadUserCountList()
 	return true;
 }
 
+// S114 K3 FAZ 5: KO login basarisi sonrasi _pending_ HWID kaydini account ile esleStir
+// Returns: UPDATE edilen satir sayisi (0=bulunamadi, 1=eslestirildi)
+int CDBProcess::HwidLinkAccount(const std::string & account, const std::string & ip)
+{
+	int updated = 0;
+	try {
+		OdbcConnection* conn = GetConnection();
+		if (conn == nullptr) return 0;
+		unique_ptr<OdbcCommand> dbCommand(conn->CreateCommand());
+		if (dbCommand.get() == nullptr) return 0;
+
+		std::string acc = account;
+		std::string i = ip.empty() ? std::string("0.0.0.0") : ip;
+		dbCommand->AddParameter(SQL_PARAM_INPUT, acc.c_str(), acc.length());
+		dbCommand->AddParameter(SQL_PARAM_INPUT, i.c_str(), i.length());
+		dbCommand->AddParameter(SQL_PARAM_OUTPUT, &updated);
+
+		if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_LINK_ACCOUNT(?, ?, ?)}"))) {
+			return 0;  // sessiz fail
+		}
+	} catch (...) {
+		return 0;
+	}
+	return updated;
+}
+
 // S114 K3 FAZ 4: HWID check (Launcher LS_HWID_REPORT 0x04)
 // account="" (henuz login olmadi, sadece Launcher HWID rapor ediyor)
 // Returns 0=OK + log kayit, 1=BANNED

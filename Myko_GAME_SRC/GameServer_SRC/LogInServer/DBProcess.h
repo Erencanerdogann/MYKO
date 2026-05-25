@@ -22,6 +22,8 @@ public:
 	// S114 K3 FAZ 4: HWID ban check (Launcher 0x4 paket icin)
 	// Returns: 0=OK, 1=BANNED
 	int HwidCheckLogin(const std::string & hwid, const std::string & ip);
+	// S114 K3 FAZ 5: KO login basarisi sonrasi _pending_ HWID kaydini account ile esleStir
+	int HwidLinkAccount(const std::string & account, const std::string & ip);
 
 	CDBProcess();
 	~CDBProcess();
