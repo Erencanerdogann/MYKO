@@ -8,9 +8,12 @@
 #include <Shlwapi.h>
 #include <iphlpapi.h>  // S114 K3: GetAdaptersInfo (HWID MAC)
 #include <thread>      // S114 K3 FIX: async HWID
+#include <winhttp.h>   // S115 AUTO-UPDATE: HTTP download
+#include <fstream>     // S115 AUTO-UPDATE: dosya yazma
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "winhttp.lib")  // S115 AUTO-UPDATE
 #define CURL_ICONV_CODESET_FOR_UTF8 "UTF-8"
 #define PRINT_LOG [](const std::string& strLogMsg) { std::cout << strLogMsg << std::endl;  }
 
@@ -171,6 +174,17 @@ Launcher::Launcher()
         m_scanThreatDetected = ScanCheatTools(detected);
         m_scanThreatName = detected;
     }
+
+    // S115 AUTO-UPDATE: Sunucudan version.txt cek, yeni surum varsa indir+restart
+    // Async thread'de calistir — UI bloklanmaz. Update tetiklenirse helper.bat
+    // calistirilir ve ExitProcess yapilir.
+    std::thread([this]() {
+        try {
+            this->CheckForUpdate();
+        } catch (...) {
+            // Auto-update fail oldu — sessizce gec, normal Launcher akisi devam
+        }
+    }).detach();
 }
 
 // S114: KOXP/cheat tool tarayicisi — 4 katman (process + window + DLL disk + driver service)
@@ -734,6 +748,271 @@ bool Launcher::HandlePacket(Packet& pkt)
 	}
     
 	return true;
+}
+
+// ============================================================
+// S115 AUTO-UPDATE LAUNCHER
+// ============================================================
+// Akis: version.txt cek -> versiyon karsilastir -> indir -> md5 dogrula
+//       -> helper.bat olustur -> calistir -> ExitProcess
+// Risk: MITM/sahte exe icin MD5 dogrulama; fail -> normal akis devam
+// ============================================================
+
+// HTTP GET wrapper (WinHTTP, ekstra DLL gerekmiyor — Windows built-in)
+bool Launcher::HttpGet(const std::wstring& host, INTERNET_PORT port,
+                       const std::wstring& path, std::vector<BYTE>& outData,
+                       DWORD maxSizeBytes)
+{
+    HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
+    bool success = false;
+    outData.clear();
+
+    do {
+        hSession = WinHttpOpen(L"MalaysiaKO-Launcher/1.5",
+            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+        if (!hSession) break;
+
+        // Timeouts: resolve=5s, connect=5s, send=10s, receive=10s
+        WinHttpSetTimeouts(hSession, 5000, 5000, 10000, 10000);
+
+        hConnect = WinHttpConnect(hSession, host.c_str(), port, 0);
+        if (!hConnect) break;
+
+        hRequest = WinHttpOpenRequest(hConnect, L"GET", path.c_str(),
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (!hRequest) break;
+
+        if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                                WINHTTP_NO_REQUEST_DATA, 0, 0, 0)) break;
+        if (!WinHttpReceiveResponse(hRequest, NULL)) break;
+
+        // HTTP status code kontrol
+        DWORD statusCode = 0;
+        DWORD statusSize = sizeof(statusCode);
+        if (!WinHttpQueryHeaders(hRequest,
+                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusSize,
+                WINHTTP_NO_HEADER_INDEX)) break;
+        if (statusCode != 200) break;
+
+        // Veri oku
+        DWORD bytesAvail = 0;
+        while (WinHttpQueryDataAvailable(hRequest, &bytesAvail) && bytesAvail > 0)
+        {
+            if (outData.size() + bytesAvail > maxSizeBytes)
+            {
+                // Boyut limit asildi - guvenlik
+                outData.clear();
+                break;
+            }
+            size_t offset = outData.size();
+            outData.resize(offset + bytesAvail);
+            DWORD bytesRead = 0;
+            if (!WinHttpReadData(hRequest, outData.data() + offset,
+                                 bytesAvail, &bytesRead))
+            {
+                outData.clear();
+                break;
+            }
+            if (bytesRead == 0) break;
+            outData.resize(offset + bytesRead);
+        }
+
+        success = !outData.empty();
+    } while (false);
+
+    if (hRequest) WinHttpCloseHandle(hRequest);
+    if (hConnect) WinHttpCloseHandle(hConnect);
+    if (hSession) WinHttpCloseHandle(hSession);
+    return success;
+}
+
+// MD5 hex string hesapla (bayt arrayden) - lowercase 32 hex char
+static std::string ComputeMd5Hex(const BYTE* data, size_t len)
+{
+    MD5 md5;
+    char* hex = md5.digestMemory((BYTE*)data, (int)len);
+    std::string out = hex ? std::string(hex) : std::string();
+    // Zaten lowercase ama emin olalim
+    for (char& c : out) c = (char)tolower((unsigned char)c);
+    return out;
+}
+
+// version.txt parse: "1.6|md5|size"
+static bool ParseVersionTxt(const std::string& content,
+                            int& outMaj, int& outMin,
+                            std::string& outMd5, size_t& outSize)
+{
+    // Beyaz bosluklari temizle
+    std::string s = content;
+    while (!s.empty() && (s.back() == '\r' || s.back() == '\n' ||
+                          s.back() == ' ' || s.back() == '\t'))
+        s.pop_back();
+
+    auto p1 = s.find('|');
+    if (p1 == std::string::npos) return false;
+    auto p2 = s.find('|', p1 + 1);
+    if (p2 == std::string::npos) return false;
+
+    std::string ver = s.substr(0, p1);
+    outMd5 = s.substr(p1 + 1, p2 - p1 - 1);
+    std::string sizeStr = s.substr(p2 + 1);
+
+    // Versiyon parse (MAJOR.MINOR)
+    auto dot = ver.find('.');
+    if (dot == std::string::npos) return false;
+    try {
+        outMaj = std::stoi(ver.substr(0, dot));
+        outMin = std::stoi(ver.substr(dot + 1));
+        outSize = (size_t)std::stoull(sizeStr);
+    } catch (...) { return false; }
+
+    // MD5 32 hex char olmali
+    if (outMd5.length() != 32) return false;
+    for (char c : outMd5) {
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+              (c >= 'A' && c <= 'F'))) return false;
+    }
+    // Lowercase normalize
+    for (char& c : outMd5) c = (char)tolower((unsigned char)c);
+
+    return true;
+}
+
+bool Launcher::CheckForUpdate()
+{
+    // Sunucu IP'sini Server.ini'den oku (HWID/Patch ile ayni)
+    std::string serverIP = m_settingsIP;
+    if (serverIP.empty()) return false;
+
+    // ASCII -> wide
+    std::wstring wHost(serverIP.begin(), serverIP.end());
+
+    // 1) version.txt cek (10 KB limit yeter)
+    std::vector<BYTE> verData;
+    if (!HttpGet(wHost, 80, L"/patch/launcher/version.txt", verData, 10 * 1024))
+        return false;
+
+    std::string verStr((const char*)verData.data(), verData.size());
+    int remoteMaj = 0, remoteMin = 0;
+    std::string remoteMd5;
+    size_t remoteSize = 0;
+    if (!ParseVersionTxt(verStr, remoteMaj, remoteMin, remoteMd5, remoteSize))
+        return false;
+
+    // 2) Local versiyonla karsilastir
+    int remoteVal = remoteMaj * 1000 + remoteMin;
+    int localVal = LAUNCHER_BUILD_VERSION_MAJOR * 1000 + LAUNCHER_BUILD_VERSION_MINOR;
+    if (remoteVal <= localVal) return false; // Guncel veya daha eski - sessizce gec
+
+    // Boyut sanity (50 MB hard limit)
+    if (remoteSize == 0 || remoteSize > 50 * 1024 * 1024) return false;
+
+    // 3) Yeni exe indir + MD5 dogrula
+    std::string tempPath;
+    if (!DownloadUpdateFile(remoteMd5, remoteSize, tempPath))
+        return false;
+
+    // 4) Helper batch olustur ve calistir, exit
+    return LaunchUpdaterAndExit(tempPath);
+}
+
+bool Launcher::DownloadUpdateFile(const std::string& expectedMd5,
+                                  size_t expectedSize,
+                                  std::string& outTempPath)
+{
+    std::string serverIP = m_settingsIP;
+    if (serverIP.empty()) return false;
+    std::wstring wHost(serverIP.begin(), serverIP.end());
+
+    std::vector<BYTE> exeData;
+    if (!HttpGet(wHost, 80, L"/patch/launcher/Launcher.exe", exeData,
+                 (DWORD)(expectedSize + 1024)))
+        return false;
+
+    // Boyut dogrulama
+    if (exeData.size() != expectedSize) return false;
+
+    // MD5 dogrulama
+    std::string actualMd5 = ComputeMd5Hex(exeData.data(), exeData.size());
+    if (actualMd5 != expectedMd5) return false;
+
+    // %TEMP%\Launcher_new_<pid>.tmp
+    char tempDir[MAX_PATH] = { 0 };
+    if (GetTempPathA(MAX_PATH, tempDir) == 0) return false;
+    char tempFile[MAX_PATH] = { 0 };
+    snprintf(tempFile, MAX_PATH, "%sMalaysiaKO_Launcher_new_%lu.tmp",
+             tempDir, GetCurrentProcessId());
+
+    std::ofstream ofs(tempFile, std::ios::binary | std::ios::trunc);
+    if (!ofs) return false;
+    ofs.write((const char*)exeData.data(), exeData.size());
+    ofs.close();
+    if (!ofs.good()) return false;
+
+    outTempPath = tempFile;
+    return true;
+}
+
+bool Launcher::LaunchUpdaterAndExit(const std::string& tempNewExePath)
+{
+    // Mevcut Launcher.exe yolu
+    char selfPath[MAX_PATH] = { 0 };
+    if (GetModuleFileNameA(NULL, selfPath, MAX_PATH) == 0) return false;
+
+    // Helper batch yolu (%TEMP%)
+    char tempDir[MAX_PATH] = { 0 };
+    if (GetTempPathA(MAX_PATH, tempDir) == 0) return false;
+    char batPath[MAX_PATH] = { 0 };
+    snprintf(batPath, MAX_PATH, "%sMalaysiaKO_updater_%lu.bat",
+             tempDir, GetCurrentProcessId());
+
+    // Helper batch icerik
+    // 1) 2sn bekle (Launcher kapansin)
+    // 2) Eski exe sil
+    // 3) tmp -> Launcher.exe
+    // 4) Yeni Launcher.exe baslat (cwd = eski klasor)
+    // 5) Self-delete
+    std::ofstream bat(batPath, std::ios::trunc);
+    if (!bat) return false;
+    bat << "@echo off\r\n"
+        << "timeout /t 2 /nobreak > nul\r\n"
+        << ":retry\r\n"
+        << "del /F /Q \"" << selfPath << "\" 2>nul\r\n"
+        << "if exist \"" << selfPath << "\" (\r\n"
+        << "    timeout /t 1 /nobreak > nul\r\n"
+        << "    goto retry\r\n"
+        << ")\r\n"
+        << "move /Y \"" << tempNewExePath << "\" \"" << selfPath << "\" > nul\r\n"
+        << "if not exist \"" << selfPath << "\" (\r\n"
+        << "    exit /b 1\r\n"
+        << ")\r\n"
+        << "start \"\" \"" << selfPath << "\"\r\n"
+        << "del \"%~f0\"\r\n";
+    bat.close();
+    if (!bat.good()) return false;
+
+    // Helper'i sessizce baslat
+    STARTUPINFOA si = { 0 };
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION pi = { 0 };
+
+    std::string cmdLine = std::string("\"") + batPath + "\"";
+    char cmdBuf[MAX_PATH * 2] = { 0 };
+    strncpy_s(cmdBuf, cmdLine.c_str(), MAX_PATH * 2 - 1);
+
+    if (!CreateProcessA(NULL, cmdBuf, NULL, NULL, FALSE,
+                        CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+        return false;
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    // Launcher'i sonlandir - helper devraldi
+    ExitProcess(0);
+    return true;
 }
 
 Launcher::~Launcher()

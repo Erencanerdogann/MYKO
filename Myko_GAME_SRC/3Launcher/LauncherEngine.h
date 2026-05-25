@@ -5,6 +5,13 @@
 #include "APISocket.h"
 #include "hdr.h"
 #include <format>
+#include <winhttp.h>  // S115 AUTO-UPDATE: INTERNET_PORT typedef
+
+// S115 AUTO-UPDATE: Bu Launcher'in build versiyonu. Her yeni build'de ARTIR.
+// Sunucudaki version.txt'de bu degerden buyuk varsa, Launcher otomatik gunceller.
+#define LAUNCHER_BUILD_VERSION_MAJOR 1
+#define LAUNCHER_BUILD_VERSION_MINOR 5
+
 class Launcher
 {
 public:
@@ -16,6 +23,14 @@ public:
 	void RequestPatch();
 	void RequestNotices();
 	void ReportHwid();  // S114 K3 FAZ 4: HWID'i server'a yolla, ban kontrolu
+	// S115 AUTO-UPDATE: version.txt cek, yeni varsa indir, helper.bat ile restart
+	bool CheckForUpdate();
+	bool HttpGet(const std::wstring& host, INTERNET_PORT port,
+	             const std::wstring& path, std::vector<BYTE>& outData,
+	             DWORD maxSizeBytes = 50 * 1024 * 1024);
+	bool DownloadUpdateFile(const std::string& expectedMd5, size_t expectedSize,
+	                        std::string& outTempPath);
+	bool LaunchUpdaterAndExit(const std::string& tempNewExePath);
 	bool HandlePacket(Packet& pkt);
 	void Update();
 	void Download();
