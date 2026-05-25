@@ -951,7 +951,11 @@ end:
     // gifResId=ERROR ise sadece exit (KO yok)
     // SCANNING (loop, action=0) ise hicbir sey yapma, donsun
     if (g_gifEndAction == 1 && launchGame) {
+        // S114 K3: Launcher param formati: "<pid> /HWID:<md5>"
+        // KO client launch parametrelerini parse edip login paketine HWID ekleyecek.
+        std::string hwid = (Engine ? Engine->ComputeHwidA() : "");
         std::string param = std::to_string(GetCurrentProcessId());
+        if (!hwid.empty()) param += " /HWID:" + hwid;
         if ((long)ShellExecuteA(NULL, NULL, xorstr("KnightOnLine.exe"), param.c_str(), NULL, SW_RESTORE) == ERROR_FILE_NOT_FOUND) {
             MessageBoxA(mainWindow, xorstr("KnightOnLine.exe not found."), xorstr("Launcher"), MB_ICONINFORMATION);
             return 0;
