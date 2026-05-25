@@ -2,6 +2,7 @@
 #include "DBAgent.h"
 #include "../shared/DateTime.h"
 #include "../shared/Ini.h"
+// S114 K3 FAZ 6: Discord webhook KAPALI (crash riski) — include kaldirildi
 
 using std::string;
 
@@ -203,6 +204,8 @@ void CUser::InitChatCommands()
 		{ "ipban",				&CUser::HandleIPBanCommand,						"IP Ban - Ornek: +ipban CharNick dakika sebep (dakika=0 permanent)" },
 		{ "ipunban",			&CUser::HandleIPUnbanCommand,					"IP Unban - Ornek: +ipunban CharNick" },
 		{ "banlist",			&CUser::HandleBanListCommand,					"Aktif ban listesini gosterir" },
+		{ "hwidban",			&CUser::HandleHwidBanCommand,					"HWID Ban (PC ban): +hwidban CharNick sebep" },
+		{ "hwidunban",			&CUser::HandleHwidUnbanCommand,					"HWID Unban: +hwidunban <hwid_md5>" },
 
 		{ "madclas",			&CUser::HandleCindirellaWarOpen,				"MadClas Event Açar - Open MadClas Event Type  1(47Lwl) 2(59Lwl) 3(83Lwl)" },
 		{ "madclasclose",		&CUser::HandleCindirellaWarClose,				"MadClas Event Kapatır - Close MadClas Event" },
@@ -2800,6 +2803,111 @@ COMMAND_HANDLER(CUser::HandleBanListCommand)
 	g_pMain->SendHelpDescription(this, "=== AKTIF BAN LISTESI ===");
 	g_pMain->SendHelpDescription(this, "Ban listesi icin sunucu konsolunda: SELECT * FROM BANNED_LIST WHERE bActive=1");
 	g_pMain->SendHelpDescription(this, "Veya web panelden kontrol edin.");
+	return true;
+}
+#pragma endregion
+
+// S114 K3 FAZ 6: SendDiscordHwidAlert KALDIRILDI (crash riski)
+// Webhook ileride DLL veya stand-alone process ile yapilacak.
+
+#pragma region CUser::HandleHwidBanCommand - S114 K3 FAZ 5
+// Kullanim: +hwidban CharNick [sebep]
+// Hedef oyuncunun account'unu bul -> KO_LOG.dbo.SP_HWID_BAN_BY_ACCOUNT cagri
+COMMAND_HANDLER(CUser::HandleHwidBanCommand)
+{
+	if (!isGM()) return false;
+
+	if (vargs.size() < 1) {
+		g_pMain->SendHelpDescription(this, "Kullanim: +hwidban CharNick [sebep]");
+		return true;
+	}
+
+	std::string strUserID = vargs.front();
+	vargs.pop_front();
+	if (strUserID.empty() || strUserID.size() > MAX_ID_SIZE) {
+		g_pMain->SendHelpDescription(this, "Gecersiz karakter ismi!");
+		return true;
+	}
+
+	std::string strReason = "";
+	while (!vargs.empty()) {
+		strReason += vargs.front() + " ";
+		vargs.pop_front();
+	}
+	if (strReason.empty()) strReason = "HWID ban by GM";
+
+	CUser* pTarget = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pTarget == nullptr) {
+		g_pMain->SendHelpDescription(this, "Oyuncu online degil! HWID ban icin oyuncu online olmali (account+ip eslestirme).");
+		return true;
+	}
+
+	std::string strAccountID = pTarget->GetAccountName();
+	if (strAccountID.empty()) {
+		g_pMain->SendHelpDescription(this, "Hedef oyuncunun account adi bulunamadi!");
+		return true;
+	}
+
+	extern CDBAgent g_DBAgent;
+	int ret = g_DBAgent.HwidBanByAccount(strAccountID, strReason, GetName());
+
+	switch (ret) {
+	case 0: {
+		std::string msg = string_format("[HWID BAN] %s (Account: %s) PC banlandi. Sebep: %s",
+			strUserID.c_str(), strAccountID.c_str(), strReason.c_str());
+		g_pMain->SendHelpDescription(this, msg);
+		printf("%s\n", msg.c_str());
+		pTarget->Disconnect();
+		std::string notice = string_format("%s'in PC'si HWID ban yedi (cheat tespiti).", strUserID.c_str());
+		g_pMain->SendNotice(notice.c_str(), (uint8)Nation::ALL);
+		// S114 K3 FAZ 6: Discord webhook — KAPALI (crash riski, sonra cozulecek)
+		// SendDiscordHwidAlert("HWID BAN VERILDI", ...);
+		break;
+	}
+	case 1:
+		g_pMain->SendHelpDescription(this, "HWID log kaydi yok! Oyuncu Launcher yeni surumle login olmadi (HWID rapor edilmedi).");
+		break;
+	case 2:
+		g_pMain->SendHelpDescription(this, "Bu HWID zaten banli!");
+		break;
+	default:
+		g_pMain->SendHelpDescription(this, string_format("HWID ban basarisiz! Hata: %d", ret));
+		break;
+	}
+	return true;
+}
+#pragma endregion
+
+#pragma region CUser::HandleHwidUnbanCommand - S114 K3 FAZ 5
+// Kullanim: +hwidunban <hwid_md5>
+COMMAND_HANDLER(CUser::HandleHwidUnbanCommand)
+{
+	if (!isGM()) return false;
+
+	if (vargs.size() < 1) {
+		g_pMain->SendHelpDescription(this, "Kullanim: +hwidunban <hwid_md5_32char>");
+		return true;
+	}
+
+	std::string strHwid = vargs.front();
+	vargs.pop_front();
+
+	if (strHwid.length() != 32) {
+		g_pMain->SendHelpDescription(this, "Gecersiz HWID! 32 karakter MD5 hex olmali.");
+		return true;
+	}
+
+	extern CDBAgent g_DBAgent;
+	int rows = g_DBAgent.HwidUnban(strHwid);
+
+	if (rows > 0) {
+		g_pMain->SendHelpDescription(this, string_format("[HWID UNBAN] %s -> %d ban kaldirildi.", strHwid.c_str(), rows));
+		printf("[HWID UNBAN] %s -> %d rows\n", strHwid.c_str(), rows);
+	} else if (rows == 0) {
+		g_pMain->SendHelpDescription(this, "Bu HWID ban listesinde degil.");
+	} else {
+		g_pMain->SendHelpDescription(this, "HWID unban basarisiz (DB hata).");
+	}
 	return true;
 }
 #pragma endregion
