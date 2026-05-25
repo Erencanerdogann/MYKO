@@ -7,6 +7,7 @@
 #include <Psapi.h>
 #include <Shlwapi.h>
 #include <iphlpapi.h>  // S114 K3: GetAdaptersInfo (HWID MAC)
+#include <thread>      // S114 K3 FIX: async HWID
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "Shlwapi.lib")
@@ -96,8 +97,8 @@ Launcher::Launcher()
     m_iVersion = 0;
     m_stateString = xorstr("Checking version and preparing to launch game.");
 
-    // S114 K3: HWID_A hesap (1 kez, login pakete eklenecek)
-    ComputeHwidA();
+    // S114 K3 FIX: HWID hesabi ASYNC thread'de (GetAdaptersInfo yavas — Launcher UI bloklamasin)
+    std::thread([this]() { this->ComputeHwidA(); }).detach();
 
     const size_t IPSize = 256;
     char* sIP = new char[IPSize];
@@ -471,8 +472,11 @@ bool Launcher::Start()
     }
 
     RequestVersion();
-    Sleep(200);  // CheckedConnect rate limiter (100ms/10 paket)
-    ReportHwid();  // S114 K3 FAZ 4: HWID rapor + ban check
+    // S114 K3 FIX: ReportHwid ASYNC (Launcher acilis bloklamasin)
+    std::thread([this]() {
+        Sleep(200);  // Rate limiter (100ms/10 paket)
+        this->ReportHwid();
+    }).detach();
 
     while (true)
     {
