@@ -209,21 +209,28 @@ bool CDBProcess::LoadUserCountList()
 int CDBProcess::HwidCheckLogin(const std::string & hwid, const std::string & ip)
 {
 	int result = 0;
-	OdbcConnection* conn = GetConnection();
-	unique_ptr<OdbcCommand> dbCommand(conn->CreateCommand());
-	if (dbCommand.get() == nullptr) return 0;  // DB hata -> guvenli yon, log gec (oyun kapanmasin)
+	try {
+		OdbcConnection* conn = GetConnection();
+		if (conn == nullptr) return 0;
+		unique_ptr<OdbcCommand> dbCommand(conn->CreateCommand());
+		if (dbCommand.get() == nullptr) return 0;
 
-	std::string empty_acc = "";  // Launcher henuz hangi account bilemiyor
-	dbCommand->AddParameter(SQL_PARAM_INPUT, empty_acc.c_str(), empty_acc.length());
-	dbCommand->AddParameter(SQL_PARAM_INPUT, hwid.c_str(), hwid.length());
-	dbCommand->AddParameter(SQL_PARAM_INPUT, ip.c_str(), ip.length());
-	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &result);
+		std::string acc = "_pending_";  // account bos olamaz (NOT NULL)
+		std::string h = hwid;
+		std::string i = ip.empty() ? std::string("0.0.0.0") : ip;
+		dbCommand->AddParameter(SQL_PARAM_INPUT, acc.c_str(), acc.length());
+		dbCommand->AddParameter(SQL_PARAM_INPUT, h.c_str(), h.length());
+		dbCommand->AddParameter(SQL_PARAM_INPUT, i.c_str(), i.length());
+		dbCommand->AddParameter(SQL_PARAM_OUTPUT, &result);
 
-	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_CHECK_LOGIN(?, ?, ?, ?)}"))) {
-		g_pMain->ReportSQLError(conn->GetError());
-		return 0;  // DB hata -> guvenli yon
+		if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_HWID_CHECK_LOGIN(?, ?, ?, ?)}"))) {
+			// SP fail — sessizce 0 dondur (oyun kapanmasin)
+			return 0;
+		}
+	} catch (...) {
+		// herhangi bir exception — guvenli yon, login etkilenmesin
+		return 0;
 	}
-
 	return result;
 }
 

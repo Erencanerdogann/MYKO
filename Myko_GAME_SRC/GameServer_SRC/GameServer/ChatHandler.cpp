@@ -2,8 +2,7 @@
 #include "DBAgent.h"
 #include "../shared/DateTime.h"
 #include "../shared/Ini.h"
-#include <thread>          // S114 K3 FAZ 6: Discord webhook async
-#include <curl/curl.h>     // S114 K3 FAZ 6: Discord webhook
+// S114 K3 FAZ 6: Discord webhook KAPALI (crash riski) — include kaldirildi
 
 using std::string;
 
@@ -2808,39 +2807,8 @@ COMMAND_HANDLER(CUser::HandleBanListCommand)
 }
 #pragma endregion
 
-// S114 K3 FAZ 6: Discord webhook (fire & forget, ayri thread, sessiz fail)
-// Webhook URL GameServer.ini'den okunmali — geçici hardcode (kullanmamak için BOS bırak)
-static void SendDiscordHwidAlert(const std::string& title, const std::string& msg)
-{
-	std::thread([title, msg]() {
-		try {
-			char webhookUrl[512] = {0};
-			GetPrivateProfileStringA("DiscordWebhook", "HwidAlert", "",
-				webhookUrl, sizeof(webhookUrl),
-				".\\GameServer.ini");
-			if (strlen(webhookUrl) < 20) return;  // URL bos, sessiz cik
-
-			std::string body = string_format(
-				"{\"username\":\"MYKO Anti-Cheat\",\"embeds\":[{\"title\":\"%s\",\"description\":\"%s\",\"color\":15158332}]}",
-				title.c_str(), msg.c_str());
-
-			CURL* curl = curl_easy_init();
-			if (!curl) return;
-			struct curl_slist* hdr = nullptr;
-			hdr = curl_slist_append(hdr, "Content-Type: application/json");
-			curl_easy_setopt(curl, CURLOPT_URL, webhookUrl);
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hdr);
-			curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
-			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-			curl_easy_perform(curl);
-			curl_slist_free_all(hdr);
-			curl_easy_cleanup(curl);
-		} catch (...) {
-			// Sessizce yut
-		}
-	}).detach();
-}
+// S114 K3 FAZ 6: SendDiscordHwidAlert KALDIRILDI (crash riski)
+// Webhook ileride DLL veya stand-alone process ile yapilacak.
 
 #pragma region CUser::HandleHwidBanCommand - S114 K3 FAZ 5
 // Kullanim: +hwidban CharNick [sebep]
@@ -2892,10 +2860,8 @@ COMMAND_HANDLER(CUser::HandleHwidBanCommand)
 		pTarget->Disconnect();
 		std::string notice = string_format("%s'in PC'si HWID ban yedi (cheat tespiti).", strUserID.c_str());
 		g_pMain->SendNotice(notice.c_str(), (uint8)Nation::ALL);
-		// S114 K3 FAZ 6: Discord webhook
-		SendDiscordHwidAlert("HWID BAN VERILDI",
-			string_format("**Karakter:** %s\\n**Account:** %s\\n**GM:** %s\\n**Sebep:** %s",
-				strUserID.c_str(), strAccountID.c_str(), GetName().c_str(), strReason.c_str()));
+		// S114 K3 FAZ 6: Discord webhook — KAPALI (crash riski, sonra cozulecek)
+		// SendDiscordHwidAlert("HWID BAN VERILDI", ...);
 		break;
 	}
 	case 1:
