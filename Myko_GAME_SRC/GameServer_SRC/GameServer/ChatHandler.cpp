@@ -2601,6 +2601,15 @@ COMMAND_HANDLER(CUser::Handlebannedcommand)
 		std::string strAccountID = (pTarget != nullptr) ? pTarget->GetAccountName() : "";
 		int nDurationMinutes = (period > 0) ? (period * 24 * 60) : 0; // gun -> dakika
 		g_DBAgent.AddBanToDB(strAccountID, strTargetIP, 1, finaldesc, GetName(), nDurationMinutes);
+
+		// S115 FIX: Online oyuncuyu KICK et + SendNotice "BANNED" (eski kod sadece DB'ye yaziyordu)
+		if (pTarget != nullptr) {
+			std::string banMsg = string_format("%s is banned for: %s", strUserID.c_str(), finaldesc.c_str());
+			g_pMain->SendNotice(banMsg.c_str(), (uint8)Nation::ALL);
+			pTarget->Disconnect();
+			printf("[BAN-KICK] %s (Account: %s, IP: %s) kicked. Sebep: %s\n",
+				strUserID.c_str(), strAccountID.c_str(), strTargetIP.c_str(), finaldesc.c_str());
+		}
 	}
 
 	return true;
@@ -2641,7 +2650,11 @@ COMMAND_HANDLER(CUser::HandlePcBlock)
 	Packet result(XSafe, uint8(XSafeOpCodes::LIFESKILL));
 	result << uint8(1);
 	pUser->Send(&result);
-	
+
+	// S115 FIX: PC block sonrasi disconnect + SendNotice
+	std::string banMsg = string_format("%s is permanently banned (PC).", strUserID.c_str());
+	g_pMain->SendNotice(banMsg.c_str(), (uint8)Nation::ALL);
+	pUser->Disconnect();
 
 	return true;
 }
