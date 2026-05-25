@@ -694,6 +694,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
                 m_font->DrawTextA(NULL, Engine->GetState().c_str(), -1, &TextStatePos, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 
+                // S115 FIX: Launcher build versiyonu sag alt kosede goster
+                // KUCUK + GOZE BATMAZ — transparan gri, sadece "v2.4" gibi
+                {
+                    char verTxt[16];
+                    snprintf(verTxt, sizeof(verTxt), "v%d.%d",
+                             LAUNCHER_BUILD_VERSION_MAJOR, LAUNCHER_BUILD_VERSION_MINOR);
+                    RECT verRect;
+                    verRect.left   = iW - 50;
+                    verRect.top    = iH - 18;
+                    verRect.right  = iW - 6;
+                    verRect.bottom = iH - 4;
+                    // Saydam gri (alpha 120 = yari saydam, dikkat cekmez)
+                    m_font->DrawTextA(NULL, verTxt, -1, &verRect, DT_RIGHT,
+                                      D3DCOLOR_ARGB(120, 180, 180, 180));
+                }
+
                 // S113: Tooltip — buton hover'inda kucuk metin (buton ustunde)
                 struct TT { ButtonState* state; const char* text; const D3DXVECTOR3* pos; int hitX; int hitY; };
                 TT tooltips[] = {
