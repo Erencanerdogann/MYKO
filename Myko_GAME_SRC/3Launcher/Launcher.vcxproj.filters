@@ -51,6 +51,9 @@
     <ClCompile Include="LauncherEngine.cpp">
       <Filter>Source Files\Engine</Filter>
     </ClCompile>
+    <ClCompile Include="CrashFingerprint.cpp">
+      <Filter>Source Files\Engine</Filter>
+    </ClCompile>
     <ClCompile Include="ftpclient\FTPClient.cpp">
       <Filter>Header Files\ftpclient</Filter>
     </ClCompile>
@@ -90,6 +93,9 @@
       <Filter>Header Files\N3SDK</Filter>
     </ClInclude>
     <ClInclude Include="LauncherEngine.h">
+      <Filter>Header Files\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="CrashFingerprint.h">
       <Filter>Header Files\Engine</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">

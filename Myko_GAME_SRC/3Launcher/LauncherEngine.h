@@ -9,8 +9,9 @@
 
 // S115 AUTO-UPDATE: Bu Launcher'in build versiyonu. Her yeni build'de ARTIR.
 // Sunucudaki version.txt'de bu degerden buyuk varsa, Launcher otomatik gunceller.
+// v2.5: FAZ 4 — Crash fingerprint + duplicate suppression + whitelist filtre
 #define LAUNCHER_BUILD_VERSION_MAJOR 2
-#define LAUNCHER_BUILD_VERSION_MINOR 4
+#define LAUNCHER_BUILD_VERSION_MINOR 5
 
 class Launcher
 {
@@ -33,11 +34,16 @@ public:
 	bool LaunchUpdaterAndExit(const std::string& tempNewExePath);
 
 	// S115 CRASH REPORTER: dump uret + sunucuya yolla
+	// v2.5 FAZ 4: fingerprint + module + exception + offset parametreleri eklendi
 	static void InstallCrashHandler();
 	static bool UploadCrashDump(const std::string& dumpPath,
 	                            const std::string& exeName,
 	                            const std::string& account = "",
-	                            const std::string& version = "");
+	                            const std::string& version = "",
+	                            const std::string& fingerprint = "",   // S115 v2.5
+	                            const std::string& moduleName = "",    // S115 v2.5
+	                            const std::string& exceptionCode = "", // S115 v2.5
+	                            const std::string& crashOffset = "");  // S115 v2.5
 	bool HandlePacket(Packet& pkt);
 	void Update();
 	void Download();

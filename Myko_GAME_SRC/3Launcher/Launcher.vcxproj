@@ -102,6 +102,7 @@
     <ClCompile Include="CRC.cpp" />
     <ClCompile Include="ftpclient\FTPClient.cpp" />
     <ClCompile Include="GDIHelper.cpp" />
+    <ClCompile Include="CrashFingerprint.cpp" />
     <ClCompile Include="hdr.cpp" />
     <ClCompile Include="JvCryption.cpp" />
     <ClCompile Include="Launcher.cpp" />
@@ -112,6 +113,7 @@
   <ItemGroup>
     <ClInclude Include="APISocket.h" />
     <ClInclude Include="ByteBuffer.h" />
+    <ClInclude Include="CrashFingerprint.h" />
     <ClInclude Include="CRC.h" />
     <ClInclude Include="crc32.h" />
     <ClInclude Include="curl\curl.h" />

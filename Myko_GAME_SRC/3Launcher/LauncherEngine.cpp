@@ -11,6 +11,7 @@
 #include <winhttp.h>   // S115 AUTO-UPDATE: HTTP download
 #include <fstream>     // S115 AUTO-UPDATE: dosya yazma
 #include <dbghelp.h>   // S115 CRASH REPORTER: MiniDumpWriteDump
+#include "CrashFingerprint.h"  // S115 v2.5 FAZ 4: client filtre
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "Shlwapi.lib")
@@ -1042,7 +1043,11 @@ static std::string GetServerIPForCrash()
 bool Launcher::UploadCrashDump(const std::string& dumpPath,
                                const std::string& exeName,
                                const std::string& account,
-                               const std::string& version)
+                               const std::string& version,
+                               const std::string& fingerprint,    // S115 v2.5 FAZ 4
+                               const std::string& moduleName,     // S115 v2.5 FAZ 4
+                               const std::string& exceptionCode,  // S115 v2.5 FAZ 4
+                               const std::string& crashOffset)    // S115 v2.5 FAZ 4
 {
     // Dump dosyasini oku
     std::ifstream ifs(dumpPath, std::ios::binary | std::ios::ate);
@@ -1082,6 +1087,12 @@ bool Launcher::UploadCrashDump(const std::string& dumpPath,
     addField("account",  account);
     addField("version",  version);
     addField("os",       osBuf);
+
+    // S115 v2.5 FAZ 4: Yeni fingerprint metadata (bos string ise eklenmez)
+    if (!fingerprint.empty())   addField("fingerprint",    fingerprint);
+    if (!moduleName.empty())    addField("module_name",    moduleName);
+    if (!exceptionCode.empty()) addField("exception_code", exceptionCode);
+    if (!crashOffset.empty())   addField("crash_offset",   crashOffset);
 
     // Dosya field
     body += "--" + boundary + "\r\n";
@@ -1139,9 +1150,37 @@ bool Launcher::UploadCrashDump(const std::string& dumpPath,
 }
 
 // Unhandled exception handler - SetUnhandledExceptionFilter ile kurulur
+// S115 v2.5 FAZ 4: Sentry-stili "on_crash" filtre — whitelist + duplicate + bos dump
 static LONG WINAPI LauncherCrashFilter(EXCEPTION_POINTERS* ep)
 {
-    // Dump path: %TEMP%\malaysiako_launcher_crash_<pid>_<tick>.dmp
+    // ---------------------------------------------------------------
+    // FAZ 4 (S115 v2.5): Crash bilgilerini cikar + fingerprint hesapla
+    // ---------------------------------------------------------------
+    CrashFingerprint::CrashInfo info;
+    bool haveInfo = CrashFingerprint::ExtractCrashInfo(ep, info);
+
+    // ---------------------------------------------------------------
+    // FAZ 4 FILTRE 1: Whitelist exception (user-sebepli crash)
+    // STATUS_INTEGER_DIVIDE_BY_ZERO, FLOAT_OVERFLOW, DBG_CONTROL_C vs
+    // → dump uretme, sunucuya yollama, sessizce gec
+    // ---------------------------------------------------------------
+    if (haveInfo && CrashFingerprint::IsWhitelistedException(info.exceptionCode)) {
+        return EXCEPTION_EXECUTE_HANDLER; // OS'a "ben hallettim" de, normal exit
+    }
+
+    // ---------------------------------------------------------------
+    // FAZ 4 FILTRE 2: Duplicate (son 24sa ayni fingerprint)
+    // → dump uretme, gec
+    // ---------------------------------------------------------------
+    if (haveInfo && CrashFingerprint::ComputeFingerprint(info)) {
+        if (CrashFingerprint::IsDuplicateInLast24Hours(info.fingerprint)) {
+            return EXCEPTION_EXECUTE_HANDLER; // duplicate, sessizce gec
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Dump dosyasini uret (MiniDumpWriteDump)
+    // ---------------------------------------------------------------
     char tempDir[MAX_PATH] = { 0 };
     GetTempPathA(MAX_PATH, tempDir);
     char dumpPath[MAX_PATH] = { 0 };
@@ -1162,6 +1201,22 @@ static LONG WINAPI LauncherCrashFilter(EXCEPTION_POINTERS* ep)
                           ep ? &mei : NULL, NULL, NULL);
         CloseHandle(hFile);
 
+        // -----------------------------------------------------------
+        // FAZ 4 FILTRE 3: Dump dosyasi gecerli mi? (MDMP magic + size)
+        // → bos/cop ise gec
+        // -----------------------------------------------------------
+        if (!CrashFingerprint::IsValidDump(dumpPath)) {
+            DeleteFileA(dumpPath); // cop dosyayi temizle
+            return EXCEPTION_EXECUTE_HANDLER;
+        }
+
+        // -----------------------------------------------------------
+        // FAZ 4: Fingerprint'i kayit et (gelecekte duplicate yakalansin)
+        // -----------------------------------------------------------
+        if (haveInfo && !info.fingerprint.empty()) {
+            CrashFingerprint::RecordFingerprint(info.fingerprint);
+        }
+
         // Account ve version Engine'den okumayi dene (varsa)
         std::string account, version;
         // Engine objesi crash sirasinda erisilebilir olmayabilir -> try/catch
@@ -1172,8 +1227,15 @@ static LONG WINAPI LauncherCrashFilter(EXCEPTION_POINTERS* ep)
             }
         } catch (...) { /* gec */ }
 
+        // -----------------------------------------------------------
         // Upload (5sn timeout, fail olursa gec)
-        Launcher::UploadCrashDump(dumpPath, "Launcher.exe", account, version);
+        // FAZ 4: fingerprint + module + exception + offset eklenmis
+        // -----------------------------------------------------------
+        Launcher::UploadCrashDump(dumpPath, "Launcher.exe", account, version,
+                                  haveInfo ? info.fingerprint : "",
+                                  haveInfo ? info.moduleName : "",
+                                  haveInfo ? info.exceptionCode : "",
+                                  haveInfo ? info.crashOffset : "");
     }
     return EXCEPTION_EXECUTE_HANDLER;
 }
