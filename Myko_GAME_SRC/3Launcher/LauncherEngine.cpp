@@ -111,67 +111,50 @@ Launcher::Launcher()
     // S114 K3 FIX: HWID hesabi ASYNC thread'de (GetAdaptersInfo yavas — Launcher UI bloklamasin)
     std::thread([this]() { this->ComputeHwidA(); }).detach();
 
-    // S115 v2.5 FAZ 5+5c: Self-Heal diagnostik ASYNC (UI bloklamasin)
-    // Acilista 5 kontrolu kosar, ERROR varsa Glasmorphism Dialog OTOMATIK acilir.
-    // Cyberpunk dersi: kullanici sorunu anlasin, manuel onay versin.
-    // FAZ 5c FIX: Sleep 1500 -> 8000ms (Auto-update + Start() socket connect once tamamlansin)
-    // CheckConnectivity HTTP HEAD socket Connect ile yarismasin
-    std::thread([this]() {
-        Sleep(8000);  // Launcher acilsin + Auto-update + Start() bitsin, sonra diagnostik
+    // S115 v2.7 ACIL FIX: Self-heal DEVRE DISI (Launcher.ini [SelfHeal] AutoRun=1 ile acilabilir)
+    // SEBEP: Constructor'da 3 async HTTP/WinSock thread (HwidA + CheckForUpdate + Self-heal)
+    //        WinSock/WinHTTP race condition yaratiyor, baglanti kuruluyor olmasi gerekirken
+    //        bazi PC'lerde 'Connection failed' veriyor (patron PC ornek).
+    // COZUM: Self-heal AUTO-RUN kapali (Diagnostic Dialog hala manuel acilabilir).
+    //        Patron isterse Launcher.ini [SelfHeal] AutoRun=1 ile acabilir.
+    char workDirInit[MAX_PATH] = { 0 };
+    GetCurrentDirectoryA(MAX_PATH, workDirInit);
+    std::string iniPath = std::string(workDirInit) + "\\Launcher.ini";
+    UINT autoRun = GetPrivateProfileIntA("SelfHeal", "AutoRun", 0, iniPath.c_str());
 
-        char workDir[MAX_PATH] = { 0 };
-        GetCurrentDirectoryA(MAX_PATH, workDir);
-        std::string gamePath(workDir);
+    if (autoRun == 1) {
+        // Sadece kullanici acikca aktiv ederse arka planda calis
+        std::thread([this]() {
+            Sleep(15000);  // 15sn cok gec — Auto-update + Start() bitmis olur
 
-        char ipBuf[128] = { 0 };
-        GetPrivateProfileStringA("Server", "IP0", "", ipBuf, sizeof(ipBuf),
-                                 (gamePath + "\\Server.ini").c_str());
+            char workDir[MAX_PATH] = { 0 };
+            GetCurrentDirectoryA(MAX_PATH, workDir);
+            std::string gamePath(workDir);
 
-        auto results = LauncherDiagnostic::RunAllChecks(gamePath, ipBuf);
+            char ipBuf[128] = { 0 };
+            GetPrivateProfileStringA("Server", "IP0", "", ipBuf, sizeof(ipBuf),
+                                     (gamePath + "\\Server.ini").c_str());
 
-        int warnings = 0, errors = 0;
-        for (const auto& r : results) {
-            if (r.status == LauncherDiagnostic::CheckStatus::WARNING) warnings++;
-            else if (r.status == LauncherDiagnostic::CheckStatus::ERROR_LEVEL) errors++;
-
-            std::string statusStr;
-            switch (r.status) {
-                case LauncherDiagnostic::CheckStatus::OK:          statusStr = "OK"; break;
-                case LauncherDiagnostic::CheckStatus::WARNING:     statusStr = "WARN"; break;
-                case LauncherDiagnostic::CheckStatus::ERROR_LEVEL: statusStr = "ERR"; break;
-                case LauncherDiagnostic::CheckStatus::DISABLED:    statusStr = "DISABLED"; break;
-                default:                                            statusStr = "SKIP"; break;
+            auto results = LauncherDiagnostic::RunAllChecks(gamePath, ipBuf);
+            int errors = 0;
+            for (const auto& r : results) {
+                if (r.status == LauncherDiagnostic::CheckStatus::ERROR_LEVEL) errors++;
+                std::string statusStr =
+                    (r.status == LauncherDiagnostic::CheckStatus::OK)          ? "OK" :
+                    (r.status == LauncherDiagnostic::CheckStatus::WARNING)     ? "WARN" :
+                    (r.status == LauncherDiagnostic::CheckStatus::ERROR_LEVEL) ? "ERR" :
+                    (r.status == LauncherDiagnostic::CheckStatus::DISABLED)    ? "DISABLED" : "SKIP";
+                LauncherDiagnostic::LogAction(r.name, statusStr + " | " + r.message);
             }
-            LauncherDiagnostic::LogAction(r.name, statusStr + " | " + r.message);
-        }
-
-        // Sorun varsa log'a ozet
-        if (errors > 0 || warnings > 0) {
-            char buf[128] = { 0 };
-            snprintf(buf, sizeof(buf), "%d uyari, %d hata", warnings, errors);
-            LauncherDiagnostic::LogAction("SUMMARY", std::string(buf));
-        }
-
-        // FAZ 5c OTOMATIK TRIGGER:
-        // ERROR_LEVEL var ise Glasmorphism Dialog kullaniciya goster.
-        // Sadece WARNING varsa gosterme (cok agresif olur — Defender exclusion vs).
-        // Eger SelfHeal flag kapali ise hicbir sey yapma.
-        if (errors > 0 && LauncherDiagnostic::IsEnabled()) {
-            // UI thread'e ge — modal dialog burada acilamaz (background thread)
-            // SetTimer ile bir kerelik timer kuralim ve onun callback'inde ac.
-            // BURADA: extern HWND mainWindow var (Launcher.cpp:162).
-            extern HWND mainWindow;
-            if (mainWindow && IsWindow(mainWindow)) {
-                // gamePath ve ipBuf'i baska bir thread'e safe iletmek icin
-                // Window message kullan — WM_USER + 100
-                static std::string s_gamePath; // life-time main thread'de
-                static std::string s_serverIP;
-                s_gamePath = gamePath;
-                s_serverIP = ipBuf;
-                PostMessageA(mainWindow, WM_USER + 100, 0, 0);
+            // Sadece ERROR varsa kullaniciya UI goster
+            if (errors > 0) {
+                extern HWND mainWindow;
+                if (mainWindow && IsWindow(mainWindow)) {
+                    PostMessageA(mainWindow, WM_USER + 100, 0, 0);
+                }
             }
-        }
-    }).detach();
+        }).detach();
+    }
 
     const size_t IPSize = 256;
     char* sIP = new char[IPSize];
