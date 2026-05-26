@@ -228,16 +228,9 @@ Launcher::Launcher()
         m_scanThreatName = detected;
     }
 
-    // S115 AUTO-UPDATE: Sunucudan version.txt cek, yeni surum varsa indir+restart
-    // Async thread'de calistir — UI bloklanmaz. Update tetiklenirse helper.bat
-    // calistirilir ve ExitProcess yapilir.
-    std::thread([this]() {
-        try {
-            this->CheckForUpdate();
-        } catch (...) {
-            // Auto-update fail oldu — sessizce gec, normal Launcher akisi devam
-        }
-    }).detach();
+    // S115 v2.7+ FIX: AUTO-UPDATE thread BURADAN KALDIRILDI.
+    // Sebep: WinHTTP + WinSock race ('Connection failed' patron PC bug, S115).
+    // Yeni yer: Launcher::Start() — connect() basarili olduktan SONRA fork ediliyor.
 }
 
 // S114: KOXP/cheat tool tarayicisi — 4 katman (process + window + DLL disk + driver service)
@@ -543,6 +536,20 @@ bool Launcher::Start()
     std::thread([this]() {
         Sleep(200);  // Rate limiter (100ms/10 paket)
         this->ReportHwid();
+    }).detach();
+
+    // S115 v2.7+ FIX: AUTO-UPDATE thread Constructor'dan buraya tasindi.
+    // SEBEP: Constructor'da WinHTTP thread + WinSock connect ayni anda baslayinca
+    //        race yaratip 'Connection failed' veriyordu (patron PC test S115).
+    // COZUM: connect() basarili olduktan SONRA 5sn bekle + WinHTTP thread fork.
+    //        Bu noktada WinSock tam settle, WinHTTP race etmez.
+    std::thread([this]() {
+        Sleep(5000);  // WinSock settle + ilk paket akisi tamamlansin
+        try {
+            this->CheckForUpdate();
+        } catch (...) {
+            // Auto-update fail oldu — sessizce gec, normal Launcher akisi devam
+        }
     }).detach();
 
     while (true)
