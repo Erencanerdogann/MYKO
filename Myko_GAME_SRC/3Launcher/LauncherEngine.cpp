@@ -12,6 +12,7 @@
 #include <fstream>     // S115 AUTO-UPDATE: dosya yazma
 #include <dbghelp.h>   // S115 CRASH REPORTER: MiniDumpWriteDump
 #include "CrashFingerprint.h"  // S115 v2.5 FAZ 4: client filtre
+#include "LauncherDiagnostic.h" // S115 v2.5 FAZ 5: self-heal diagnostik
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "Shlwapi.lib")
@@ -109,6 +110,45 @@ Launcher::Launcher()
 
     // S114 K3 FIX: HWID hesabi ASYNC thread'de (GetAdaptersInfo yavas — Launcher UI bloklamasin)
     std::thread([this]() { this->ComputeHwidA(); }).detach();
+
+    // S115 v2.5 FAZ 5: Self-Heal diagnostik ASYNC (UI bloklamasin)
+    // Acilista 5 kontrolu kosar, sorunlari selfheal.log'a yazar.
+    // UI entegrasyonu (Repair butonu) ileride eklenecek — su an SADECE log + state mesaji.
+    std::thread([this]() {
+        Sleep(500);  // Launcher tam acilsin
+        char workDir[MAX_PATH] = { 0 };
+        GetCurrentDirectoryA(MAX_PATH, workDir);
+        std::string gamePath(workDir);
+
+        char ipBuf[128] = { 0 };
+        GetPrivateProfileStringA("Server", "IP0", "", ipBuf, sizeof(ipBuf),
+                                 (gamePath + "\\Server.ini").c_str());
+
+        auto results = LauncherDiagnostic::RunAllChecks(gamePath, ipBuf);
+
+        int warnings = 0, errors = 0;
+        for (const auto& r : results) {
+            if (r.status == LauncherDiagnostic::CheckStatus::WARNING) warnings++;
+            else if (r.status == LauncherDiagnostic::CheckStatus::ERROR_LEVEL) errors++;
+
+            std::string statusStr;
+            switch (r.status) {
+                case LauncherDiagnostic::CheckStatus::OK:          statusStr = "OK"; break;
+                case LauncherDiagnostic::CheckStatus::WARNING:     statusStr = "WARN"; break;
+                case LauncherDiagnostic::CheckStatus::ERROR_LEVEL: statusStr = "ERR"; break;
+                case LauncherDiagnostic::CheckStatus::DISABLED:    statusStr = "DISABLED"; break;
+                default:                                            statusStr = "SKIP"; break;
+            }
+            LauncherDiagnostic::LogAction(r.name, statusStr + " | " + r.message);
+        }
+        // Sorun varsa log'a ozet yaz
+        if (errors > 0 || warnings > 0) {
+            char buf[128] = { 0 };
+            snprintf(buf, sizeof(buf), "%d uyari, %d hata - selfheal.log kontrol",
+                     warnings, errors);
+            LauncherDiagnostic::LogAction("SUMMARY", std::string(buf));
+        }
+    }).detach();
 
     const size_t IPSize = 256;
     char* sIP = new char[IPSize];
