@@ -54,6 +54,9 @@
     <ClCompile Include="CrashFingerprint.cpp">
       <Filter>Source Files\Engine</Filter>
     </ClCompile>
+    <ClCompile Include="LauncherDiagnostic.cpp">
+      <Filter>Source Files\Engine</Filter>
+    </ClCompile>
     <ClCompile Include="ftpclient\FTPClient.cpp">
       <Filter>Header Files\ftpclient</Filter>
     </ClCompile>
@@ -96,6 +99,9 @@
       <Filter>Header Files\Engine</Filter>
     </ClInclude>
     <ClInclude Include="CrashFingerprint.h">
+      <Filter>Header Files\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="LauncherDiagnostic.h">
       <Filter>Header Files\Engine</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
