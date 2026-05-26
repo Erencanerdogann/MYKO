@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <ctime>
+#include <algorithm>  // std::transform (FAZ 5c CheckDefenderExclusion lowercase)
 #include <commctrl.h>
 
 #pragma comment(lib, "winhttp.lib")
@@ -68,44 +69,105 @@ bool IsEnabled() {
 // HKLM\SOFTWARE\CodeGuard\PATH var ve gamePath ile esit mi
 // (LauncherEngine.cpp:124-146 mantigi)
 // =====================================================================
+// FAZ 5c FIX: Gercek Defender exclusion sorgu (PowerShell Get-MpPreference)
+// Eski: registry HKLM\SOFTWARE\CodeGuard\PATH — aldatici, eski Launcher yazmis olabilir
+// Yeni: gercekten Defender'dan oku
 CheckResult CheckDefenderExclusion(const std::string& gamePath) {
     CheckResult r;
     r.name = "Windows Defender Exclusion";
     r.repairAvailable = true;
 
-    HKEY hKey;
-    LONG res = RegOpenKeyExA(HKEY_LOCAL_MACHINE,
-                             "SOFTWARE\\CodeGuard",
-                             0, KEY_READ, &hKey);
-    if (res != ERROR_SUCCESS) {
+    // Once Defender aktif mi (Windows Security disabled olabilir)
+    {
+        HKEY hKey;
+        LONG res = RegOpenKeyExA(HKEY_LOCAL_MACHINE,
+                                 "SOFTWARE\\Microsoft\\Windows Defender",
+                                 0, KEY_READ | KEY_WOW64_64KEY, &hKey);
+        if (res != ERROR_SUCCESS) {
+            r.status = CheckStatus::OK;
+            r.message = "Defender bulunamadi (devre disi veya 3.parti antivirus).";
+            r.action = "";
+            r.repairAvailable = false;
+            return r;
+        }
+        RegCloseKey(hKey);
+    }
+
+    // PowerShell ile gercek exclusion listesini al
+    // Cikti: lokal temp dosyaya yaz, sonra oku
+    char tempDir[MAX_PATH] = { 0 };
+    GetTempPathA(MAX_PATH, tempDir);
+    std::string outFile = std::string(tempDir) + "mk_diag_excl.txt";
+
+    // Lower-case gamePath karsilastirma icin
+    std::string gpLower = gamePath;
+    std::transform(gpLower.begin(), gpLower.end(), gpLower.begin(),
+                   [](unsigned char c){ return (char)std::tolower(c); });
+
+    // PowerShell command — exclusion path list lowercase dump
+    // -ErrorAction SilentlyContinue cunku Defender disabled olabilir
+    std::string psCmd =
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "
+        "\"try { "
+        "(Get-MpPreference -ErrorAction SilentlyContinue).ExclusionPath | "
+        "ForEach-Object { $_.ToLower() } | Out-File -Encoding ASCII -FilePath '" + outFile + "' "
+        "} catch { '' | Out-File -Encoding ASCII -FilePath '" + outFile + "' }\"";
+
+    // Sessiz calistir
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi = { 0 };
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    std::string psCmdMutable = psCmd;
+    DeleteFileA(outFile.c_str()); // eski varsa sil
+
+    BOOL ok = CreateProcessA(NULL, (LPSTR)psCmdMutable.c_str(), NULL, NULL, FALSE,
+                             CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    if (!ok) {
         r.status = CheckStatus::WARNING;
-        r.message = "Defender exclusion eklenmemis. Antivirus oyunu engelleyebilir.";
+        r.message = "Defender durumu kontrol edilemedi (PowerShell hatasi).";
+        r.action = "Repair";
+        return r;
+    }
+    WaitForSingleObject(pi.hProcess, 5000);  // max 5sn
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    // Cikti oku
+    std::ifstream f(outFile);
+    if (!f.is_open()) {
+        r.status = CheckStatus::WARNING;
+        r.message = "Defender exclusion sorgulanamadi.";
         r.action = "Repair";
         return r;
     }
 
-    char value[MAX_PATH] = { 0 };
-    DWORD valueLen = MAX_PATH;
-    DWORD type = 0;
-    res = RegQueryValueExA(hKey, "PATH", NULL, &type, (LPBYTE)value, &valueLen);
-    RegCloseKey(hKey);
-
-    if (res != ERROR_SUCCESS || type != REG_SZ) {
-        r.status = CheckStatus::WARNING;
-        r.message = "Defender exclusion PATH registry'de yok.";
-        r.action = "Repair";
-        return r;
+    bool found = false;
+    std::string line;
+    while (std::getline(f, line)) {
+        // Trim whitespace
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n' ||
+                                  line.back() == ' ' || line.back() == '\t')) {
+            line.pop_back();
+        }
+        if (line.empty()) continue;
+        // gamePath veya altinda mi
+        if (line == gpLower || line.find(gpLower) != std::string::npos) {
+            found = true;
+            break;
+        }
     }
+    f.close();
+    DeleteFileA(outFile.c_str()); // temp temizle
 
-    // Windows path case-insensitive — _stricmp kullan
-    if (_stricmp(gamePath.c_str(), value) == 0) {
+    if (found) {
         r.status = CheckStatus::OK;
-        r.message = "Defender exclusion aktif.";
+        r.message = "Defender exclusion aktif (klasor istisna listede).";
         r.action = "";
         r.repairAvailable = false;
     } else {
         r.status = CheckStatus::WARNING;
-        r.message = "Defender exclusion baska klasor icin: " + std::string(value);
+        r.message = "Defender'da bu klasor icin istisna YOK. Onar dugmesine bas.";
         r.action = "Repair";
     }
     return r;
@@ -117,51 +179,72 @@ CheckResult CheckDefenderExclusion(const std::string& gamePath) {
 // =====================================================================
 CheckResult CheckFileIntegrity(const std::string& gamePath) {
     CheckResult r;
-    r.name = "Dosya Butunluğu";
+    r.name = "Dosya Butunlugu";
     r.repairAvailable = false; // file integrity icin manual Repair, otomatik degistirme YASAK
 
     struct FileCheck {
         std::string name;
         DWORD minSize;
+        bool critical;  // critical=true ise eksiklik ERROR, false ise WARNING
     };
 
+    // FAZ 5c FIX: CODE opsiyonel (anti-cheat package, gercek launcher klasorunde olur ama
+    // development veya custom kurulumlarda olmayabilir). Sadece KnightOnLine.exe + Launcher.exe kritik.
     FileCheck critical[] = {
-        { "KnightOnLine.exe", 1024 * 1024 },   // en az 1MB
-        { "Launcher.exe",     500 * 1024 },     // en az 500KB
-        { "CODE",             100 * 1024 }      // en az 100KB
+        { "KnightOnLine.exe", 1024 * 1024, true  },   // en az 1MB - KRITIK
+        { "Launcher.exe",     500 * 1024,  true  },   // en az 500KB - KRITIK
+        { "CODE",             100 * 1024,  false }    // en az 100KB - opsiyonel (anti-cheat)
     };
 
-    std::vector<std::string> missing;
-    std::vector<std::string> tooSmall;
+    std::vector<std::string> missingCrit;
+    std::vector<std::string> missingOpt;
+    std::vector<std::string> tooSmallCrit;
+    std::vector<std::string> tooSmallOpt;
 
     for (const auto& fc : critical) {
         std::string filePath = gamePath + "\\" + fc.name;
         HANDLE h = CreateFileA(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ,
                                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (h == INVALID_HANDLE_VALUE) {
-            missing.push_back(fc.name);
+            if (fc.critical) missingCrit.push_back(fc.name);
+            else             missingOpt.push_back(fc.name);
             continue;
         }
         LARGE_INTEGER size = { 0 };
         if (GetFileSizeEx(h, &size)) {
             if ((DWORD)size.QuadPart < fc.minSize) {
-                tooSmall.push_back(fc.name);
+                if (fc.critical) tooSmallCrit.push_back(fc.name);
+                else             tooSmallOpt.push_back(fc.name);
             }
         }
         CloseHandle(h);
     }
 
-    if (missing.empty() && tooSmall.empty()) {
+    // ERROR sadece KRITIK eksik/bozuk varsa
+    if (!missingCrit.empty() || !tooSmallCrit.empty()) {
+        r.status = CheckStatus::ERROR_LEVEL;
+        std::string msg = "KRITIK dosya eksik/bozuk: ";
+        bool first = true;
+        for (const auto& m : missingCrit) { if (!first) msg += ", "; msg += m + " (EKSIK)"; first = false; }
+        for (const auto& t : tooSmallCrit) { if (!first) msg += ", "; msg += t + " (BOZUK)"; first = false; }
+        r.message = msg;
+        r.action = "Setup'tan onar";
+    }
+    // WARNING sadece opsiyonel eksik (CODE gibi)
+    else if (!missingOpt.empty() || !tooSmallOpt.empty()) {
+        r.status = CheckStatus::WARNING;
+        std::string msg = "Opsiyonel dosya eksik (anti-cheat): ";
+        bool first = true;
+        for (const auto& m : missingOpt) { if (!first) msg += ", "; msg += m; first = false; }
+        for (const auto& t : tooSmallOpt) { if (!first) msg += ", "; msg += t + "(bozuk)"; first = false; }
+        msg += ". Oyuna girince Launcher otomatik indirir.";
+        r.message = msg;
+        r.action = "";
+    }
+    else {
         r.status = CheckStatus::OK;
         r.message = "Kritik dosyalar tam.";
         r.action = "";
-    } else {
-        r.status = CheckStatus::ERROR_LEVEL;
-        std::string msg = "Bozuk/eksik dosyalar:";
-        for (const auto& m : missing) msg += "\n  EKSIK: " + m;
-        for (const auto& t : tooSmall) msg += "\n  BOZUK: " + t;
-        r.message = msg;
-        r.action = "Setup'tan onar"; // backup yok, manuel reinstall
     }
     return r;
 }

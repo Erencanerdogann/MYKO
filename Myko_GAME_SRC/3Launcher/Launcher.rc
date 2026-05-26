@@ -128,11 +128,11 @@ END
 // Boyut 420x280, ferah layout, Segoe UI font, custom paint WM_CTLCOLORDLG
 //
 
-// Compact: 320x220 — Launcher 175x263 ile uyumlu (Launcher'in 1.8 kati, makul)
+// Compact: 320x220 - Launcher 175x263 ile uyumlu (1.8 kati). Em-dash YASAK (encoding bozar).
 IDD_DIAGNOSTIC DIALOGEX 0, 0, 320, 220
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_LAYERED
-CAPTION "MalaysiaKO — Tani"
+CAPTION "MalaysiaKO - Tani ve Onarim"
 FONT 8, "Segoe UI", 400, 0, 0x1
 BEGIN
     // Ust baslik (tek satir, kisa)
