@@ -86,4 +86,12 @@ bool RepairServerIni(const std::string& gamePath);
 // ---------------------------------------------------------------------
 void LogAction(const std::string& action, const std::string& result);
 
+// ---------------------------------------------------------------------
+// FAZ 5c: Diagnostik Dialog'u goster (modal popup)
+// hwndParent: Launcher ana penceresi
+// gamePath: Game klasor yolu
+// serverIP: Server.ini IP0 degeri
+// ---------------------------------------------------------------------
+void ShowDiagnosticDialog(HWND hwndParent, const std::string& gamePath, const std::string& serverIP);
+
 } // namespace LauncherDiagnostic

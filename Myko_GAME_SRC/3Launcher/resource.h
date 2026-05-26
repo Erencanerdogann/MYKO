@@ -13,13 +13,23 @@
 #define IDB_LOADING_COMPACT             109
 #define IDB_LOADING_REPAIR              110
 
+// S115 FAZ 5c — Self-Heal Diagnostik Dialog
+#define IDD_DIAGNOSTIC                  200
+#define IDC_DIAG_LIST                   201
+#define IDC_DIAG_REPAIR_DEFENDER        202
+#define IDC_DIAG_REPAIR_VCREDIST        203
+#define IDC_DIAG_REPAIR_SERVERINI       204
+#define IDC_DIAG_REFRESH                205
+#define IDC_DIAG_CLOSE                  206
+#define IDC_DIAG_STATUS                 207
+
 // Next default values for new objects
-// 
+//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        109
+#define _APS_NEXT_RESOURCE_VALUE        211
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1001
+#define _APS_NEXT_CONTROL_VALUE         1010
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

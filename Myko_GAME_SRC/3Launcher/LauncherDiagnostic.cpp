@@ -4,12 +4,14 @@
 // =========================================================================
 #include "stdafx.h"
 #include "LauncherDiagnostic.h"
+#include "resource.h"  // FAZ 5c: dialog ID'leri
 #include <windows.h>
 #include <shlobj.h>
 #include <winhttp.h>
 #include <fstream>
 #include <sstream>
 #include <ctime>
+#include <commctrl.h>
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "shell32.lib")
@@ -470,6 +472,178 @@ bool RepairServerIni(const std::string& gamePath) {
 
     LogAction("RepairServerIni", ok ? "OK" : "WriteFile failed");
     return ok != 0;
+}
+
+// =====================================================================
+// FAZ 5c: DIAGNOSTIC DIALOG (insan onayli Repair butonlari)
+// Cyberpunk dersi: kor degistirme YASAK, her aksiyon kullanici onayli
+// =====================================================================
+
+// Dialog state — sadece dialog acik iken kullanilir
+struct DiagDialogState {
+    std::string gamePath;
+    std::string serverIP;
+    std::vector<CheckResult> results;
+};
+static DiagDialogState* g_dlgState = nullptr;
+
+// Status string'i icon prefix ile
+static std::string FormatCheckLine(const CheckResult& r) {
+    std::string prefix;
+    switch (r.status) {
+        case CheckStatus::OK:           prefix = "[OK]   "; break;
+        case CheckStatus::WARNING:      prefix = "[WARN] "; break;
+        case CheckStatus::ERROR_LEVEL:  prefix = "[ERR]  "; break;
+        case CheckStatus::DISABLED:     prefix = "[OFF]  "; break;
+        default:                        prefix = "[--]   "; break;
+    }
+    return prefix + r.name + ": " + r.message;
+}
+
+// Listbox'a sonuclari yaz
+static void FillListBox(HWND hList, const std::vector<CheckResult>& results) {
+    SendMessageA(hList, LB_RESETCONTENT, 0, 0);
+    for (const auto& r : results) {
+        std::string line = FormatCheckLine(r);
+        SendMessageA(hList, LB_ADDSTRING, 0, (LPARAM)line.c_str());
+    }
+}
+
+// Status bar guncelle
+static void SetDlgStatus(HWND hDlg, const std::string& msg) {
+    SetDlgItemTextA(hDlg, IDC_DIAG_STATUS, msg.c_str());
+}
+
+// Repair butonlarinin enabled durumunu guncel sonuca gore set et
+static void UpdateRepairButtons(HWND hDlg) {
+    if (!g_dlgState) return;
+    bool needDefender = false, needVCRedist = false, needServerIni = false;
+    for (const auto& r : g_dlgState->results) {
+        if (r.name.find("Defender") != std::string::npos &&
+            r.status != CheckStatus::OK) needDefender = true;
+        if (r.name.find("Visual C++") != std::string::npos &&
+            r.status != CheckStatus::OK) needVCRedist = true;
+        if (r.name.find("Server.ini") != std::string::npos &&
+            r.status != CheckStatus::OK) needServerIni = true;
+    }
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_DEFENDER), needDefender);
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_VCREDIST), needVCRedist);
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_SERVERINI), needServerIni);
+}
+
+// Yeniden tara — RunAllChecks cagir, listbox guncelle
+static void RefreshChecks(HWND hDlg) {
+    if (!g_dlgState) return;
+    SetDlgStatus(hDlg, "Taraniyor...");
+    g_dlgState->results = RunAllChecks(g_dlgState->gamePath, g_dlgState->serverIP);
+    FillListBox(GetDlgItem(hDlg, IDC_DIAG_LIST), g_dlgState->results);
+    UpdateRepairButtons(hDlg);
+
+    int ok = 0, warn = 0, err = 0;
+    for (const auto& r : g_dlgState->results) {
+        switch (r.status) {
+            case CheckStatus::OK: ok++; break;
+            case CheckStatus::WARNING: warn++; break;
+            case CheckStatus::ERROR_LEVEL: err++; break;
+            default: break;
+        }
+    }
+    char status[128];
+    snprintf(status, sizeof(status), "Tarama tamam — OK: %d, Uyari: %d, Hata: %d", ok, warn, err);
+    SetDlgStatus(hDlg, status);
+}
+
+// Dialog procedure
+static INT_PTR CALLBACK DiagDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_INITDIALOG: {
+            if (g_dlgState) {
+                FillListBox(GetDlgItem(hDlg, IDC_DIAG_LIST), g_dlgState->results);
+                UpdateRepairButtons(hDlg);
+                SetDlgStatus(hDlg, "Hazir — sorunlu satira tikla, Onar butonuna bas");
+            }
+            return TRUE;
+        }
+
+        case WM_COMMAND: {
+            WORD id = LOWORD(wParam);
+            switch (id) {
+                case IDC_DIAG_REPAIR_DEFENDER: {
+                    if (MessageBoxA(hDlg,
+                        "Windows Defender'a MalaysiaKO klasoru ve 3 process icin istisna eklenecek.\n"
+                        "Sistem 'Yonetici izni' isteyebilir. Devam edilsin mi?",
+                        "Defender Onayla", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                        SetDlgStatus(hDlg, "Defender exclusion ekleniyor (UAC bekliyor)...");
+                        bool ok = RepairAddDefenderExclusion(g_dlgState->gamePath);
+                        SetDlgStatus(hDlg, ok ?
+                            "Defender exclusion eklendi. Yeniden tarayin." :
+                            "Defender exclusion BASARISIZ (kullanici reddi veya hata).");
+                    }
+                    return TRUE;
+                }
+                case IDC_DIAG_REPAIR_VCREDIST: {
+                    if (MessageBoxA(hDlg,
+                        "Microsoft VC++ Redistributable indirme sayfasi tarayicida acilacak.\n"
+                        "Inen dosyayi calistirin (Run as Admin), sonra yeniden tarayin.",
+                        "VC++ Indir", MB_OKCANCEL | MB_ICONINFORMATION) == IDOK) {
+                        RepairInstallVCRedist();
+                        SetDlgStatus(hDlg, "Tarayicida MS resmi VC++ Redist sayfasi acildi.");
+                    }
+                    return TRUE;
+                }
+                case IDC_DIAG_REPAIR_SERVERINI: {
+                    if (MessageBoxA(hDlg,
+                        "Server.ini varsayilan degerlere SIFIRLANACAK.\n"
+                        "Mevcut Server.ini uzerine yazilacak. Devam edilsin mi?",
+                        "Server.ini Sifirla", MB_YESNO | MB_ICONWARNING) == IDYES) {
+                        bool ok = RepairServerIni(g_dlgState->gamePath);
+                        SetDlgStatus(hDlg, ok ?
+                            "Server.ini sifirlandi. Yeniden tarayin." :
+                            "Server.ini sifirlama BASARISIZ.");
+                    }
+                    return TRUE;
+                }
+                case IDC_DIAG_REFRESH: {
+                    RefreshChecks(hDlg);
+                    return TRUE;
+                }
+                case IDC_DIAG_CLOSE:
+                case IDCANCEL: {
+                    EndDialog(hDlg, 0);
+                    return TRUE;
+                }
+            }
+            return FALSE;
+        }
+
+        case WM_CLOSE: {
+            EndDialog(hDlg, 0);
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+// Public: Dialog'u modal goster
+void ShowDiagnosticDialog(HWND hwndParent, const std::string& gamePath, const std::string& serverIP) {
+    LogAction("ShowDiagnosticDialog", "opening");
+
+    DiagDialogState state;
+    state.gamePath = gamePath;
+    state.serverIP = serverIP;
+    state.results  = RunAllChecks(gamePath, serverIP);
+    g_dlgState = &state;
+
+    DialogBoxParamA(
+        GetModuleHandle(NULL),
+        MAKEINTRESOURCEA(IDD_DIAGNOSTIC),
+        hwndParent,
+        DiagDialogProc,
+        0
+    );
+
+    g_dlgState = nullptr;
+    LogAction("ShowDiagnosticDialog", "closed");
 }
 
 } // namespace LauncherDiagnostic

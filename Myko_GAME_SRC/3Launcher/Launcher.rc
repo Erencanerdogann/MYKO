@@ -122,6 +122,27 @@ BEGIN
     END
 END
 
+/////////////////////////////////////////////////////////////////////////////
+//
+// S115 FAZ 5c — Self-Heal Diagnostik Dialog
+//
+
+IDD_DIAGNOSTIC DIALOGEX 0, 0, 380, 240
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "MalaysiaKO - Tani"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "Asagidaki kontrolleri tarayarak sorunlari tespit ettim. Sorunlu satira tikla, Onar butonuna bas.", IDC_STATIC, 10, 8, 360, 20
+    LISTBOX         IDC_DIAG_LIST, 10, 32, 360, 130, LBS_NOTIFY | LBS_HASSTRINGS | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Durum:", IDC_STATIC, 10, 170, 30, 10
+    LTEXT           "Hazir", IDC_DIAG_STATUS, 45, 170, 325, 10
+    PUSHBUTTON      "Defender Onayla", IDC_DIAG_REPAIR_DEFENDER, 10, 190, 90, 18
+    PUSHBUTTON      "VC++ Indir", IDC_DIAG_REPAIR_VCREDIST, 105, 190, 70, 18
+    PUSHBUTTON      "Server.ini Sifirla", IDC_DIAG_REPAIR_SERVERINI, 180, 190, 80, 18
+    PUSHBUTTON      "Yeniden Tara", IDC_DIAG_REFRESH, 265, 190, 60, 18
+    DEFPUSHBUTTON   "Kapat", IDC_DIAG_CLOSE, 330, 190, 40, 18
+END
+
 #endif    // T�rk�e (T�rkiye) resources
 /////////////////////////////////////////////////////////////////////////////
 
