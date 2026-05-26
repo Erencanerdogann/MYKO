@@ -10,8 +10,9 @@
 // S115 AUTO-UPDATE: Bu Launcher'in build versiyonu. Her yeni build'de ARTIR.
 // Sunucudaki version.txt'de bu degerden buyuk varsa, Launcher otomatik gunceller.
 // v2.5: FAZ 4 — Crash fingerprint + duplicate suppression + whitelist filtre
+// v2.6: FAZ 5c fix — encoding + Defender gercek sorgu + CODE opsiyonel + Sleep 8000 + timeout 3/3/5/5
 #define LAUNCHER_BUILD_VERSION_MAJOR 2
-#define LAUNCHER_BUILD_VERSION_MINOR 5
+#define LAUNCHER_BUILD_VERSION_MINOR 6
 
 class Launcher
 {

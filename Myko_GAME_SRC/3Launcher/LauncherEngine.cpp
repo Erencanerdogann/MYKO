@@ -114,8 +114,10 @@ Launcher::Launcher()
     // S115 v2.5 FAZ 5+5c: Self-Heal diagnostik ASYNC (UI bloklamasin)
     // Acilista 5 kontrolu kosar, ERROR varsa Glasmorphism Dialog OTOMATIK acilir.
     // Cyberpunk dersi: kullanici sorunu anlasin, manuel onay versin.
+    // FAZ 5c FIX: Sleep 1500 -> 8000ms (Auto-update + Start() socket connect once tamamlansin)
+    // CheckConnectivity HTTP HEAD socket Connect ile yarismasin
     std::thread([this]() {
-        Sleep(1500);  // Launcher tam acilsin + UI yerlessin (artirildi 500->1500ms)
+        Sleep(8000);  // Launcher acilsin + Auto-update + Start() bitsin, sonra diagnostik
 
         char workDir[MAX_PATH] = { 0 };
         GetCurrentDirectoryA(MAX_PATH, workDir);
@@ -841,7 +843,10 @@ bool Launcher::HttpGet(const std::wstring& host, INTERNET_PORT port,
         if (!hSession) break;
 
         // Timeouts: resolve=5s, connect=5s, send=10s, receive=10s
-        WinHttpSetTimeouts(hSession, 5000, 5000, 10000, 10000);
+        // FAZ 5c: Auto-update timeout kucult — version.txt 100 byte yeter
+        // Eski: 5/5/10/10 (max 30sn beklerdi)
+        // Yeni: 3/3/5/5 (max 16sn) — patron "version cekiliyor" uzun gozukmesin
+        WinHttpSetTimeouts(hSession, 3000, 3000, 5000, 5000);
 
         hConnect = WinHttpConnect(hSession, host.c_str(), port, 0);
         if (!hConnect) break;
