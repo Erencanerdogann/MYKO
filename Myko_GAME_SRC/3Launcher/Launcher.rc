@@ -156,6 +156,25 @@ BEGIN
     LTEXT           "Onar -> sorunu cozer  |  Tara -> tekrar kontrol et", IDC_STATIC, 10, 196, 300, 10
 END
 
+/////////////////////////////////////////////////////////////////////////////
+//
+// S115 v2.7+ — Basit Self-Heal Dialog (C plani: 1 buton ONAR)
+// Connection failed sonrasi arka plan tarama ERROR bulursa otomatik acilir.
+// Kullanici sadece sorunu gorur ve ONAR'a basar — arka planda tum repair'lar
+// sirayla calistirilir (Defender + VCRedist + Server.ini).
+//
+
+IDD_DIAGNOSTIC_SIMPLE DIALOGEX 0, 0, 240, 140
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "MalaysiaKO - Sorun bulundu"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Bilgisayarinizda bir sorun var:", IDC_STATIC, 12, 10, 216, 12
+    LTEXT           "", IDC_DIAG_S_PROBLEMS, 12, 26, 216, 60
+    DEFPUSHBUTTON   "ONAR", IDC_DIAG_S_ONAR, 90, 96, 60, 24
+    PUSHBUTTON      "Kapat", IDC_DIAG_S_CLOSE, 184, 120, 44, 14
+END
+
 #endif    // T�rk�e (T�rkiye) resources
 /////////////////////////////////////////////////////////////////////////////
 

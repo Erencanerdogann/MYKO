@@ -528,6 +528,35 @@ bool Launcher::Start()
     if (iErr)
     {
         m_stateString = xorstr("Connection failed. Please retry connecting.");
+
+        // S115 v2.7+ C plani: Self-heal arka plan tarama tetikle
+        // connect() basarisiz oldu — arka planda 5 kontrol calistir, ERROR varsa
+        // PostMessage(WM_USER+101) ile basit Dialog ac (oyuncu sadece ONAR'a basar).
+        // WinSock race korkusu yok: connect() zaten denenmis ve bitmis.
+        HWND hwnd = window;
+        Launcher* self = this;
+        std::thread([hwnd, self]() {
+            Sleep(1000); // oyuncu "Connection failed" mesajini okusun
+
+            char workDir[MAX_PATH] = { 0 };
+            GetCurrentDirectoryA(MAX_PATH, workDir);
+            std::string gamePath(workDir);
+
+            self->m_diagResults = LauncherDiagnostic::RunAllChecks(gamePath, self->m_settingsIP);
+
+            // ERROR veya WARNING varsa Dialog tetikle
+            int problems = 0;
+            for (const auto& r : self->m_diagResults) {
+                if (r.status == LauncherDiagnostic::CheckStatus::ERROR_LEVEL ||
+                    r.status == LauncherDiagnostic::CheckStatus::WARNING) {
+                    problems++;
+                }
+            }
+            if (problems > 0 && hwnd && IsWindow(hwnd)) {
+                PostMessageA(hwnd, WM_USER + 101, 0, 0);
+            }
+        }).detach();
+
         return false;
     }
 

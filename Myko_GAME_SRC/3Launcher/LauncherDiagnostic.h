@@ -94,4 +94,13 @@ void LogAction(const std::string& action, const std::string& result);
 // ---------------------------------------------------------------------
 void ShowDiagnosticDialog(HWND hwndParent, const std::string& gamePath, const std::string& serverIP);
 
+// ---------------------------------------------------------------------
+// S115 v2.7+ C plani: BASIT Self-heal Dialog (1 buton ONAR)
+// Onceden RunAllChecks calistirilmis, problems listesi hazir gelir.
+// Kullanici ONAR'a basinca hangi sorun varsa o repair'lar sirayla cagrilir.
+// ---------------------------------------------------------------------
+void ShowSimpleDiagnosticDialog(HWND hwndParent,
+                                const std::string& gamePath,
+                                const std::vector<CheckResult>& results);
+
 } // namespace LauncherDiagnostic

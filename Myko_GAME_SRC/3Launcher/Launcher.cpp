@@ -1471,7 +1471,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
     } break;
 
-    // S115 v2.5 FAZ 5c: Self-heal diagnostik ERROR -> Glasmorphism Dialog AC
+    // S115 v2.5 FAZ 5c: Self-heal diagnostik ERROR -> Glasmorphism Dialog AC (ESKI)
     // Background thread'den PostMessage ile tetiklenir (LauncherEngine.cpp constructor)
     case (WM_USER + 100): {
         char workDir[MAX_PATH] = { 0 };
@@ -1480,6 +1480,17 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         GetPrivateProfileStringA("Server", "IP0", "", ipBuf, sizeof(ipBuf),
                                  (std::string(workDir) + "\\Server.ini").c_str());
         LauncherDiagnostic::ShowDiagnosticDialog(hWnd, workDir, ipBuf);
+    } break;
+
+    // S115 v2.7+ C plani: BASIT Self-heal Dialog (1 buton ONAR)
+    // Engine->Start() icindeki connect() fail olunca arka plan thread tetikler.
+    // Engine->m_diagResults icindeki sonuclari gosterir.
+    case (WM_USER + 101): {
+        if (Engine) {
+            char workDir[MAX_PATH] = { 0 };
+            GetCurrentDirectoryA(MAX_PATH, workDir);
+            LauncherDiagnostic::ShowSimpleDiagnosticDialog(hWnd, workDir, Engine->m_diagResults);
+        }
     } break;
 
     case WM_LBUTTONDOWN:

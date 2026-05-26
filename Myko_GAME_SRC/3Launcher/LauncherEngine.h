@@ -6,6 +6,7 @@
 #include "hdr.h"
 #include <format>
 #include <winhttp.h>  // S115 AUTO-UPDATE: INTERNET_PORT typedef
+#include "LauncherDiagnostic.h"  // S115 v2.7+ C plani: m_diagResults cache
 
 // S115 AUTO-UPDATE: Bu Launcher'in build versiyonu. Her yeni build'de ARTIR.
 // Sunucudaki version.txt'de bu degerden buyuk varsa, Launcher otomatik gunceller.
@@ -14,8 +15,11 @@
 // v2.7: ACIL FIX — Self-heal AutoRun DEFAULT KAPALI (Launcher.ini [SelfHeal] AutoRun=1 ile aktif)
 //       Sebep: 3 paralel HTTP thread (HwidA + CheckForUpdate + Self-heal) WinSock race -> Connection failed
 //       Cozum: Self-heal manuel butona kalir, otomatik kosmaz
+// v2.8: B FIX — CheckForUpdate Constructor'dan Start() icine tasindi (5sn delay)
+//       + C plani — Self-heal basit Dialog (1 buton ONAR) connect() fail tetikli
+//       Patron lokal test PASS, sunucu deploy 2026-05-27
 #define LAUNCHER_BUILD_VERSION_MAJOR 2
-#define LAUNCHER_BUILD_VERSION_MINOR 7
+#define LAUNCHER_BUILD_VERSION_MINOR 8
 
 class Launcher
 {
@@ -84,6 +88,9 @@ public:
 	uint32 ipParam;
 	std::string cmd;
 	char m_strBasePath[MAX_PATH] = { 0 };
+
+	// S115 v2.7+ C plani: Self-heal diag sonuclari (Start() icinde dolar, WM_USER+101 okur)
+	std::vector<LauncherDiagnostic::CheckResult> m_diagResults;
 private:
 	short m_iVersion;
 	short m_settingsVersion;

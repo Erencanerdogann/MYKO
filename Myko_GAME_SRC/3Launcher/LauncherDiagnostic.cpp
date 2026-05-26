@@ -1055,4 +1055,136 @@ void ShowDiagnosticDialog(HWND hwndParent, const std::string& gamePath, const st
     LogAction("ShowDiagnosticDialog", "closed");
 }
 
+// =====================================================================
+// S115 v2.7+ C plani: BASIT Self-heal Dialog (1 buton ONAR)
+// =====================================================================
+
+struct SimpleDlgState {
+    std::string gamePath;
+    std::vector<CheckResult> results;
+    bool needDefender   = false;
+    bool needVCRedist   = false;
+    bool needServerIni  = false;
+};
+
+static SimpleDlgState* g_simpleState = nullptr;
+
+// Sorun listesini insan-dostu metne cevir (bullet list)
+static std::string BuildProblemsText(const std::vector<CheckResult>& results,
+                                     bool& needDefender,
+                                     bool& needVCRedist,
+                                     bool& needServerIni) {
+    needDefender = needVCRedist = needServerIni = false;
+    std::string out;
+    for (const auto& r : results) {
+        if (r.status != CheckStatus::ERROR_LEVEL && r.status != CheckStatus::WARNING) continue;
+
+        // Hangi repair gerek?
+        std::string name_lower = r.name;
+        for (auto& c : name_lower) c = (char)tolower((unsigned char)c);
+
+        if (name_lower.find("defender") != std::string::npos) {
+            out += "* Antivirus oyunu engelliyor olabilir\r\n";
+            needDefender = true;
+        } else if (name_lower.find("vcredist") != std::string::npos || name_lower.find("vc++") != std::string::npos) {
+            out += "* VC++ Redistributable eksik\r\n";
+            needVCRedist = true;
+        } else if (name_lower.find("server.ini") != std::string::npos || name_lower.find("serverini") != std::string::npos) {
+            out += "* Server.ini ayar dosyasi bozuk\r\n";
+            needServerIni = true;
+        } else if (name_lower.find("connect") != std::string::npos) {
+            out += "* Sunucuya baglanti kurulamadi\r\n";
+        } else if (name_lower.find("file") != std::string::npos || name_lower.find("integrity") != std::string::npos) {
+            out += "* Oyun dosyalari eksik veya bozuk\r\n";
+        } else {
+            out += "* " + r.name + ": " + r.message + "\r\n";
+        }
+    }
+    if (out.empty()) out = "Sorun bulundu ama detay belirsiz.\r\n";
+    return out;
+}
+
+static INT_PTR CALLBACK SimpleDiagProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_INITDIALOG: {
+            if (!g_simpleState) return TRUE;
+
+            std::string text = BuildProblemsText(
+                g_simpleState->results,
+                g_simpleState->needDefender,
+                g_simpleState->needVCRedist,
+                g_simpleState->needServerIni
+            );
+            SetDlgItemTextA(hDlg, IDC_DIAG_S_PROBLEMS, text.c_str());
+
+            // Eger hicbir repair-able sorun yoksa ONAR'i devre disi birak
+            bool canRepair = g_simpleState->needDefender ||
+                             g_simpleState->needVCRedist ||
+                             g_simpleState->needServerIni;
+            EnableWindow(GetDlgItem(hDlg, IDC_DIAG_S_ONAR), canRepair);
+            return TRUE;
+        }
+
+        case WM_COMMAND: {
+            int id = LOWORD(wParam);
+            if (id == IDC_DIAG_S_ONAR) {
+                if (!g_simpleState) return TRUE;
+
+                // ONAR butonu basildi -> hangi sorun varsa o repair'lar sirayla
+                EnableWindow(GetDlgItem(hDlg, IDC_DIAG_S_ONAR), FALSE);
+                SetDlgItemTextA(hDlg, IDC_DIAG_S_PROBLEMS, "Onariliyor, lutfen bekleyin...");
+
+                // Async thread'de kos — UI donmasin
+                HWND hwndDlg = hDlg;
+                SimpleDlgState* st = g_simpleState;
+                std::thread([hwndDlg, st]() {
+                    if (st->needDefender)  RepairAddDefenderExclusion(st->gamePath);
+                    if (st->needVCRedist)  RepairInstallVCRedist();
+                    if (st->needServerIni) RepairServerIni(st->gamePath);
+
+                    // Bitti
+                    if (IsWindow(hwndDlg)) {
+                        SetDlgItemTextA(hwndDlg, IDC_DIAG_S_PROBLEMS,
+                            "Onarim tamamlandi.\r\n\r\nLauncher'i kapatip tekrar acin.");
+                    }
+                }).detach();
+
+                return TRUE;
+            }
+            if (id == IDC_DIAG_S_CLOSE || id == IDCANCEL) {
+                EndDialog(hDlg, 0);
+                return TRUE;
+            }
+            break;
+        }
+
+        case WM_CLOSE:
+            EndDialog(hDlg, 0);
+            return TRUE;
+    }
+    return FALSE;
+}
+
+void ShowSimpleDiagnosticDialog(HWND hwndParent,
+                                const std::string& gamePath,
+                                const std::vector<CheckResult>& results) {
+    LogAction("ShowSimpleDiagnosticDialog", "opening");
+
+    SimpleDlgState state;
+    state.gamePath = gamePath;
+    state.results  = results;
+    g_simpleState  = &state;
+
+    DialogBoxParamA(
+        GetModuleHandle(NULL),
+        MAKEINTRESOURCEA(IDD_DIAGNOSTIC_SIMPLE),
+        hwndParent,
+        SimpleDiagProc,
+        0
+    );
+
+    g_simpleState = nullptr;
+    LogAction("ShowSimpleDiagnosticDialog", "closed");
+}
+
 } // namespace LauncherDiagnostic

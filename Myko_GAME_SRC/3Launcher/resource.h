@@ -13,7 +13,7 @@
 #define IDB_LOADING_COMPACT             109
 #define IDB_LOADING_REPAIR              110
 
-// S115 FAZ 5c — Self-Heal Diagnostik Dialog
+// S115 FAZ 5c — Self-Heal Diagnostik Dialog (ESKI — karmaşik, kullanılmıyor)
 #define IDD_DIAGNOSTIC                  200
 #define IDC_DIAG_LIST                   201
 #define IDC_DIAG_REPAIR_DEFENDER        202
@@ -22,6 +22,12 @@
 #define IDC_DIAG_REFRESH                205
 #define IDC_DIAG_CLOSE                  206
 #define IDC_DIAG_STATUS                 207
+
+// S115 v2.7+ — Basit Self-Heal Dialog (C plani: 1 buton ONAR)
+#define IDD_DIAGNOSTIC_SIMPLE           220
+#define IDC_DIAG_S_PROBLEMS             221
+#define IDC_DIAG_S_ONAR                 222
+#define IDC_DIAG_S_CLOSE                223
 
 // Next default values for new objects
 //
