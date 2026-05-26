@@ -175,14 +175,13 @@ CheckResult CheckConnectivity(const std::string& serverIP) {
     r.name = "Sunucu Baglantisi";
     r.repairAvailable = false; // network sorunu — kullanici cozecek
 
-    if (serverIP.empty()) {
-        r.status = CheckStatus::ERROR_LEVEL;
-        r.message = "Server.ini'de IP yok.";
-        r.action = "Server.ini onar";
-        return r;
+    // FAZ 5c FIX: Server.ini IP bossa default sunucu IP'sini kullan (test yapilabilsin)
+    std::string ip = serverIP;
+    if (ip.empty()) {
+        ip = "104.238.23.99";  // Default PROD IP — Server.ini fallback
     }
 
-    std::wstring wHost(serverIP.begin(), serverIP.end());
+    std::wstring wHost(ip.begin(), ip.end());
 
     HINTERNET hSession = WinHttpOpen(L"MalaysiaKO-Diagnostic/1.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
@@ -199,7 +198,7 @@ CheckResult CheckConnectivity(const std::string& serverIP) {
     if (!hConnect) {
         WinHttpCloseHandle(hSession);
         r.status = CheckStatus::ERROR_LEVEL;
-        r.message = "Sunucuya baglanilamadi: " + serverIP + " (firewall veya ISP engeli olabilir)";
+        r.message = "Sunucuya baglanilamadi: " + ip + " (firewall, ISP veya VPN engeli)";
         r.action = "Internet/firewall kontrol";
         return r;
     }
@@ -236,11 +235,11 @@ CheckResult CheckConnectivity(const std::string& serverIP) {
 
     if (success) {
         r.status = CheckStatus::OK;
-        r.message = "Sunucu erisilebilir: " + serverIP;
+        r.message = "Sunucu erisilebilir: " + ip;
         r.action = "";
     } else {
         r.status = CheckStatus::ERROR_LEVEL;
-        r.message = "Sunucu yanit vermiyor: " + serverIP;
+        r.message = "Sunucu yanit vermiyor: " + ip;
         r.action = "Discord'dan destek iste";
     }
     return r;
@@ -599,16 +598,116 @@ static void UpdateRepairButtons(HWND hDlg) {
     EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_SERVERINI), needServerIni);
 }
 
-// Yeniden tara — RunAllChecks cagir, listbox guncelle
+// Pump pending Windows messages (UI donmasin)
+static void PumpMessages() {
+    MSG msg;
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
+// Yeniden tara — RunAllChecks cagir, her adim listbox'a "kontrol ediliyor..." gozuksun
+// FAZ 5c FIX: buton press feedback + adim adim ilerleme
 static void RefreshChecks(HWND hDlg) {
     if (!g_dlgState) return;
-    SetDlgStatus(hDlg, "Taraniyor...");
-    g_dlgState->results = RunAllChecks(g_dlgState->gamePath, g_dlgState->serverIP);
-    FillListBox(GetDlgItem(hDlg, IDC_DIAG_LIST), g_dlgState->results);
+
+    // Tum butonlari disable et (tarama suresince)
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_DEFENDER), FALSE);
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_VCREDIST), FALSE);
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REPAIR_SERVERINI), FALSE);
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REFRESH), FALSE);
+
+    HWND hList = GetDlgItem(hDlg, IDC_DIAG_LIST);
+
+    // Sahte 5 "kontrol ediliyor..." satiri ile listbox temizle (kullanici GORSUN)
+    SendMessage(hList, LB_RESETCONTENT, 0, 0);
+    std::vector<std::string> labels = {
+        "[..]   Windows Defender Exclusion: kontrol ediliyor...",
+        "[..]   Dosya Butunlugu: kontrol ediliyor...",
+        "[..]   Sunucu Baglantisi: kontrol ediliyor...",
+        "[..]   Visual C++ Redistributable: kontrol ediliyor...",
+        "[..]   Server.ini: kontrol ediliyor..."
+    };
+
+    // Tum CheckResult'larin OWNER-DRAWN icin g_dlgState'e kismi push edelim:
+    // Owner-draw yerine basit FillListBox kullaniyoruz (status renkleri olmadan, gri yazi)
+    // Geçici: results'i kismi doldur
+    g_dlgState->results.clear();
+    for (const auto& lbl : labels) {
+        CheckResult tmp;
+        tmp.name = "...";
+        tmp.message = lbl;
+        tmp.status = CheckStatus::SKIPPED;
+        tmp.action = "";
+        tmp.repairAvailable = false;
+        g_dlgState->results.push_back(tmp);
+        // Listbox'a ekle (FillListBox kullanmadan dogrudan)
+        SendMessageA(hList, LB_ADDSTRING, 0, (LPARAM)lbl.c_str());
+    }
+    SetDlgStatus(hDlg, "Tarama basliyor...");
+    PumpMessages();
+    InvalidateRect(hDlg, NULL, FALSE);
+    UpdateWindow(hDlg);
+
+    // Her check'i sirayla kos, sonucu hemen listbox'a guncel sat olarak yaz
+    std::string gp = g_dlgState->gamePath;
+    std::string sp = g_dlgState->serverIP;
+
+    std::vector<CheckResult> finalResults;
+
+    // 1. Defender
+    SetDlgStatus(hDlg, "1/5  Windows Defender kontrol ediliyor...");
+    PumpMessages();
+    finalResults.push_back(CheckDefenderExclusion(gp));
+    g_dlgState->results[0] = finalResults[0];
+    SendMessage(hList, LB_DELETESTRING, 0, 0);
+    SendMessageA(hList, LB_INSERTSTRING, 0, (LPARAM)FormatCheckLine(finalResults[0]).c_str());
+    PumpMessages();
+
+    // 2. File Integrity
+    SetDlgStatus(hDlg, "2/5  Dosya butunlugu kontrol ediliyor...");
+    PumpMessages();
+    finalResults.push_back(CheckFileIntegrity(gp));
+    g_dlgState->results[1] = finalResults[1];
+    SendMessage(hList, LB_DELETESTRING, 1, 0);
+    SendMessageA(hList, LB_INSERTSTRING, 1, (LPARAM)FormatCheckLine(finalResults[1]).c_str());
+    PumpMessages();
+
+    // 3. Connectivity (en yavas — 5sn timeout)
+    SetDlgStatus(hDlg, "3/5  Sunucu baglantisi kontrol ediliyor (5sn surebilir)...");
+    PumpMessages();
+    finalResults.push_back(CheckConnectivity(sp));
+    g_dlgState->results[2] = finalResults[2];
+    SendMessage(hList, LB_DELETESTRING, 2, 0);
+    SendMessageA(hList, LB_INSERTSTRING, 2, (LPARAM)FormatCheckLine(finalResults[2]).c_str());
+    PumpMessages();
+
+    // 4. VC++ Redist
+    SetDlgStatus(hDlg, "4/5  Visual C++ Redistributable kontrol ediliyor...");
+    PumpMessages();
+    finalResults.push_back(CheckVCRedist());
+    g_dlgState->results[3] = finalResults[3];
+    SendMessage(hList, LB_DELETESTRING, 3, 0);
+    SendMessageA(hList, LB_INSERTSTRING, 3, (LPARAM)FormatCheckLine(finalResults[3]).c_str());
+    PumpMessages();
+
+    // 5. Server.ini
+    SetDlgStatus(hDlg, "5/5  Server.ini kontrol ediliyor...");
+    PumpMessages();
+    finalResults.push_back(CheckServerIni(gp));
+    g_dlgState->results[4] = finalResults[4];
+    SendMessage(hList, LB_DELETESTRING, 4, 0);
+    SendMessageA(hList, LB_INSERTSTRING, 4, (LPARAM)FormatCheckLine(finalResults[4]).c_str());
+    PumpMessages();
+
+    // Buton state guncel (Repair sorunlu olanlarda enable)
+    g_dlgState->results = finalResults;
     UpdateRepairButtons(hDlg);
+    EnableWindow(GetDlgItem(hDlg, IDC_DIAG_REFRESH), TRUE);  // tara butonu hep aktif
 
     int ok = 0, warn = 0, err = 0;
-    for (const auto& r : g_dlgState->results) {
+    for (const auto& r : finalResults) {
         switch (r.status) {
             case CheckStatus::OK: ok++; break;
             case CheckStatus::WARNING: warn++; break;
@@ -619,6 +718,7 @@ static void RefreshChecks(HWND hDlg) {
     char status[128];
     snprintf(status, sizeof(status), "Tarama tamam — OK: %d, Uyari: %d, Hata: %d", ok, warn, err);
     SetDlgStatus(hDlg, status);
+    LogAction("RefreshChecks", status);
 }
 
 // Dialog procedure
@@ -687,9 +787,64 @@ static INT_PTR CALLBACK DiagDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARA
             return (INT_PTR)g_brushBtnBg;
         }
 
-        // FAZ 5c GLASMORPHISM: listbox satirlarini renkli ciz (OK yesil/WARN turuncu/ERR kirmizi)
+        // FAZ 5c GLASMORPHISM: listbox satirlarini ve butonlari custom ciz
         case WM_DRAWITEM: {
             LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)lParam;
+
+            // BUTON custom paint (BS_OWNERDRAW)
+            if (dis->CtlType == ODT_BUTTON) {
+                bool selected = (dis->itemState & ODS_SELECTED) != 0;   // tikla anında
+                bool focused  = (dis->itemState & ODS_FOCUS) != 0;
+                bool disabled = (dis->itemState & ODS_DISABLED) != 0;
+                bool hot      = (dis->itemState & ODS_HOTLIGHT) != 0;
+
+                // Arkaplan: normal=koyu, basili=accent kirmizi, hover=biraz acik, disabled=cok soluk
+                COLORREF bgColor;
+                COLORREF txtColor = DLG_TEXT;
+                if (disabled) {
+                    bgColor = RGB(25, 20, 18);
+                    txtColor = RGB(90, 90, 90);
+                } else if (selected) {
+                    bgColor = DLG_ACCENT;       // BASILI: kirmizi MK rengi (NET FEEDBACK)
+                    txtColor = RGB(255, 255, 255);
+                } else if (hot) {
+                    bgColor = RGB(60, 48, 42);  // HOVER: bg'den acik
+                } else {
+                    bgColor = DLG_BTN_BG;       // NORMAL
+                }
+
+                // Dikdortgen ciz (1px border)
+                HBRUSH bg = CreateSolidBrush(bgColor);
+                FillRect(dis->hDC, &dis->rcItem, bg);
+                DeleteObject(bg);
+
+                // Border (focused ise accent kirmizi, normal ise gri)
+                HPEN borderPen = CreatePen(PS_SOLID, 1, focused ? DLG_ACCENT : RGB(70, 56, 50));
+                HGDIOBJ oldPen = SelectObject(dis->hDC, borderPen);
+                HGDIOBJ oldBrush = SelectObject(dis->hDC, GetStockObject(NULL_BRUSH));
+                Rectangle(dis->hDC, dis->rcItem.left, dis->rcItem.top,
+                          dis->rcItem.right, dis->rcItem.bottom);
+                SelectObject(dis->hDC, oldPen);
+                SelectObject(dis->hDC, oldBrush);
+                DeleteObject(borderPen);
+
+                // Buton yazisi
+                char btnText[64] = { 0 };
+                GetWindowTextA(dis->hwndItem, btnText, sizeof(btnText));
+                SetTextColor(dis->hDC, txtColor);
+                SetBkMode(dis->hDC, TRANSPARENT);
+                SelectObject(dis->hDC, g_fontSegoeUI);
+
+                // Basili durumda text 1px asagi-saga (3D feedback)
+                RECT rcText = dis->rcItem;
+                if (selected) { rcText.left += 1; rcText.top += 1; }
+                DrawTextA(dis->hDC, btnText, -1, &rcText,
+                          DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+                return TRUE;
+            }
+
+            // LISTBOX satirlari (mevcut kod)
             if (dis->CtlID == IDC_DIAG_LIST && dis->itemID != (UINT)-1) {
                 // Hangi satir (index)
                 int idx = (int)dis->itemID;

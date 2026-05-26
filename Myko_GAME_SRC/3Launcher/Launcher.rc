@@ -128,29 +128,32 @@ END
 // Boyut 420x280, ferah layout, Segoe UI font, custom paint WM_CTLCOLORDLG
 //
 
-IDD_DIAGNOSTIC DIALOGEX 0, 0, 420, 280
+// Compact: 320x220 — Launcher 175x263 ile uyumlu (Launcher'in 1.8 kati, makul)
+IDD_DIAGNOSTIC DIALOGEX 0, 0, 320, 220
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_LAYERED
-CAPTION "MalaysiaKO — Tani ve Onarim"
-FONT 9, "Segoe UI", 400, 0, 0x1
+CAPTION "MalaysiaKO — Tani"
+FONT 8, "Segoe UI", 400, 0, 0x1
 BEGIN
-    // Ust baslik bandi
-    LTEXT           "Bilgisayariniz tarandi.", IDC_STATIC, 16, 12, 388, 14, SS_NOTIFY
-    LTEXT           "Sorun bulunan satira tiklayip, alt taraftaki Onarim butonuna basabilirsiniz.", IDC_STATIC, 16, 28, 388, 14
+    // Ust baslik (tek satir, kisa)
+    LTEXT           "Bilgisayariniz tarandi. Sorunlu satira tikla, alttan Onar.", IDC_STATIC, 10, 8, 300, 12
 
-    // Sonuc listesi (ferah, font Consolas — monospace ikon)
-    LISTBOX         IDC_DIAG_LIST, 16, 48, 388, 160, LBS_NOTIFY | LBS_HASSTRINGS | WS_VSCROLL | WS_TABSTOP | WS_BORDER
+    // Sonuc listesi (kompakt)
+    LISTBOX         IDC_DIAG_LIST, 10, 24, 300, 124, LBS_NOTIFY | LBS_HASSTRINGS | WS_VSCROLL | WS_TABSTOP | WS_BORDER
 
     // Status bar
-    LTEXT           "Durum:", IDC_STATIC, 16, 214, 28, 10
-    LTEXT           "Hazir.", IDC_DIAG_STATUS, 48, 214, 356, 10
+    LTEXT           "Durum:", IDC_STATIC, 10, 154, 28, 10
+    LTEXT           "Hazir.", IDC_DIAG_STATUS, 42, 154, 268, 10
 
-    // Repair butonlari (Segoe UI ile, ferah)
-    PUSHBUTTON      "Defender Onayla", IDC_DIAG_REPAIR_DEFENDER, 16, 234, 92, 22
-    PUSHBUTTON      "VC++ Indir", IDC_DIAG_REPAIR_VCREDIST, 114, 234, 70, 22
-    PUSHBUTTON      "Server.ini Sifirla", IDC_DIAG_REPAIR_SERVERINI, 190, 234, 86, 22
-    PUSHBUTTON      "Yeniden Tara", IDC_DIAG_REFRESH, 282, 234, 70, 22
-    DEFPUSHBUTTON   "Kapat", IDC_DIAG_CLOSE, 358, 234, 46, 22
+    // Repair butonlari (kompakt, 4'lu satir + BS_OWNERDRAW: glasmorphism custom paint)
+    PUSHBUTTON      "Defender", IDC_DIAG_REPAIR_DEFENDER, 10, 172, 56, 20, BS_OWNERDRAW
+    PUSHBUTTON      "VC++ Indir", IDC_DIAG_REPAIR_VCREDIST, 70, 172, 56, 20, BS_OWNERDRAW
+    PUSHBUTTON      "Server.ini", IDC_DIAG_REPAIR_SERVERINI, 130, 172, 56, 20, BS_OWNERDRAW
+    PUSHBUTTON      "Tara", IDC_DIAG_REFRESH, 190, 172, 38, 20, BS_OWNERDRAW
+    DEFPUSHBUTTON   "Kapat", IDC_DIAG_CLOSE, 270, 172, 40, 20, BS_OWNERDRAW
+
+    // Refresh aciklama (kucuk)
+    LTEXT           "Onar -> sorunu cozer  |  Tara -> tekrar kontrol et", IDC_STATIC, 10, 196, 300, 10
 END
 
 #endif    // T�rk�e (T�rkiye) resources
