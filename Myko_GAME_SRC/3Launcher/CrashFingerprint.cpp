@@ -40,10 +40,20 @@ static std::string GetFingerprintFile() {
 }
 
 // =====================================================================
-// HELPER: lowercase
+// HELPER: trim (PHP trim() ile ayni — sol+sag whitespace at)
+// =====================================================================
+static std::string Trim(const std::string& s) {
+    size_t start = s.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+    size_t end = s.find_last_not_of(" \t\r\n");
+    return s.substr(start, end - start + 1);
+}
+
+// =====================================================================
+// HELPER: lowercase + trim (PHP strtolower(trim(...)) ile ayni)
 // =====================================================================
 static std::string ToLower(const std::string& s) {
-    std::string out = s;
+    std::string out = Trim(s);
     std::transform(out.begin(), out.end(), out.begin(),
                    [](unsigned char c) { return (char)std::tolower(c); });
     return out;

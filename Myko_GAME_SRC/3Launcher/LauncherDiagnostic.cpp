@@ -97,7 +97,8 @@ CheckResult CheckDefenderExclusion(const std::string& gamePath) {
         return r;
     }
 
-    if (gamePath == value) {
+    // Windows path case-insensitive — _stricmp kullan
+    if (_stricmp(gamePath.c_str(), value) == 0) {
         r.status = CheckStatus::OK;
         r.message = "Defender exclusion aktif.";
         r.action = "";
