@@ -111,11 +111,12 @@ Launcher::Launcher()
     // S114 K3 FIX: HWID hesabi ASYNC thread'de (GetAdaptersInfo yavas — Launcher UI bloklamasin)
     std::thread([this]() { this->ComputeHwidA(); }).detach();
 
-    // S115 v2.5 FAZ 5: Self-Heal diagnostik ASYNC (UI bloklamasin)
-    // Acilista 5 kontrolu kosar, sorunlari selfheal.log'a yazar.
-    // UI entegrasyonu (Repair butonu) ileride eklenecek — su an SADECE log + state mesaji.
+    // S115 v2.5 FAZ 5+5c: Self-Heal diagnostik ASYNC (UI bloklamasin)
+    // Acilista 5 kontrolu kosar, ERROR varsa Glasmorphism Dialog OTOMATIK acilir.
+    // Cyberpunk dersi: kullanici sorunu anlasin, manuel onay versin.
     std::thread([this]() {
-        Sleep(500);  // Launcher tam acilsin
+        Sleep(1500);  // Launcher tam acilsin + UI yerlessin (artirildi 500->1500ms)
+
         char workDir[MAX_PATH] = { 0 };
         GetCurrentDirectoryA(MAX_PATH, workDir);
         std::string gamePath(workDir);
@@ -141,12 +142,32 @@ Launcher::Launcher()
             }
             LauncherDiagnostic::LogAction(r.name, statusStr + " | " + r.message);
         }
-        // Sorun varsa log'a ozet yaz
+
+        // Sorun varsa log'a ozet
         if (errors > 0 || warnings > 0) {
             char buf[128] = { 0 };
-            snprintf(buf, sizeof(buf), "%d uyari, %d hata - selfheal.log kontrol",
-                     warnings, errors);
+            snprintf(buf, sizeof(buf), "%d uyari, %d hata", warnings, errors);
             LauncherDiagnostic::LogAction("SUMMARY", std::string(buf));
+        }
+
+        // FAZ 5c OTOMATIK TRIGGER:
+        // ERROR_LEVEL var ise Glasmorphism Dialog kullaniciya goster.
+        // Sadece WARNING varsa gosterme (cok agresif olur — Defender exclusion vs).
+        // Eger SelfHeal flag kapali ise hicbir sey yapma.
+        if (errors > 0 && LauncherDiagnostic::IsEnabled()) {
+            // UI thread'e ge — modal dialog burada acilamaz (background thread)
+            // SetTimer ile bir kerelik timer kuralim ve onun callback'inde ac.
+            // BURADA: extern HWND mainWindow var (Launcher.cpp:162).
+            extern HWND mainWindow;
+            if (mainWindow && IsWindow(mainWindow)) {
+                // gamePath ve ipBuf'i baska bir thread'e safe iletmek icin
+                // Window message kullan — WM_USER + 100
+                static std::string s_gamePath; // life-time main thread'de
+                static std::string s_serverIP;
+                s_gamePath = gamePath;
+                s_serverIP = ipBuf;
+                PostMessageA(mainWindow, WM_USER + 100, 0, 0);
+            }
         }
     }).detach();
 

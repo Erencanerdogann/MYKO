@@ -388,8 +388,11 @@ std::vector<CheckResult> RunAllChecks(const std::string& gamePath, const std::st
 bool RepairAddDefenderExclusion(const std::string& gamePath) {
     LogAction("RepairAddDefenderExclusion", "starting");
 
-    std::string ps =
-        "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "
+    // PowerShell argumanlari — Add-MpPreference admin gerek
+    // ShellExecute -Verb runas ile UAC prompt acilir.
+    // Eski LauncherEngine.cpp:131-141 ile AYNI mantik (registry state dahil)
+    std::string psArgs =
+        "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "
         "\"try { "
         "Add-MpPreference -ExclusionPath '" + gamePath + "' -Force; "
         "Add-MpPreference -ExclusionPath '" + gamePath + "\\KnightOnLine.exe' -Force; "
@@ -399,37 +402,58 @@ bool RepairAddDefenderExclusion(const std::string& gamePath) {
         "Add-MpPreference -ExclusionProcess 'Launcher.exe' -Force "
         "} catch { }\"";
 
-    // -Verb RunAs UAC prompt, kullanici Hayir derse hata yutulur
-    STARTUPINFOA si = { sizeof(si) };
-    PROCESS_INFORMATION pi = { 0 };
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
+    // ShellExecuteEx with runas verb — UAC prompt acilir, admin elevation
+    SHELLEXECUTEINFOA sei = { 0 };
+    sei.cbSize = sizeof(sei);
+    sei.fMask  = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
+    sei.lpVerb = "runas";              // ← UAC ELEVATION
+    sei.lpFile = "powershell.exe";
+    sei.lpParameters = psArgs.c_str();
+    sei.nShow  = SW_HIDE;
 
-    BOOL ok = CreateProcessA(NULL, (LPSTR)ps.c_str(), NULL, NULL, FALSE,
-                             CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
-    if (!ok) {
-        LogAction("RepairAddDefenderExclusion", "CreateProcess failed");
+    if (!ShellExecuteExA(&sei)) {
+        DWORD err = GetLastError();
+        if (err == ERROR_CANCELLED) {
+            // Kullanici UAC prompt'a "Hayir" dedi — normal akis, hata degil
+            LogAction("RepairAddDefenderExclusion", "user cancelled UAC");
+            return false;
+        }
+        LogAction("RepairAddDefenderExclusion", "ShellExecuteEx failed err=" + std::to_string(err));
         return false;
     }
 
-    WaitForSingleObject(pi.hProcess, 30000); // max 30sn bekle
+    if (!sei.hProcess) {
+        LogAction("RepairAddDefenderExclusion", "no process handle");
+        return false;
+    }
+
+    WaitForSingleObject(sei.hProcess, 30000); // max 30sn bekle
     DWORD exitCode = 0;
-    GetExitCodeProcess(pi.hProcess, &exitCode);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
+    GetExitCodeProcess(sei.hProcess, &exitCode);
+    CloseHandle(sei.hProcess);
 
     bool success = (exitCode == 0);
-    LogAction("RepairAddDefenderExclusion", success ? "OK" : "failed");
+    LogAction("RepairAddDefenderExclusion", success ? "OK" : "PowerShell failed exit=" + std::to_string(exitCode));
 
     // Registry'ye state yaz (LauncherEngine.cpp:142-146 pattern)
+    // Bu da admin gerek — basarili olduysa zaten PS admin'di, ama yine de elevated process oldu o
+    // Bu Launcher non-admin oldugu icin direkt yazamaz, ayri PS gerek
     if (success) {
-        HKEY hKey;
-        if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard", 0, NULL,
-                            REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL) == ERROR_SUCCESS) {
-            RegSetValueExA(hKey, "PATH", 0, REG_SZ,
-                           (const BYTE*)gamePath.c_str(),
-                           (DWORD)(gamePath.length() + 1));
-            RegCloseKey(hKey);
+        std::string regCmd =
+            "-NoProfile -Command \"New-Item -Path 'HKLM:\\SOFTWARE\\CodeGuard' -Force | Out-Null; "
+            "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\CodeGuard' -Name 'PATH' -Value '" + gamePath + "' -Type String\"";
+
+        SHELLEXECUTEINFOA seiReg = { 0 };
+        seiReg.cbSize = sizeof(seiReg);
+        seiReg.fMask  = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
+        seiReg.lpVerb = "runas";
+        seiReg.lpFile = "powershell.exe";
+        seiReg.lpParameters = regCmd.c_str();
+        seiReg.nShow  = SW_HIDE;
+
+        if (ShellExecuteExA(&seiReg) && seiReg.hProcess) {
+            WaitForSingleObject(seiReg.hProcess, 10000);
+            CloseHandle(seiReg.hProcess);
         }
     }
     return success;
@@ -476,7 +500,7 @@ bool RepairServerIni(const std::string& gamePath) {
 }
 
 // =====================================================================
-// FAZ 5c: DIAGNOSTIC DIALOG (insan onayli Repair butonlari)
+// FAZ 5c: DIAGNOSTIC DIALOG (Glasmorphism stil + insan onayli Repair)
 // Cyberpunk dersi: kor degistirme YASAK, her aksiyon kullanici onayli
 // =====================================================================
 
@@ -487,6 +511,49 @@ struct DiagDialogState {
     std::vector<CheckResult> results;
 };
 static DiagDialogState* g_dlgState = nullptr;
+
+// Glasmorphism renkler (koyu cam etkisi)
+static const COLORREF DLG_BG          = RGB(20, 14, 11);      // Launcher TR resource $140E0B ile uyumlu
+static const COLORREF DLG_TEXT        = RGB(230, 230, 230);   // beyaz ish
+static const COLORREF DLG_TEXT_MUTED  = RGB(160, 160, 160);   // status bar gri
+static const COLORREF DLG_ACCENT      = RGB(200, 60, 50);     // MK kirmizi (kritik durum)
+static const COLORREF DLG_OK          = RGB(80, 200, 100);    // yesil OK
+static const COLORREF DLG_WARN        = RGB(255, 180, 60);    // turuncu uyari
+static const COLORREF DLG_LIST_BG     = RGB(28, 22, 19);      // listbox arkaplani (bg'den biraz acik)
+static const COLORREF DLG_BTN_BG      = RGB(40, 32, 28);      // buton arkaplani
+
+static HBRUSH g_brushDlgBg     = NULL;
+static HBRUSH g_brushListBg    = NULL;
+static HBRUSH g_brushBtnBg     = NULL;
+static HFONT  g_fontSegoeUI    = NULL;
+static HFONT  g_fontSegoeBold  = NULL;
+
+// Glasmorphism brush'lari olustur (dialog acilirken)
+static void CreateDlgBrushes() {
+    if (!g_brushDlgBg)    g_brushDlgBg    = CreateSolidBrush(DLG_BG);
+    if (!g_brushListBg)   g_brushListBg   = CreateSolidBrush(DLG_LIST_BG);
+    if (!g_brushBtnBg)    g_brushBtnBg    = CreateSolidBrush(DLG_BTN_BG);
+    if (!g_fontSegoeUI) {
+        g_fontSegoeUI = CreateFontA(
+            -13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    }
+    if (!g_fontSegoeBold) {
+        g_fontSegoeBold = CreateFontA(
+            -13, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    }
+}
+
+static void DestroyDlgBrushes() {
+    if (g_brushDlgBg)    { DeleteObject(g_brushDlgBg);    g_brushDlgBg    = NULL; }
+    if (g_brushListBg)   { DeleteObject(g_brushListBg);   g_brushListBg   = NULL; }
+    if (g_brushBtnBg)    { DeleteObject(g_brushBtnBg);    g_brushBtnBg    = NULL; }
+    if (g_fontSegoeUI)   { DeleteObject(g_fontSegoeUI);   g_fontSegoeUI   = NULL; }
+    if (g_fontSegoeBold) { DeleteObject(g_fontSegoeBold); g_fontSegoeBold = NULL; }
+}
 
 // Status string'i icon prefix ile
 static std::string FormatCheckLine(const CheckResult& r) {
@@ -558,12 +625,109 @@ static void RefreshChecks(HWND hDlg) {
 static INT_PTR CALLBACK DiagDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_INITDIALOG: {
+            // FAZ 5c GLASMORPHISM: brush + font hazirla
+            CreateDlgBrushes();
+
+            // Dialog transparancy (WS_EX_LAYERED): hafif opacity (ferah cam etkisi)
+            SetLayeredWindowAttributes(hDlg, 0, 240, LWA_ALPHA);
+
+            // Tum child kontrollere Segoe UI font ata
+            EnumChildWindows(hDlg, [](HWND hChild, LPARAM /*lp*/) -> BOOL {
+                SendMessage(hChild, WM_SETFONT, (WPARAM)g_fontSegoeUI, TRUE);
+                return TRUE;
+            }, 0);
+
+            // Listbox icin owner-drawn mod (renkli status icin)
+            HWND hList = GetDlgItem(hDlg, IDC_DIAG_LIST);
+            LONG style = GetWindowLong(hList, GWL_STYLE);
+            SetWindowLong(hList, GWL_STYLE, style | LBS_OWNERDRAWFIXED);
+            // Listbox font biraz daha buyuk + monospace ikon icin
+            SendMessage(hList, LB_SETITEMHEIGHT, 0, MAKELPARAM(22, 0));
+
             if (g_dlgState) {
-                FillListBox(GetDlgItem(hDlg, IDC_DIAG_LIST), g_dlgState->results);
+                FillListBox(hList, g_dlgState->results);
                 UpdateRepairButtons(hDlg);
-                SetDlgStatus(hDlg, "Hazir — sorunlu satira tikla, Onar butonuna bas");
+                SetDlgStatus(hDlg, "Hazir — sorunlu satira tikla, alttaki Onarim butonuna bas.");
             }
             return TRUE;
+        }
+
+        // FAZ 5c GLASMORPHISM: dialog ve static text arkaplan rengi
+        case WM_CTLCOLORDLG: {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, DLG_TEXT);
+            SetBkColor(hdc, DLG_BG);
+            return (INT_PTR)g_brushDlgBg;
+        }
+        case WM_CTLCOLORSTATIC: {
+            HDC hdc = (HDC)wParam;
+            HWND hCtl = (HWND)lParam;
+            int ctlId = GetDlgCtrlID(hCtl);
+
+            // Status text muted gri, digerleri beyaz
+            if (ctlId == IDC_DIAG_STATUS) {
+                SetTextColor(hdc, DLG_TEXT_MUTED);
+            } else {
+                SetTextColor(hdc, DLG_TEXT);
+            }
+            SetBkColor(hdc, DLG_BG);
+            SetBkMode(hdc, TRANSPARENT);
+            return (INT_PTR)g_brushDlgBg;
+        }
+        case WM_CTLCOLORLISTBOX: {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, DLG_TEXT);
+            SetBkColor(hdc, DLG_LIST_BG);
+            return (INT_PTR)g_brushListBg;
+        }
+        case WM_CTLCOLORBTN: {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, DLG_TEXT);
+            SetBkColor(hdc, DLG_BTN_BG);
+            return (INT_PTR)g_brushBtnBg;
+        }
+
+        // FAZ 5c GLASMORPHISM: listbox satirlarini renkli ciz (OK yesil/WARN turuncu/ERR kirmizi)
+        case WM_DRAWITEM: {
+            LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)lParam;
+            if (dis->CtlID == IDC_DIAG_LIST && dis->itemID != (UINT)-1) {
+                // Hangi satir (index)
+                int idx = (int)dis->itemID;
+
+                // Arkaplan (selected/normal)
+                bool selected = (dis->itemState & ODS_SELECTED) != 0;
+                HBRUSH bg = CreateSolidBrush(selected ? RGB(50, 38, 32) : DLG_LIST_BG);
+                FillRect(dis->hDC, &dis->rcItem, bg);
+                DeleteObject(bg);
+
+                // Satir text + status rengi
+                if (g_dlgState && idx >= 0 && idx < (int)g_dlgState->results.size()) {
+                    const CheckResult& r = g_dlgState->results[idx];
+                    COLORREF txtColor = DLG_TEXT;
+                    switch (r.status) {
+                        case CheckStatus::OK:           txtColor = DLG_OK; break;
+                        case CheckStatus::WARNING:      txtColor = DLG_WARN; break;
+                        case CheckStatus::ERROR_LEVEL:  txtColor = DLG_ACCENT; break;
+                        default: break;
+                    }
+                    SetTextColor(dis->hDC, txtColor);
+                    SetBkMode(dis->hDC, TRANSPARENT);
+                    SelectObject(dis->hDC, g_fontSegoeUI);
+
+                    std::string line = FormatCheckLine(r);
+                    RECT rcText = dis->rcItem;
+                    rcText.left += 8;  // padding
+                    DrawTextA(dis->hDC, line.c_str(), -1, &rcText,
+                              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+                }
+
+                // Focus rect (selected ise)
+                if (dis->itemState & ODS_FOCUS) {
+                    DrawFocusRect(dis->hDC, &dis->rcItem);
+                }
+                return TRUE;
+            }
+            return FALSE;
         }
 
         case WM_COMMAND: {
@@ -620,6 +784,12 @@ static INT_PTR CALLBACK DiagDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARA
         case WM_CLOSE: {
             EndDialog(hDlg, 0);
             return TRUE;
+        }
+
+        case WM_DESTROY: {
+            // FAZ 5c: brush/font temizle
+            DestroyDlgBrushes();
+            return FALSE;
         }
     }
     return FALSE;

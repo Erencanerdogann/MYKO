@@ -8,6 +8,7 @@
 #include "WinUser.h"
 #include <tchar.h>
 #include "LauncherEngine.h"
+#include "LauncherDiagnostic.h"  // S115 v2.5 FAZ 5c: ShowDiagnosticDialog
 #include "hdr.h"
 #include "CRC.h"
 #include <thread>
@@ -1469,6 +1470,18 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         } break;
         }
     } break;
+
+    // S115 v2.5 FAZ 5c: Self-heal diagnostik ERROR -> Glasmorphism Dialog AC
+    // Background thread'den PostMessage ile tetiklenir (LauncherEngine.cpp constructor)
+    case (WM_USER + 100): {
+        char workDir[MAX_PATH] = { 0 };
+        GetCurrentDirectoryA(MAX_PATH, workDir);
+        char ipBuf[128] = { 0 };
+        GetPrivateProfileStringA("Server", "IP0", "", ipBuf, sizeof(ipBuf),
+                                 (std::string(workDir) + "\\Server.ini").c_str());
+        LauncherDiagnostic::ShowDiagnosticDialog(hWnd, workDir, ipBuf);
+    } break;
+
     case WM_LBUTTONDOWN:
         dragWindow = true;
         leftMouse = true;
