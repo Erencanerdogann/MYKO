@@ -207,6 +207,7 @@
     <ClCompile Include="TournamentSystem.cpp" />
     <ClCompile Include="TournamentBet.cpp" />
     <ClCompile Include="TournamentSchedule.cpp" />
+    <ClCompile Include="TournamentRegistration.cpp" />
     <ClCompile Include="DungeonDefenceSystem.cpp" />
     <ClCompile Include="JuraidBdwFragSystem.cpp" />
     <ClCompile Include="NameChangeHandler.cpp" />

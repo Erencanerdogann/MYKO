@@ -1383,6 +1383,7 @@ public:
 	COMMAND_HANDLER(HandleCastleSiegeWarSkipTimer);
 	COMMAND_HANDLER(HandleTournamentStart);
 	COMMAND_HANDLER(HandleTournamentClose);
+	COMMAND_HANDLER(HandleTournamentRegListCommand);   // S115 TUR 11 — Reg listesi
 	COMMAND_HANDLER(Handleunbannedcommand);
 	COMMAND_HANDLER(Handlebannedcommand);
 
