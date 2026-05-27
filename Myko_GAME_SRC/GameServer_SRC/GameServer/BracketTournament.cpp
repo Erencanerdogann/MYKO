@@ -48,6 +48,9 @@ struct _BRACKET_INFO {
 static std::vector<_BRACKET_INFO> g_brackets;
 static std::recursive_mutex g_bracketLock;
 
+// Forward declarations
+void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::string& position);
+
 // =====================================================================
 // HELPER — bracket bul (RAM cache)
 // =====================================================================
@@ -335,9 +338,95 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 	// S115 BUG #2 FIX — Yeni tur DB'den RAM'e cek
 	RefreshBracketMatches(b);
 
-	// Final ise odul dagit
-	// Bracket bittiyse (DB tarafinda Status=FINISHED set edilir SP icinde) odul dagitma
-	// TODO: g_DBAgent.BracketGetRewards ile pozisyon basina odul cek, kazanan klan uyelerine dagit
+	// S115 BUG #3 FIX — Final tamamlandi mi kontrol et + odul dagit
+	// Final tamamlanma kriteri: yeni tur olusmayinca veya tum maclar bitince
+	bool allFinished = true;
+	for (auto& mm : b->matches) {
+		if (mm.status != "FINISHED" && mm.status != "WALKOVER") {
+			allFinished = false;
+			break;
+		}
+	}
+
+	if (allFinished) {
+		// Son tur galibi = bracket sampiyonu
+		uint16 championClanID = winnerClanID;
+		b->winnerClanID = championClanID;
+		b->status = "FINISHED";
+
+		CKnights* pChampion = g_pMain->GetClanPtr(championClanID);
+		if (pChampion) {
+			b->winnerClanName = pChampion->GetName();
+		}
+
+		printf("[BRACKET] FINISHED: BracketID=%d Champion=%u (%s)\n",
+			b->bracketID, championClanID, b->winnerClanName.c_str());
+
+		DistributeBracketRewards(b->bracketID, championClanID, "CHAMPION");
+		// 2. yari finalde elenenler RUNNER_UP (final kaybedeni)
+		// Su an basit: kazanan CHAMPION, kaybeden RUNNER_UP
+		// Final mac'inde kaybeden klan ID
+		uint16 finalLoserClanID = (m->redClanID == championClanID) ? m->blueClanID : m->redClanID;
+		if (finalLoserClanID > 0 && finalLoserClanID != championClanID) {
+			DistributeBracketRewards(b->bracketID, finalLoserClanID, "RUNNER_UP");
+		}
+	}
+}
+
+// =====================================================================
+// HELPER — Bracket reward dagitim (S115 BUG #3 FIX)
+// =====================================================================
+void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::string& position)
+{
+	int32_t gold = 0, np = 0, itemID = 0, premiumHours = 0;
+	int16_t itemCount = 0;
+
+	if (!g_DBAgent.BracketGetRewards(bracketID, position, gold, np, itemID, itemCount, premiumHours)) {
+		printf("[BRACKET] Reward yok: bracket=%d position=%s\n", bracketID, position.c_str());
+		return;
+	}
+
+	printf("[BRACKET] Reward dagit: bracket=%d clan=%u pos=%s gold=%d np=%d item=%d x%d premium=%dh\n",
+		bracketID, clanID, position.c_str(), gold, np, itemID, itemCount, premiumHours);
+
+	int distributedCount = 0;
+	for (uint16 i = 0; i < MAX_USER; i++) {
+		CUser* pUser = g_pMain->GetUserPtr(i);
+		if (pUser == nullptr || !pUser->isInGame()) continue;
+		if (pUser->GetClanID() != clanID) continue;
+
+		if (gold > 0) pUser->GoldGain((uint32)gold);
+		if (np > 0) pUser->SendLoyaltyChange("bracket", np, false, false, false);
+		if (itemID > 0 && itemCount > 0) {
+			pUser->GiveItem("bracket_reward", (uint32)itemID, (uint16)itemCount, true, 0);
+		}
+
+		std::string msg;
+		if (position == "CHAMPION") {
+			msg = "[BRACKET] TEBRIKLER! Klanin bracket turnuvasinda SAMPIYON oldu!";
+		} else if (position == "RUNNER_UP") {
+			msg = "[BRACKET] Final maclari! Klanin 2. oldu. Tebrikler!";
+		} else {
+			msg = "[BRACKET] Iyi savas! Katilim odulun aldin.";
+		}
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+		pUser->Send(&pkt);
+
+		distributedCount++;
+	}
+
+	// Klan premium (CHAMPION icin standart 168h, MATRIX DB'den)
+	if (position == "CHAMPION" && premiumHours > 0) {
+		CKnights* pClan = g_pMain->GetClanPtr(clanID);
+		if (pClan != nullptr) {
+			pClan->sPremiumTime = (uint32)UNIXTIME + (uint32)(premiumHours * 3600);
+			printf("[BRACKET] Klan premium +%d saat verildi: clanID=%u\n",
+				premiumHours, clanID);
+		}
+	}
+
+	printf("[BRACKET] Reward dagitildi %d oyuncuya (clan=%u)\n", distributedCount, clanID);
 }
 
 // =====================================================================
