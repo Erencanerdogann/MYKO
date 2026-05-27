@@ -638,45 +638,11 @@ void CUser::NpcEvent(Packet & pkt)
 		break;
 
 	case NPC_TOURNAMENT_MANAGER:
-		{
-			// S115 — Tournament Manager NPC: kayit bilgisi + rehber chat
-			// PG temiz: standart WIZ_CHAT, yeni opcode YOK
-			std::string msg;
-			Packet chatPkt;
-
-			if (!isInClan())
-			{
-				msg = "[Turnuva Yetkilisi] Once bir klana kayit olmalisin. "
-				      "Klan kurmak icin Mr.Bicaks NPC'sine git.";
-			}
-			else if (!isClanLeader())
-			{
-				CKnights* pClan = g_pMain->GetClanPtr(GetClanID());
-				char buf[256] = { 0 };
-				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-					"[Turnuva Yetkilisi] Klanin: %s. Kayit yapabilmek icin "
-					"klan liderin gelmeli.",
-					pClan ? pClan->GetName().c_str() : "?");
-				msg = buf;
-			}
-			else
-			{
-				// Klan lideri — bilgi + rehber
-				CKnights* pClan = g_pMain->GetClanPtr(GetClanID());
-				char buf[400] = { 0 };
-				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-					"[Turnuva Yetkilisi] Hosgeldin %s, %s klaninin lideri. "
-					"Turnuvaya kayit icin chat'e yaz: +tournamentreg. "
-					"Bracket turnuvasina kayit icin: +bracketreg BracketID. "
-					"Iptal etmek icin: +tournamentreg cancel.",
-					GetName().c_str(),
-					pClan ? pClan->GetName().c_str() : "?");
-				msg = buf;
-			}
-
-			ChatPacket::Construct(&chatPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
-			Send(&chatPkt);
-		}
+		// S115 — Tournament Manager NPC: dialog tamamen Lua'ya tasindi
+		// (Quests/32756_TournamentManager.lua + QUEST_HELPER migration 113).
+		// Lua engine NPC tikla event'inde QUEST_HELPER'a bakarak otomatik
+		// 32756_TournamentManager.lua dosyasini calistirir, EVENT=50000 girisi.
+		// Eski C++ chat handler artik gereksiz — eger Lua engine yoksa NPC sessiz kalir.
 		break;
 
 	case NPC_RENTAL:

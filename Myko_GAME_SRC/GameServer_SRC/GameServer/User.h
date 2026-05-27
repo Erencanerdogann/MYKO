@@ -2268,6 +2268,13 @@ public:
 	int8 CheckCastleSiegeWarDeathmatchRegister();
 	int8 CheckCastleSiegeWarDeathmatchCancelRegister();
 
+	// S115 — Tournament NPC Lua dialog (32756) method'lari
+	int LuaTournamentRegister();        // 1=basari, 2=zaten kayitli, 3=lider degil, 4=klan yok
+	int LuaTournamentCancelReg();       // 1=iptal, 0=aktif kayit yok
+	int LuaBracketActiveCount();        // aktif bracket sayisi (max 4)
+	int LuaBracketRegisterByIndex(int idx);  // 1-4 arasi bracket'a kayit, 1=basari/0=hata
+	int LuaBracket8v8ListLatest();      // En son aktif bracket icin 8v8 listesi chat'e yazdir
+
 	void GetUserInfo(Packet & pkt);
 	void SendUserStatusUpdate(UserStatus type, UserStatusBehaviour status);
 	virtual void Initialize();
@@ -3464,5 +3471,45 @@ public:
 			LUA_RETURN(0);
 		}
 		LUA_RETURN(pUser->CheckCastleSiegeWarDeathmatchCancelRegister());
+	}
+
+	// S115 — Tournament Manager NPC Lua dialog (32756) icin 4 method
+	// Donus kodlari: 0=hata, 1=basari, 2=zaten kayitli, 3=lider degil, 4=klan yok
+	DECLARE_LUA_FUNCTION(LuaTournamentRegister)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) LUA_RETURN(0);
+		LUA_RETURN(pUser->LuaTournamentRegister());
+	}
+
+	DECLARE_LUA_FUNCTION(LuaTournamentCancelReg)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) LUA_RETURN(0);
+		LUA_RETURN(pUser->LuaTournamentCancelReg());
+	}
+
+	// Donus: aktif bracket sayisi (max 4 — Lua dialog limiti)
+	DECLARE_LUA_FUNCTION(LuaBracketActiveCount)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) LUA_RETURN(0);
+		LUA_RETURN(pUser->LuaBracketActiveCount());
+	}
+
+	// Parametre: bracket index (1-4, Lua dialog button) -> Donus: 0/1
+	DECLARE_LUA_FUNCTION(LuaBracketRegisterByIndex)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) LUA_RETURN(0);
+		int bracketIndex = (int)lua_tointeger(L, 2);
+		LUA_RETURN(pUser->LuaBracketRegisterByIndex(bracketIndex));
+	}
+
+	DECLARE_LUA_FUNCTION(LuaBracket8v8ListLatest)
+	{
+		CUser* pUser = LUA_GET_INSTANCE();
+		if (!pUser || !pUser->isInGame()) LUA_RETURN(0);
+		LUA_RETURN(pUser->LuaBracket8v8ListLatest());
 	}
 };

@@ -150,3 +150,167 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentRegListCommand)
 	printf("===========================================\n");
 	return true;
 }
+
+// =====================================================================
+// S115 — Tournament Manager NPC Lua dialog (32756) icin 5 method
+// =====================================================================
+// Donus kodlari (1xx = basari, 2xx = soft hata, 4xx = klan/lider sorun, 5xx = sistem hata)
+
+int CUser::LuaTournamentRegister()
+{
+	if (!isInClan()) return 4;        // 4 = klan yok
+	if (!isClanLeader()) return 3;    // 3 = lider degil
+	CKnights* pClan = g_pMain->GetClanPtr(GetClanID());
+	if (pClan == nullptr) return 4;
+
+	if (RegisterClanForTournament(pClan->GetID(), pClan->GetName(),
+	                              GetName(), "NPC_DIALOG")) {
+		// Server-wide duyuru
+		char buf[200] = { 0 };
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[TOURNAMENT REG] %s klani turnuvaya kayit oldu (NPC). Toplam: %zu klan.",
+			pClan->GetName().c_str(), GetTournamentRegistrations().size());
+		std::string msg = buf;
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+		g_pMain->Send_All(&pkt);
+		return 1;  // basari
+	}
+	return 2;  // zaten kayitli
+}
+
+int CUser::LuaTournamentCancelReg()
+{
+	if (!isInClan() || !isClanLeader()) return 0;
+	CKnights* pClan = g_pMain->GetClanPtr(GetClanID());
+	if (pClan == nullptr) return 0;
+	return UnregisterClanForTournament(pClan->GetID()) ? 1 : 0;
+}
+
+int CUser::LuaBracketActiveCount()
+{
+	// Bos slot saymak icin DBAgent.BracketLoadActive cagri
+	std::vector<CDBAgent::_BRACKET_INFO_ROW> rows;
+	if (!g_DBAgent.BracketLoadActive(rows)) return 0;
+	// Sadece REGISTRATION durumda olanlar (kayit acik) — ACTIVE basladi, kayit kapali
+	int count = 0;
+	for (auto& r : rows) {
+		if (r.status == "REGISTRATION") count++;
+		if (count >= 4) break;  // Lua dialog limiti
+	}
+	return count;
+}
+
+int CUser::LuaBracketRegisterByIndex(int idx)
+{
+	if (!isInClan() || !isClanLeader()) return 0;
+	if (idx < 1 || idx > 4) return 0;
+
+	CKnights* pClan = g_pMain->GetClanPtr(GetClanID());
+	if (pClan == nullptr) return 0;
+
+	// Aktif REGISTRATION bracket'lardan idx-1'inci olani al
+	std::vector<CDBAgent::_BRACKET_INFO_ROW> rows;
+	if (!g_DBAgent.BracketLoadActive(rows)) return 0;
+
+	int32_t targetBracketID = 0;
+	int count = 0;
+	for (auto& r : rows) {
+		if (r.status != "REGISTRATION") continue;
+		count++;
+		if (count == idx) {
+			targetBracketID = r.bracketID;
+			break;
+		}
+	}
+	if (targetBracketID == 0) return 0;
+
+	// DB SP_BRACKET_REGISTER cagri (BracketTournament.cpp:197 mantigi)
+	std::string result;
+	bool ok = g_DBAgent.BracketRegister(targetBracketID, pClan->GetID(),
+		pClan->GetName(), GetName(), result);
+
+	char buf[200] = { 0 };
+	if (ok) {
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[BRACKET REG] %s klani Bracket %d'e kayit oldu (NPC).",
+			pClan->GetName().c_str(), targetBracketID);
+	} else {
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[BRACKET REG] Hata: %s", result.c_str());
+	}
+	std::string msg = buf;
+	Packet pkt;
+	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+	Send(&pkt);
+
+	return ok ? 1 : 0;
+}
+
+int CUser::LuaBracket8v8ListLatest()
+{
+	if (!isInClan()) return 0;
+
+	// En son REGISTRATION durumdaki bracket
+	std::vector<CDBAgent::_BRACKET_INFO_ROW> rows;
+	if (!g_DBAgent.BracketLoadActive(rows)) return 0;
+
+	int32_t targetBracketID = 0;
+	for (auto& r : rows) {
+		if (r.status == "REGISTRATION") {
+			targetBracketID = r.bracketID;
+			// son aktif olani al (siralama BracketID DESC olmuyorsa son row)
+		}
+	}
+	if (targetBracketID == 0) {
+		// Bracket yoksa kullaniciya bilgi
+		std::string msg = "[8v8] Su an aktif bracket turnuvasi yok.";
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+		Send(&pkt);
+		return 0;
+	}
+
+	// Liste cek + chat'e yaz (Bracket8v8.cpp HandleBracket8v8ListCommand mantigi)
+	std::vector<CDBAgent::_BPM_LIST_ROW> bpmRows;
+	if (!g_DBAgent.BracketPartyMemberList(targetBracketID, GetClanID(), bpmRows)) {
+		std::string msg = "[8v8] DB hata — liste cekilemedi.";
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+		Send(&pkt);
+		return 0;
+	}
+
+	char buf[256] = { 0 };
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+		"[8v8] Bracket %d — atanmis uyeler (klan %u, toplam %zu):",
+		targetBracketID, GetClanID(), bpmRows.size());
+	std::string header = buf;
+	{
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &header);
+		Send(&pkt);
+	}
+
+	if (bpmRows.empty()) {
+		std::string msg = "  (henuz kimse eklenmemis. Lider +bracket8v8add ile ekler.)";
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+		Send(&pkt);
+		return 1;
+	}
+
+	const size_t MAX = 32;
+	size_t count = (bpmRows.size() < MAX) ? bpmRows.size() : MAX;
+	for (size_t i = 0; i < count; i++) {
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"  Party%u: %s (%s)",
+			bpmRows[i].partyNumber, bpmRows[i].memberCharName.c_str(),
+			bpmRows[i].assignedBy.c_str());
+		std::string line = buf;
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &line);
+		Send(&pkt);
+	}
+	return 1;
+}

@@ -194,6 +194,12 @@ Classes
 		MAKE_LUA_METHOD(PerkUseItem)
 		MAKE_LUA_METHOD(CheckCastleSiegeWarDeathmatchRegister)
 		MAKE_LUA_METHOD(CheckCastleSiegeWarDeathmatchCancelRegister)
+		// S115 — Tournament NPC Lua dialog (32756) method'lari
+		MAKE_LUA_METHOD(LuaTournamentRegister)
+		MAKE_LUA_METHOD(LuaTournamentCancelReg)
+		MAKE_LUA_METHOD(LuaBracketActiveCount)
+		MAKE_LUA_METHOD(LuaBracketRegisterByIndex)
+		MAKE_LUA_METHOD(LuaBracket8v8ListLatest)
 	);
 
 #undef LUA_CLASS
