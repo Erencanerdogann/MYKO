@@ -583,10 +583,21 @@ void BracketAutoStartTimer()
 						// Iki klan da bos — bracket bozuk, atla (log)
 						printf("[BRACKET] BYE: matchID=%d iki klan da bos, atlandi\n", m.matchID);
 						m.status = "WALKOVER";
+						m.finished = true;
 						continue;
 					}
 					printf("[BRACKET] BYE: matchID=%d winner=%u (rakip yok)\n",
 						m.matchID, walkoverWinner);
+
+					// RAM status simdi WALKOVER — DB SP fail olsa bile sonraki tick'te
+					// "PENDING" kontrolu atlar, infinite loop yok. RefreshBracketMatches
+					// DB'den okudugunda SP basarili olduysa FINISHED gelir, fail olduysa
+					// PENDING gelir — bu durumda sonraki tick yeniden tetikler (geride DB
+					// duzelmesi beklenir). Pratikte: SP'ler MATRIX migration 108'de hazir,
+					// fail beklenmez.
+					m.status = "WALKOVER";
+					m.finished = true;
+					m.winnerClanID = walkoverWinner;
 
 					_BRACKET_FINISH_ACTION a;
 					a.matchID = m.matchID;
@@ -601,6 +612,35 @@ void BracketAutoStartTimer()
 
 				// Zone'da aktif tournament var mi?
 				if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
+
+				// Klan silinmis mi kontrol (silinmisse o klani kaybeden yap, log spam yok)
+				CKnights* pRedCheck  = g_pMain->GetClanPtr(m.redClanID);
+				CKnights* pBlueCheck = g_pMain->GetClanPtr(m.blueClanID);
+				if (pRedCheck == nullptr || pBlueCheck == nullptr) {
+					uint16 survivor = 0;
+					if (pRedCheck != nullptr) survivor = m.redClanID;
+					else if (pBlueCheck != nullptr) survivor = m.blueClanID;
+
+					printf("[BRACKET] Klan silinmis: matchID=%d red=%u(%s) blue=%u(%s) → WALKOVER winner=%u\n",
+						m.matchID, m.redClanID, pRedCheck ? "OK" : "YOK",
+						m.blueClanID, pBlueCheck ? "OK" : "YOK", survivor);
+
+					m.status = "WALKOVER";
+					m.finished = true;
+					m.winnerClanID = survivor;
+
+					if (survivor > 0) {
+						_BRACKET_FINISH_ACTION a;
+						a.matchID = m.matchID;
+						a.winnerClanID = survivor;
+						a.redScore = 1;
+						a.blueScore = 0;
+						a.zoneID = 0;
+						a.isNoShow = false;
+						pendingFinishes.push_back(a);
+					}
+					continue;
+				}
 
 				// Bu mac'i otomatik baslat
 				StartBracketMatchTournament(m, b.name);
@@ -624,6 +664,12 @@ void BracketAutoStartTimer()
 				// No-show: kimse gelmedi 5dk gecti → red default kazanan
 				printf("[BRACKET] WALKOVER (no-show 5dk): matchID=%d red=%u default winner\n",
 					m.matchID, m.redClanID);
+
+				// RAM status simdi WALKOVER — tekrar tetiklenmesin (defansif, OnBracketMatchFinish
+				// zaten FINISHED set edecek; ama RefreshBracketMatches arasinda iki tur garantisi)
+				m.status = "WALKOVER";
+				m.finished = true;
+				m.winnerClanID = m.redClanID;
 
 				_BRACKET_FINISH_ACTION a;
 				a.matchID = m.matchID;
