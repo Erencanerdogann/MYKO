@@ -221,7 +221,8 @@ enum NpcType
 	NPC_MONSTER_SPECIAL     = 221,
 	NPC_OLD_MAN_NPC			= 222,
 	NPC_PET_TRADE			= 223,
-	NPC_CLAN_WAR_MONUMENT	= 224
+	NPC_CLAN_WAR_MONUMENT	= 224,
+	NPC_TOURNAMENT_MANAGER	= 225,   // S115 — Tournament kayit NPC (Moradon)
 };
 
 enum class ZoneAbilityType
