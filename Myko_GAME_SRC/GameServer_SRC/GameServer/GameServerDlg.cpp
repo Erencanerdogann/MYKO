@@ -189,8 +189,10 @@ bool CGameServerDlg::Startup()
 	{
 		extern void LoadTournamentScheduleFromDB();
 		extern void LoadBracketsFromDB();
+		extern void LoadOneVsOneBracketsFromDB();
 		LoadTournamentScheduleFromDB();
 		LoadBracketsFromDB();
+		LoadOneVsOneBracketsFromDB();
 	}
 
 	printf("\n");
@@ -1363,6 +1365,11 @@ void CGameServerDlg::GameEventMainTimer()
 		// S115 — Bracket auto-start (DependsOnMatch + WALKOVER kontrol)
 		extern void BracketAutoStartTimer();
 		BracketAutoStartTimer();
+	}
+	{
+		// S115 FAZ 16 — 1v1 Bracket auto-start (PENDING -> teleport, timeout WALKOVER)
+		extern void OneVsOneAutoStartTimer();
+		OneVsOneAutoStartTimer();
 	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();

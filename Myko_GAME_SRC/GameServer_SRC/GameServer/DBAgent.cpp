@@ -6355,6 +6355,90 @@ int32_t CDBAgent::OneVsOneCreate(const std::string& name, uint8 maxPlayers, cons
 	return pBID;
 }
 
+// 1v1 RAM cache fill — match listesi (BracketLoadMatches mantigi)
+bool CDBAgent::OneVsOneLoadMatches(int32_t bid, std::vector<_1V1_MATCH_ROW>& outRows)
+{
+	int32 pBID = bid;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBID);
+
+	if (!dbCommand->Execute(_T("SELECT MatchID, RoundNumber, MatchOrder, RedUserID, BlueUserID, RedName, BlueName, ZoneID, Status, ISNULL(WinnerUserID, 0), ISNULL(DependsOnMatch1, 0) FROM KO_LOG.dbo._MK_1V1_MATCHES WHERE BID = ? ORDER BY RoundNumber, MatchOrder"))) {
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_1V1_MATCH_ROW row;
+		int32 mid = 0, dep = 0, ruid = 0, buid = 0, wuid = 0;
+		uint8 rnd = 0, ord = 0, zid = 0;
+		char  rname[64] = {0}, bname[64] = {0}, st[32] = {0};
+
+		dbCommand->FetchInt32(1, mid);
+		dbCommand->FetchByte(2, rnd);
+		dbCommand->FetchByte(3, ord);
+		dbCommand->FetchInt32(4, ruid);
+		dbCommand->FetchInt32(5, buid);
+		dbCommand->FetchString(6, rname, sizeof(rname));
+		dbCommand->FetchString(7, bname, sizeof(bname));
+		dbCommand->FetchByte(8, zid);
+		dbCommand->FetchString(9, st, sizeof(st));
+		dbCommand->FetchInt32(10, wuid);
+		dbCommand->FetchInt32(11, dep);
+
+		row.matchID = mid;
+		row.roundNumber = rnd;
+		row.matchOrder = ord;
+		row.redUserID = ruid;
+		row.blueUserID = buid;
+		row.redName = rname;
+		row.blueName = bname;
+		row.zoneID = zid;
+		row.status = st;
+		row.winnerUserID = wuid;
+		row.dependsOnMatch1 = dep;
+		outRows.push_back(row);
+	}
+	return true;
+}
+
+// 1v1 bracket listesi (ACTIVE / OPEN olanlar)
+bool CDBAgent::OneVsOneLoadBrackets(std::vector<_1V1_INFO_ROW>& outRows)
+{
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	if (!dbCommand->Execute(_T("SELECT BID, Name, MaxPlayers, CurrentRound, Status, ISNULL(WinnerUserID, 0), ISNULL(WinnerName, '') FROM KO_LOG.dbo._MK_1V1_TOURNAMENT WHERE Status IN ('OPEN', 'STARTED')"))) {
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_1V1_INFO_ROW row;
+		int32 bid = 0, wuid = 0;
+		uint8 mp = 0, cr = 0;
+		char name[64] = {0}, st[32] = {0}, wname[64] = {0};
+
+		dbCommand->FetchInt32(1, bid);
+		dbCommand->FetchString(2, name, sizeof(name));
+		dbCommand->FetchByte(3, mp);
+		dbCommand->FetchByte(4, cr);
+		dbCommand->FetchString(5, st, sizeof(st));
+		dbCommand->FetchInt32(6, wuid);
+		dbCommand->FetchString(7, wname, sizeof(wname));
+
+		row.bid = bid;
+		row.name = name;
+		row.maxPlayers = mp;
+		row.currentRound = cr;
+		row.status = st;
+		row.winnerUserID = wuid;
+		row.winnerName = wname;
+		outRows.push_back(row);
+	}
+	return true;
+}
+
 bool CDBAgent::OneVsOneRegister(int32_t bid, int32_t userID, const std::string& userName,
                                  uint8 cls, int16_t level, std::string& outResult)
 {

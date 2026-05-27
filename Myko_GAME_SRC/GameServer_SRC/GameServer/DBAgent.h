@@ -187,6 +187,31 @@ public:
 
 	// S115 FAZ 16 — 1v1 Bracket DB (MATRIX migration 112)
 	int32_t OneVsOneCreate(const std::string& name, uint8 maxPlayers, const std::string& gm);
+	// 1v1 RAM cache fill — match listesi (SP_1V1_STATUS yerine direkt SELECT)
+	struct _1V1_MATCH_ROW {
+		int32_t matchID;
+		uint8   roundNumber;
+		uint8   matchOrder;
+		int32_t redUserID;
+		int32_t blueUserID;
+		std::string redName;
+		std::string blueName;
+		uint8   zoneID;
+		std::string status;
+		int32_t winnerUserID;
+		int32_t dependsOnMatch1;
+	};
+	bool    OneVsOneLoadMatches(int32_t bid, std::vector<_1V1_MATCH_ROW>& outRows);
+	struct _1V1_INFO_ROW {
+		int32_t bid;
+		std::string name;
+		uint8   maxPlayers;
+		uint8   currentRound;
+		std::string status;
+		int32_t winnerUserID;
+		std::string winnerName;
+	};
+	bool    OneVsOneLoadBrackets(std::vector<_1V1_INFO_ROW>& outRows);
 	bool    OneVsOneRegister(int32_t bid, int32_t userID, const std::string& userName,
 	                          uint8 cls, int16_t level, std::string& outResult);
 	bool    OneVsOneGenerateMatches(int32_t bid);

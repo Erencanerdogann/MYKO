@@ -525,6 +525,11 @@ void CUser::OnDeathKilledPlayer(CUser* pKiller)
 				g_pMain->UpdateClanTournamentScoreBoard(pKiller);
 				SendDeathNotice(pKiller, DeathNoticeType::DeathNoticeCoordinates, true);
 			}
+			// S115 FAZ 16 — 1v1 Bracket: oldurulen kullanici 1v1 macindaysa mac biti
+			{
+				extern void OnUserDeath1v1Check(int32_t killedUserID, uint8 zoneID);
+				OnUserDeath1v1Check(GetID(), (uint8)GetZoneID());
+			}
 			break;
 		case ZONE_ARDREAM:
 		case ZONE_RONARK_LAND:
