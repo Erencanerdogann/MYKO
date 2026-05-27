@@ -261,6 +261,35 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 
 	// Score + Timer paketi yayinla (helper kullan)
 	SendTournamentScorePacket(TournamentInfo);
+
+	// S115 TUR 4 — Live score broadcast (tum sunucuya)
+	// Izleyici oyuncular Moradon'dan/diger zone'lardan tournament score'unu gorur
+	// PG kontrolu: WIZ_CHAT (sade chat), yeni opcode YOK ✅
+	{
+		CKnights* pRedClan  = GetClanPtr(redClan);
+		CKnights* pBlueClan = GetClanPtr(blueClan);
+		const char* zoneName =
+			(TournamentInfo->aTournamentZoneID == 77) ? "Ardream"   :
+			(TournamentInfo->aTournamentZoneID == 78) ? "Ronark"    :
+			(TournamentInfo->aTournamentZoneID == 96) ? "PartyVs-1" :
+			(TournamentInfo->aTournamentZoneID == 97) ? "PartyVs-2" :
+			(TournamentInfo->aTournamentZoneID == 98) ? "PartyVs-3" :
+			(TournamentInfo->aTournamentZoneID == 99) ? "PartyVs-4" : "?";
+
+		char buf[200] = { 0 };
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[CLAN WAR %s] %s %u - %u %s",
+			zoneName,
+			pRedClan  ? pRedClan->GetName().c_str()  : "Red",
+			TournamentInfo->aTournamentScoreBoard[0],
+			TournamentInfo->aTournamentScoreBoard[1],
+			pBlueClan ? pBlueClan->GetName().c_str() : "Blue");
+
+		std::string notice = buf;
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
+		Send_All(&pkt);
+	}
 }
 #pragma endregion
 
