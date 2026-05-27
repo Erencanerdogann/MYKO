@@ -3503,6 +3503,9 @@ struct _TOURNAMENT_DATA
 	uint16 firstBloodUserID;                   // ilk kani alan oyuncu (0 = henuz yok)
 	std::string firstBloodUserName;            // ilk kani alan oyuncu adi (cache)
 
+	// S115 TUR 9 — DB log (MATRIX SP'leri ile entegre)
+	int32_t dbTournamentID;                    // SP_CLAN_TOURNAMENT_START'tan donen ID, FINISH'te kullanilir
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3524,6 +3527,7 @@ struct _TOURNAMENT_DATA
 		killCountByUser.clear();
 		firstBloodUserID = 0;
 		firstBloodUserName.clear();
+		dbTournamentID = 0;
 	}
 };
 

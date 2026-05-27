@@ -175,22 +175,28 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 		ResolveTournamentBets(info->aTournamentZoneID, winnerCID);
 	}
 
-	// S115 TUR 9 — DB log + persistence (MATRIX SP'leri brief MSG:5888'den gelir)
-	// MATRIX tablosu hazir olduktan sonra uncomment:
-	// CDBAgent::TournamentLogFinish(
-	//     info->aTournamentZoneID,
-	//     pRedClan  ? pRedClan->GetID()  : 0,
-	//     pBlueClan ? pBlueClan->GetID() : 0,
-	//     redScore, blueScore,
-	//     info->aTournamentMonumentKilled,
-	//     winnerCID);
-	// Su an bu RAM-only, restart'ta kaybolur.
-	// Console log:
-	printf("[TOURNAMENT_LOG] Zone=%d Red=%s Blue=%s Score=%u-%u Winner=%u\n",
-		info->aTournamentZoneID,
-		pRedClan  ? pRedClan->GetName().c_str()  : "?",
-		pBlueClan ? pBlueClan->GetName().c_str() : "?",
-		redScore, blueScore, winnerCID);
+	// S115 TUR 9 — DB log: SP_CLAN_TOURNAMENT_FINISH cagri (MATRIX MSG:5897)
+	if (info->dbTournamentID > 0)
+	{
+		bool ok = g_DBAgent.TournamentLogFinish(
+			info->dbTournamentID,
+			redScore, blueScore,
+			info->aTournamentMonumentKilled,
+			winnerCID);
+		if (ok)
+			printf("[TOURNAMENT_DB] Logged FINISH ID=%d Score=%u-%u Winner=%u\n",
+				info->dbTournamentID, redScore, blueScore, winnerCID);
+		else
+			printf("[TOURNAMENT_DB] FINISH log failed (DB hata)\n");
+	}
+	else
+	{
+		printf("[TOURNAMENT_LOG] Zone=%d Red=%s Blue=%s Score=%u-%u Winner=%u (DB log YOK, dbID=0)\n",
+			info->aTournamentZoneID,
+			pRedClan  ? pRedClan->GetName().c_str()  : "?",
+			pBlueClan ? pBlueClan->GetName().c_str() : "?",
+			redScore, blueScore, winnerCID);
+	}
 
 	// S115 TUR 7 — Klan Premium 24sa kazanana
 	// Kazanan klan'in sPremiumTime = UNIXTIME + 86400 (24sa) set edilir

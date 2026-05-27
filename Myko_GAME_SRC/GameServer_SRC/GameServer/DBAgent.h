@@ -102,6 +102,13 @@ public:
 	bool LoadUserReturnData(CUser *pUser);
 	bool UpdateUserPerks(CUser* pUser);
 	int8_t ChangeClanNation(std::string& strClanName);
+
+	// S115 TUR 9 — Clan Tournament DB log (MATRIX MSG:5897)
+	int32_t TournamentLogStart(uint8 zoneID, uint16 redClanID, uint16 blueClanID,
+	                           const std::string& redClanName, const std::string& blueClanName,
+	                           uint16 durationMinutes, const std::string& startedByGM);
+	bool    TournamentLogFinish(int32_t tournamentID, uint16 redScore, uint16 blueScore,
+	                            uint8 monumentKilled, uint16 winnerClanID);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);

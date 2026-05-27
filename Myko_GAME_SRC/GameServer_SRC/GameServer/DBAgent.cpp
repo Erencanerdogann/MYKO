@@ -5708,3 +5708,69 @@ int8_t CDBAgent::ChangeClanNation(std::string& strClanName)
 	}
 	return bRet;
 }
+
+// =====================================================================
+// S115 TUR 9 — Clan Tournament DB Log (MATRIX MSG:5897 SP'leri)
+// =====================================================================
+
+// SP_CLAN_TOURNAMENT_START — yeni tournament kaydi olustur, ID dondurur
+// Returns: yeni TournamentID (>0 basari, <=0 hata)
+int32_t CDBAgent::TournamentLogStart(uint8 zoneID, uint16 redClanID, uint16 blueClanID,
+                                     const std::string& redClanName, const std::string& blueClanName,
+                                     uint16 durationMinutes, const std::string& startedByGM)
+{
+	// AddParameter pointer alir — local kopyalari pointer'lari icin tut
+	uint8  pZoneID    = zoneID;
+	int16  pRedClanID = (int16)redClanID;   // SMALLINT
+	int16  pBlueClanID= (int16)blueClanID;
+	int16  pDuration  = (int16)durationMinutes;
+	int32  pTournamentID = 0;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRedClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBlueClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, redClanName.c_str(),  redClanName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, blueClanName.c_str(), blueClanName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pDuration);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, startedByGM.c_str(),  startedByGM.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pTournamentID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_CLAN_TOURNAMENT_START(?, ?, ?, ?, ?, ?, ?, ?)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return 0;
+	}
+	while (dbCommand->MoveNext()) {}
+	return pTournamentID;
+}
+
+// SP_CLAN_TOURNAMENT_FINISH — tournament sonucunu DB'ye yaz
+// winnerClanID = 0 ise berabere (MATRIX SP berabere icin NULL kullanir, biz 0 gonderiyoruz; sema check)
+bool CDBAgent::TournamentLogFinish(int32_t tournamentID, uint16 redScore, uint16 blueScore,
+                                   uint8 monumentKilled, uint16 winnerClanID)
+{
+	if (tournamentID <= 0) return false;
+
+	int32 pTournamentID  = tournamentID;
+	int16 pRedScore      = (int16)redScore;
+	int16 pBlueScore     = (int16)blueScore;
+	uint8 pMonumentKilled= monumentKilled;
+	int16 pWinnerClanID  = (int16)winnerClanID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pTournamentID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRedScore);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBlueScore);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMonumentKilled);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pWinnerClanID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_CLAN_TOURNAMENT_FINISH(?, ?, ?, ?, ?)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return false;
+	}
+	return true;
+}

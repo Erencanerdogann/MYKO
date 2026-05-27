@@ -1418,6 +1418,19 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 	pData->aTournamentisStarted      = true;
 	pData->aTournamentisFinished     = false;
 
+	// S115 TUR 9 — DB log: SP_CLAN_TOURNAMENT_START cagri (MATRIX MSG:5897)
+	// Console'dan baslatilirsa StartedByGM "console", oyun ici GM komut'tan farkli
+	std::string startedByGM = "console";
+	pData->dbTournamentID = g_DBAgent.TournamentLogStart(
+		zoneID,
+		pRedClan->GetID(),  pBlueClan->GetID(),
+		pRedClan->GetName(), pBlueClan->GetName(),
+		duration, startedByGM);
+	if (pData->dbTournamentID > 0)
+		printf("[TOURNAMENT_DB] Logged START with ID=%d\n", pData->dbTournamentID);
+	else
+		printf("[TOURNAMENT_DB] START log failed (DB hata, RAM yine de calisir)\n");
+
 	// Thread-safe insert (CSTLMap recursive_mutex korumali)
 	if (!g_pMain->m_ClanVsDataList.PutData(zoneID, pData))
 	{
