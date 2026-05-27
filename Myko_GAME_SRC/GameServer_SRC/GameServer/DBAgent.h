@@ -144,6 +144,19 @@ public:
 	bool    BracketPartyMemberAdd(int32_t bracketID, uint16 clanID,
 	                              const std::string& memberCharName, uint8 partyNumber,
 	                              const std::string& assignedBy, std::string& outResult);
+	// RAM cache fill — bracket maclarini cek (S115 BUG #2 fix)
+	struct _BRACKET_MATCH_ROW {
+		int32_t matchID;
+		uint8   roundNumber;
+		uint8   matchOrder;
+		uint16  redClanID;
+		uint16  blueClanID;
+		uint8   zoneID;
+		std::string status;
+		uint16  winnerClanID;
+		int32_t dependsOnMatch1;
+	};
+	bool    BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);

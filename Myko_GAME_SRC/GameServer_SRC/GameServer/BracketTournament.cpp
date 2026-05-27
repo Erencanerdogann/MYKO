@@ -69,6 +69,36 @@ static _BRACKET_MATCH_INFO* FindMatch(int32_t matchID)
 	return nullptr;
 }
 
+// S115 BUG #2 FIX — DB'den maclari RAM cache'e doldur
+static void RefreshBracketMatches(_BRACKET_INFO* b)
+{
+	if (b == nullptr) return;
+	std::vector<CDBAgent::_BRACKET_MATCH_ROW> rows;
+	if (!g_DBAgent.BracketLoadMatches(b->bracketID, rows)) {
+		printf("[BRACKET] RefreshMatches DB hata bracketID=%d\n", b->bracketID);
+		return;
+	}
+	b->matches.clear();
+	for (auto& r : rows) {
+		_BRACKET_MATCH_INFO m;
+		m.matchID         = r.matchID;
+		m.bracketID       = b->bracketID;
+		m.round           = r.roundNumber;
+		m.matchOrder      = r.matchOrder;
+		m.redClanID       = r.redClanID;
+		m.blueClanID      = r.blueClanID;
+		m.zoneID          = r.zoneID;
+		m.status          = r.status;
+		m.winnerClanID    = r.winnerClanID;
+		m.finished        = (r.status == "FINISHED" || r.status == "WALKOVER");
+		m.dependsOnMatch1 = r.dependsOnMatch1;
+		m.startTime       = 0;
+		b->matches.push_back(m);
+	}
+	printf("[BRACKET] RefreshMatches: bracketID=%d %zu mac yuklendi\n",
+		b->bracketID, b->matches.size());
+}
+
 // =====================================================================
 // PUBLIC API — GameServer init'inde cagrilir
 // =====================================================================
@@ -175,9 +205,11 @@ bool StartBracket(int32_t bracketID)
 
 	b->status = "ACTIVE";
 	b->currentRound = 1;
-	// RAM mac listesi DB'den yenilenecek (LoadBracketsFromDB benzeri ileride entegre)
+	// S115 BUG #2 FIX — DB'den maclari RAM'e cek
+	RefreshBracketMatches(b);
 
-	printf("[BRACKET] Started: BracketID=%d (Round 1, mac'lar DB'de)\n", bracketID);
+	printf("[BRACKET] Started: BracketID=%d (Round 1, %zu mac RAM)\n",
+		bracketID, b->matches.size());
 
 	// TODO acilis sonrasi: ilk 6 mac'i otomatik /tournamentstart ile baslat (DependsOnMatch1=NULL olanlar)
 	// Su an manuel GM tetiklemesiyle calisir (her mac icin /tournamentstart cagrı)
@@ -299,11 +331,9 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 		return;
 	}
 
-	// Yeni tur RAM cache'e yuklensin (DB'den fetch)
-	// TODO: LoadBracketsFromDB benzeri yenileme — su an manuel veya restart
-	// Acilis sonrasi tam entegrasyonda: SELECT _MK_BRACKET_MATCHES WHERE BracketID=? AND Round=NextRound
-
 	b->currentRound++;
+	// S115 BUG #2 FIX — Yeni tur DB'den RAM'e cek
+	RefreshBracketMatches(b);
 
 	// Final ise odul dagit
 	// Bracket bittiyse (DB tarafinda Status=FINISHED set edilir SP icinde) odul dagitma

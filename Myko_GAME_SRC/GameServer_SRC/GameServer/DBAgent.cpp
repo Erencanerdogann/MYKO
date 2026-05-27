@@ -6126,3 +6126,49 @@ bool CDBAgent::BracketPartyMemberAdd(int32_t bracketID, uint16 clanID,
 	outResult = pResult;
 	return (outResult == "OK");
 }
+
+// S115 BUG #2 FIX — RAM cache fill (Bracket mac listesi)
+// SELECT _MK_BRACKET_MATCHES WHERE BracketID = ? ORDER BY RoundNumber, MatchOrder
+bool CDBAgent::BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows)
+{
+	int32 pBracketID = bracketID;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+
+	if (!dbCommand->Execute(_T("SELECT MatchID, RoundNumber, MatchOrder, RedClanID, BlueClanID, ZoneID, Status, ISNULL(WinnerClanID, 0), ISNULL(DependsOnMatch1, 0) FROM KO_LOG.dbo._MK_BRACKET_MATCHES WHERE BracketID = ? ORDER BY RoundNumber, MatchOrder"))) {
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_BRACKET_MATCH_ROW row;
+		int32 mid = 0, dep = 0;
+		uint8 rnd = 0, ord = 0, zid = 0;
+		int16 rcl = 0, bcl = 0, wcl = 0;
+		char  st[32] = {0};
+
+		dbCommand->FetchInt32(1, mid);
+		dbCommand->FetchByte(2, rnd);
+		dbCommand->FetchByte(3, ord);
+		dbCommand->FetchInt16(4, rcl);
+		dbCommand->FetchInt16(5, bcl);
+		dbCommand->FetchByte(6, zid);
+		dbCommand->FetchString(7, st, sizeof(st));
+		dbCommand->FetchInt16(8, wcl);
+		dbCommand->FetchInt32(9, dep);
+
+		row.matchID = mid;
+		row.roundNumber = rnd;
+		row.matchOrder = ord;
+		row.redClanID = (uint16)rcl;
+		row.blueClanID = (uint16)bcl;
+		row.zoneID = zid;
+		row.status = st;
+		row.winnerClanID = (uint16)wcl;
+		row.dependsOnMatch1 = dep;
+		outRows.push_back(row);
+	}
+	return true;
+}
