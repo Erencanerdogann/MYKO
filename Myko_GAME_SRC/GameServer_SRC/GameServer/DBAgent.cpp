@@ -6264,3 +6264,92 @@ int32_t CDBAgent::ClanSponsorDeposit(uint16 clanID, int32_t userID, const std::s
 	while (dbCommand->MoveNext()) {}
 	return pNewSponsorID;
 }
+
+// =====================================================================
+// S115 FAZ 16 — 1v1 Bracket DB (MATRIX migration 112_1v1_bracket)
+// =====================================================================
+int32_t CDBAgent::OneVsOneCreate(const std::string& name, uint8 maxPlayers, const std::string& gm)
+{
+	uint8 pMax = maxPlayers;
+	int32 pBID = 0;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, name.c_str(), name.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMax);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, gm.c_str(), gm.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pBID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_CREATE(?, ?, ?, ?)}"))) return 0;
+	while (dbCommand->MoveNext()) {}
+	return pBID;
+}
+
+bool CDBAgent::OneVsOneRegister(int32_t bid, int32_t userID, const std::string& userName,
+                                 uint8 cls, int16_t level, std::string& outResult)
+{
+	int32 pBID = bid;
+	int32 pUserID = userID;
+	uint8 pCls = cls;
+	int16 pLevel = level;
+	char  pResult[64] = {0};
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pUserID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, userName.c_str(), userName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pCls);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pLevel);
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, pResult, sizeof(pResult));
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_REGISTER(?, ?, ?, ?, ?, ?)}"))) {
+		outResult = "DB_ERROR";
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}
+	outResult = pResult;
+	return (outResult == "OK");
+}
+
+bool CDBAgent::OneVsOneGenerateMatches(int32_t bid)
+{
+	int32 pBID = bid;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBID);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_GENERATE_MATCHES(?)}"));
+}
+
+bool CDBAgent::OneVsOneMatchFinish(int32_t matchID, int32_t winnerUserID)
+{
+	int32 pMID = matchID;
+	int32 pWin = winnerUserID;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pWin);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_MATCH_FINISH(?, ?)}"));
+}
+
+bool CDBAgent::OneVsOneNextRoundGenerate(int32_t bid, uint8 currentRound)
+{
+	int32 pBID = bid;
+	uint8 pRound = currentRound;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRound);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_NEXT_ROUND_GENERATE(?, ?)}"));
+}
+
+bool CDBAgent::OneVsOneCancel(int32_t bid)
+{
+	int32 pBID = bid;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBID);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_CANCEL(?)}"));
+}

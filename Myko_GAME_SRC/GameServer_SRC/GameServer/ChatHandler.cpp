@@ -90,6 +90,9 @@ void CGameServerDlg::InitServerCommands()
 		{ "bracketcancel",		&CGameServerDlg::HandleBracketCancelCommand,		"Bracket iptal. Ornek: /bracketcancel 1" },
 		{ "ctfstart",			&CGameServerDlg::HandleCTFStartCommand,				"Crystal CTF basla. Ornek: /ctfstart RED BLUE 96" },
 		{ "ctfclose",			&CGameServerDlg::HandleCTFCloseCommand,				"Crystal CTF kapat. Ornek: /ctfclose 96" },
+		{ "1v1create",			&CGameServerDlg::HandleOneVsOneCreateCommand,		"1v1 Bracket olustur. Ornek: /1v1create \"Solo Cup\" 16" },
+		{ "1v1start",			&CGameServerDlg::HandleOneVsOneStartCommand,		"1v1 Bracket basla. Ornek: /1v1start 1" },
+		{ "1v1cancel",			&CGameServerDlg::HandleOneVsOneCancelCommand,		"1v1 Bracket iptal. Ornek: /1v1cancel 1" },
 		{ "chaosopen",			&CGameServerDlg::HandleChaosExpansionOpen,			"Chaos Event başlatır - Open is Chaos Expansion" },
 		{ "borderopen",			&CGameServerDlg::HandleBorderDefenceWar,			"BDW Event Başlatır - Open is Border Defence War" },
 		{ "juraidopen",			&CGameServerDlg::HandleJuraidMountain,				"JR Event Başlatır - Open is Juraid Mountain" },
@@ -163,6 +166,7 @@ void CUser::InitChatCommands()
 		{ "spectate",			&CUser::HandleSpectateCommand,					"Tournament izleyici ol. Ornek: +spectate 96 veya +spectate exit" },
 		{ "klansponsor",		&CUser::HandleKlanSponsorCommand,				"Klanina Noah sponsor ol. Ornek: +klansponsor 5000000" },
 		{ "klansponsornp",		&CUser::HandleKlanSponsorNPCommand,				"Klanina NP sponsor ol. Ornek: +klansponsornp 1000" },
+		{ "1v1reg",				&CUser::HandleOneVsOneRegCommand,				"1v1 Bracket kayit. Ornek: +1v1reg 1" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		

@@ -1392,6 +1392,9 @@ public:
 	COMMAND_HANDLER(HandleBracketCancelCommand);
 	COMMAND_HANDLER(HandleCTFStartCommand);                // S115 FAZ 13 — Crystal CTF
 	COMMAND_HANDLER(HandleCTFCloseCommand);                // S115 FAZ 13
+	COMMAND_HANDLER(HandleOneVsOneCreateCommand);          // S115 FAZ 16 — 1v1 Bracket
+	COMMAND_HANDLER(HandleOneVsOneStartCommand);           // S115 FAZ 16
+	COMMAND_HANDLER(HandleOneVsOneCancelCommand);          // S115 FAZ 16
 	COMMAND_HANDLER(Handleunbannedcommand);
 	COMMAND_HANDLER(Handlebannedcommand);
 

@@ -168,6 +168,15 @@ public:
 	// S115 FAZ 15 — Klan Sponsorlugu DB (MATRIX migration 111)
 	int32_t ClanSponsorDeposit(uint16 clanID, int32_t userID, const std::string& userName,
 	                           int64_t noahAmount, int32_t npAmount);
+
+	// S115 FAZ 16 — 1v1 Bracket DB (MATRIX migration 112)
+	int32_t OneVsOneCreate(const std::string& name, uint8 maxPlayers, const std::string& gm);
+	bool    OneVsOneRegister(int32_t bid, int32_t userID, const std::string& userName,
+	                          uint8 cls, int16_t level, std::string& outResult);
+	bool    OneVsOneGenerateMatches(int32_t bid);
+	bool    OneVsOneMatchFinish(int32_t matchID, int32_t winnerUserID);
+	bool    OneVsOneNextRoundGenerate(int32_t bid, uint8 currentRound);
+	bool    OneVsOneCancel(int32_t bid);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);

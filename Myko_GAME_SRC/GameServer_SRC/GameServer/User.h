@@ -1647,6 +1647,7 @@ public:
 	COMMAND_HANDLER(HandleSpectateCommand);               // S115 FAZ 14 — Spectator mode
 	COMMAND_HANDLER(HandleKlanSponsorCommand);            // S115 FAZ 15 — Klan Noah sponsor
 	COMMAND_HANDLER(HandleKlanSponsorNPCommand);          // S115 FAZ 15 — Klan NP sponsor
+	COMMAND_HANDLER(HandleOneVsOneRegCommand);            // S115 FAZ 16 — 1v1 kayit
 	COMMAND_HANDLER(HandleWarResultCommand);
 	COMMAND_HANDLER(HandleResetPlayerRankingCommand);
 
