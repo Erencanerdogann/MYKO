@@ -185,6 +185,14 @@ bool CGameServerDlg::Startup()
 	LoadClanPremiumNotice();
 	LoadCapeBonusNotice();
 
+	// S115 — Tournament schedule + bracket DB yukle (WIP iskelet, gercek DB MATRIX hazir olunca dolacak)
+	{
+		extern void LoadTournamentScheduleFromDB();
+		extern void LoadBracketsFromDB();
+		LoadTournamentScheduleFromDB();
+		LoadBracketsFromDB();
+	}
+
 	printf("\n");
 	if (!m_luaEngine.Initialise())
 		return false;
