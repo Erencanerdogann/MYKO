@@ -1963,6 +1963,29 @@ bool CUser::isHostileTo(Unit * pTarget)
 		&& isInPVPZone())
 		return true;
 
+	// S115 Plan A — Tournament zone'da ayni millet bile olsa karsi tournament klani ise HOSTILE
+	// 6 zone: 77 (Ardream Clan War) / 78 (Ronark Clan War) / 96-99 (Party Vs)
+	if (isClanTournamentinZone() || isPartyTournamentinZone()) {
+		_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(GetZoneID());
+		if (info != nullptr && info->aTournamentisStarted && info->aTournamentisAttackable) {
+			uint16 myClan = GetClanID();
+			uint16 targetClan = TO_USER(pTarget)->GetClanID();
+
+			// Ayni klan ise dost
+			if (myClan == targetClan)
+				return false;
+
+			// Iki taraf ta tournament katilimci klanı ise dusman
+			bool meIsRed     = (myClan == info->aTournamentClanNum[0]);
+			bool meIsBlue    = (myClan == info->aTournamentClanNum[1]);
+			bool targetIsRed = (targetClan == info->aTournamentClanNum[0]);
+			bool targetIsBlue= (targetClan == info->aTournamentClanNum[1]);
+
+			if ((meIsRed && targetIsBlue) || (meIsBlue && targetIsRed))
+				return true;
+		}
+	}
+
 	// Players can attack opposing nation players when they're in PVP zones.
 	if (GetNation() != pTarget->GetNation()
 		&& (GetZoneID() == ZONE_DESPERATION_ABYSS

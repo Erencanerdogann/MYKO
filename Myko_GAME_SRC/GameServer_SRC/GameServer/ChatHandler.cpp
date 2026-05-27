@@ -146,6 +146,8 @@ void CUser::InitChatCommands()
 		{ "tpall",				&CUser::HandleTeleportAllCommand,				"Belirtilen Zoneyi belirtilen Zone Işınlar - Players send to home zone." },
 		{ "pmall",				&CUser::HandlePrivateAllCommand,				"Tüm Oyunculara PM atar - Players send to Private.. How does it work? Expamle : +pmall Title Message" },
 		{ "summonknights",		&CUser::HandleKnightsSummonCommand,				"Belirtilen Clanı Yanına Işınlar - Teleport the clan users. Arguments: clan name" },
+		{ "tournamentstart",	&CUser::HandleTournamentStartUserCommand,		"Clan tournament baslatir. Ornek: +tournamentstart RedClan BlueClan ZoneID(77/78/96-99) Dakika(1-60)" },
+		{ "tournamentclose",	&CUser::HandleTournamentCloseUserCommand,		"Clan tournament kapatir. Ornek: +tournamentclose ZoneID(77/78/96-99)" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		
@@ -1280,11 +1282,13 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentClose)
 
 	if (TournamentClanInfo != nullptr)
 	{
-		KickOutZoneUsers(TournamentStartZoneID);
+		// S115 Plan A B6 fix: Moradon (21) hedef + Nation::ALL (herkes)
+		KickOutZoneUsers(TournamentStartZoneID, ZONE_MORADON, (uint8)Nation::ALL);
 		g_pMain->m_ClanVsDataList.DeleteData(TournamentStartZoneID);
 	}
 
-	printf("Final : Tournament is Close: Red Clan: (%s) - (%s) :Blue Clan Tournament Zone (%d) \n", TournamentName1.c_str(), TournamentName1.c_str(), TournamentStartZoneID);
+	printf("Final : Tournament is Close: Red Clan: (%s) vs Blue Clan: (%s) Zone (%d)\n",
+		TournamentName1.c_str(), TournamentName2.c_str(), TournamentStartZoneID);
 	return true;
 }
 
@@ -1419,12 +1423,45 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 	ChatPacket::Construct(&result, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
 	Send_All(&result);
 
+	// S115 Plan A — B7 OTOMATIK KLAN CAGRI: iki klanin online tum uyelerini tournament zone'una warp
+	// Spawn koordinati zone init (Moradon'a benzer sekilde — ZoneChange 0,0 default init pozisyonu kullanir)
+	uint16 redClanID  = pRedClan->GetID();
+	uint16 blueClanID = pBlueClan->GetID();
+	int warpedCount = 0;
+	for (uint16 i = 0; i < MAX_USER; i++)
+	{
+		CUser* pTarget = g_pMain->GetUserPtr(i);
+		if (pTarget == nullptr || !pTarget->isInGame())
+			continue;
+
+		uint16 tClanID = pTarget->GetClanID();
+		if (tClanID != redClanID && tClanID != blueClanID)
+			continue;
+
+		// Ayni zone'da zaten ise gec
+		if (pTarget->GetZoneID() == zoneID)
+			continue;
+
+		// Tournament zone'una isinla (init koordinat — ZoneChange 0,0 = zone default spawn)
+		pTarget->ZoneChange(zoneID, 0.0f, 0.0f);
+
+		// Karaktere private notice
+		std::string privNotice = (tClanID == redClanID)
+			? "[CLAN WAR] Klanin tournament icin Ardream'a aktarildi! Savas!"
+			: "[CLAN WAR] Klanin tournament icin Ardream'a aktarildi! Savas!";
+		Packet privPkt;
+		ChatPacket::Construct(&privPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &privNotice);
+		pTarget->Send(&privPkt);
+		warpedCount++;
+	}
+
 	printf("===========================================================\n");
 	printf("Tournament STARTED!\n");
-	printf("  Zone:     %d\n", zoneID);
+	printf("  Zone:     %d (%s)\n", zoneID, zoneName);
 	printf("  Red:      %s (ID %d)\n", pRedClan->GetName().c_str(),  pRedClan->GetID());
 	printf("  Blue:     %s (ID %d)\n", pBlueClan->GetName().c_str(), pBlueClan->GetID());
 	printf("  Duration: %d minutes (%d seconds)\n", duration, duration * 60);
+	printf("  Warped:   %d clan members\n", warpedCount);
 	printf("===========================================================\n");
 
 	return true;

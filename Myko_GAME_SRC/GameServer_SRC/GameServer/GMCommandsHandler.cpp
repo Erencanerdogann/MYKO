@@ -3192,4 +3192,54 @@ COMMAND_HANDLER(CUser::HandleKingFundCommand)
 	CKingSystem::PacketProcess(this, pkt);
 	return true;
 }
+
+// S115 Plan A — Oyun ici GM komutu: +tournamentstart (server-side CGameServerDlg::HandleTournamentStart forward)
+COMMAND_HANDLER(CUser::HandleTournamentStartUserCommand)
+{
+	if (!isGM())
+	{
+		g_pMain->SendHelpDescription(this, "Sadece GM kullanabilir.");
+		return true;
+	}
+	// Server-side handler'a forward (ayni mantik)
+	g_pMain->HandleTournamentStart(vargs, args, description);
+	return true;
+}
+
+// S115 Plan A — Oyun ici GM komutu: +tournamentclose
+// Kullanim basitlestirildi: sadece ZoneID gerek (server-side eski 3 arg yerine 1 arg)
+COMMAND_HANDLER(CUser::HandleTournamentCloseUserCommand)
+{
+	if (!isGM())
+	{
+		g_pMain->SendHelpDescription(this, "Sadece GM kullanabilir.");
+		return true;
+	}
+	if (vargs.size() < 1)
+	{
+		g_pMain->SendHelpDescription(this, "Ornek: +tournamentclose 77");
+		return true;
+	}
+	uint8 zoneID = SafeAtoi(vargs.front(), 0, 255);
+	bool validZone = (zoneID == 77 || zoneID == 78 ||
+	                  zoneID == 96 || zoneID == 97 ||
+	                  zoneID == 98 || zoneID == 99);
+	if (!validZone)
+	{
+		g_pMain->SendHelpDescription(this, "ZoneID gecersiz. 77/78/96-99 olmali");
+		return true;
+	}
+
+	_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zoneID);
+	if (info == nullptr)
+	{
+		g_pMain->SendHelpDescription(this, "Bu zone'da aktif tournament yok");
+		return true;
+	}
+
+	g_pMain->KickOutZoneUsers(zoneID, ZONE_MORADON, (uint8)Nation::ALL);
+	g_pMain->m_ClanVsDataList.DeleteData(zoneID);
+	g_pMain->SendHelpDescription(this, "Tournament kapatildi");
+	return true;
+}
 #pragma endregion
