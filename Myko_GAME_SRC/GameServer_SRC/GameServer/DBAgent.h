@@ -122,6 +122,10 @@ public:
 	                            const std::string& leaderName, const std::string& leaderAccountID,
 	                            const std::string& registeredVia);
 	bool    TournamentRegCancel(uint16 clanID);
+
+	// S115 — Tournament Reward DB-driven
+	bool    LoadTournamentRewards(uint8 zoneID, const std::string& position,
+	                              std::vector<std::pair<uint32, uint16>>& rewards);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);

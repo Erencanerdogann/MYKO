@@ -5900,3 +5900,37 @@ bool CDBAgent::TournamentRegCancel(uint16 clanID)
 	}
 	return true;
 }
+
+// =====================================================================
+// S115 — Tournament Reward tablosu (DB-driven, hardcoded yerine)
+// _MK_TOURNAMENT_REWARDS: (ZoneID, Position, ItemID, Count, Enabled)
+// Position: 'WINNER', 'LOSER', 'DRAW'
+// =====================================================================
+bool CDBAgent::LoadTournamentRewards(uint8 zoneID, const std::string& position,
+                                     std::vector<std::pair<uint32, uint16>>& rewards)
+{
+	rewards.clear();
+	uint8 pZoneID = zoneID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, position.c_str(), position.length());
+
+	if (!dbCommand->Execute(_T("SELECT ItemID, Count FROM KO_LOG.dbo._MK_TOURNAMENT_REWARDS WHERE ZoneID = ? AND Position = ? AND Enabled = 1"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		int32 itemID = 0;
+		int16 count = 0;
+		dbCommand->FetchInt32(1, itemID);
+		dbCommand->FetchInt16(2, count);
+		if (itemID > 0 && count > 0)
+			rewards.push_back(std::make_pair((uint32)itemID, (uint16)count));
+	}
+
+	return true;
+}

@@ -22,35 +22,9 @@ static void SendTournamentScorePacket(_TOURNAMENT_DATA* info)
 	g_pMain->Send_Zone(&pktTimer, info->aTournamentZoneID);
 }
 
-// S115 TUR 6 — Champion's Treasure Chest: kazanan klan uyelerine 1 adet random item
-// Sabit liste (acilis sonrasi DB _MK_TOURNAMENT_REWARDS'tan okunur)
-// Item ID'leri standart KO 1098 source — PATRON gercek itemIDsini sonra ayarlar
-struct _TOURNAMENT_CHEST_ITEM {
-	uint32 itemID;
-	uint16 chance;   // 1-100 yuzde
-	const char* name;
-};
-
-// PATRON: bu liste config/DB'ye cevirilebilir
-static const _TOURNAMENT_CHEST_ITEM s_chestItems[] = {
-	{ 379014000, 80, "Premium Upgrade Scroll" },  // ornek itemID — DB'de dogrula
-	{ 379015000, 15, "Premium Bag" },
-	{ 900000000, 5,  "Bonus Noah Bag" },          // ITEM_GOLD - 10M noah
-};
-static const int s_chestItemCount = sizeof(s_chestItems) / sizeof(s_chestItems[0]);
-
-// Random item secimi (weighted)
-static uint32 PickRandomChestItem()
-{
-	uint16 roll = rand() % 100;  // 0-99
-	uint16 acc = 0;
-	for (int i = 0; i < s_chestItemCount; i++)
-	{
-		acc += s_chestItems[i].chance;
-		if (roll < acc) return s_chestItems[i].itemID;
-	}
-	return s_chestItems[0].itemID;  // fallback
-}
+// S115 — Champion's Treasure Chest: kazanan klan uyelerine DB-driven item
+// _MK_TOURNAMENT_REWARDS tablosundan zone+position bazli okunur.
+// Eger DB bos donerse hicbir item verilmez (yalnizca gold + np)
 
 // S115 Plan A B9 — Helper: Kazanan klan uyelerine odul dagit (gold + np + chest)
 // winnerClanID = 0 ise berabere -> kucuk odul iki klana
@@ -80,14 +54,22 @@ static void DistributeTournamentRewards(uint16 winnerClanID, uint16 loserClanID,
 		pUser->GoldGain(gold);
 		pUser->SendLoyaltyChange("tournament", (int32)np, false, false, false);
 
-		// S115 TUR 6 — Sadece kazanana Champion's Treasure Chest (1 random item)
-		if (isWinner && winnerClanID > 0)
+		// S115 — Champion's Treasure Chest (DB-driven, kazanan + kaybeden + berabere ayri)
+		// Position'a gore item listesi cek + random sec + ver
+		std::string position;
+		if (winnerClanID == 0) position = "DRAW";
+		else if (isWinner)     position = "WINNER";
+		else                   position = "LOSER";
+
+		std::vector<std::pair<uint32, uint16>> rewards;
+		if (g_DBAgent.LoadTournamentRewards(zoneID, position, rewards) && !rewards.empty())
 		{
-			uint32 chestItemID = PickRandomChestItem();
-			if (chestItemID > 0)
-			{
-				pUser->GiveItem("tournament_chest", chestItemID, 1, true, 0);
-			}
+			// Random secim (ileride chance/weight eklenebilir; su an her item ayni sansa)
+			size_t idx = rand() % rewards.size();
+			uint32 itemID = rewards[idx].first;
+			uint16 itemCount = rewards[idx].second;
+			if (itemID > 0 && itemCount > 0)
+				pUser->GiveItem("tournament_chest", itemID, itemCount, true, 0);
 		}
 
 		std::string msg = isWinner
