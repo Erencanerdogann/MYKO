@@ -1371,6 +1371,11 @@ void CGameServerDlg::GameEventMainTimer()
 		extern void OneVsOneAutoStartTimer();
 		OneVsOneAutoStartTimer();
 	}
+	{
+		// S115 — Tournament Command Poller (her 2sn DB pull, GM web manuel komut)
+		extern void TournamentCommandPollerTimer();
+		TournamentCommandPollerTimer();
+	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();
 	ChaosStoneRespawnTimer();

@@ -214,6 +214,7 @@
     <ClCompile Include="SpectatorSystem.cpp" />
     <ClCompile Include="ClanSponsorship.cpp" />
     <ClCompile Include="OneVsOneBracket.cpp" />
+    <ClCompile Include="TournamentCommandPoller.cpp" />
     <ClCompile Include="DungeonDefenceSystem.cpp" />
     <ClCompile Include="JuraidBdwFragSystem.cpp" />
     <ClCompile Include="NameChangeHandler.cpp" />

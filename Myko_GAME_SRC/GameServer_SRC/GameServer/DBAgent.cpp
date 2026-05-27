@@ -6573,3 +6573,50 @@ bool CDBAgent::OneVsOneCancel(int32_t bid)
 	dbCommand2->AddParameter(SQL_PARAM_INPUT, &pBID);
 	return dbCommand2->Execute(_T("UPDATE KO_LOG.dbo._MK_1V1_TOURNAMENT SET Status = 'CANCELLED', EndTime = GETDATE() WHERE BID = ? AND Status IN ('OPEN', 'STARTED')"));
 }
+
+// =====================================================================
+// S115 — Tournament Command Queue (GM web manuel kontrol, MATRIX 115)
+// =====================================================================
+bool CDBAgent::TournamentCommandNextPending(std::vector<_TOURNAMENT_CMD_ROW>& outRows)
+{
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_CMD_NEXT_PENDING}"))) {
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_TOURNAMENT_CMD_ROW row;
+		int32 cid = 0;
+		char ct[40] = {0}, pp[520] = {0}, rb[40] = {0};
+
+		dbCommand->FetchInt32(1, cid);
+		dbCommand->FetchString(2, ct, sizeof(ct));
+		dbCommand->FetchString(3, pp, sizeof(pp));
+		dbCommand->FetchString(4, rb, sizeof(rb));
+
+		row.commandID   = cid;
+		row.commandType = ct;
+		row.params      = pp;
+		row.requestedBy = rb;
+		outRows.push_back(row);
+	}
+	return true;
+}
+
+bool CDBAgent::TournamentCommandUpdateResult(int32_t commandID,
+                                              const std::string& status,
+                                              const std::string& result)
+{
+	int32 pCommandID = commandID;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pCommandID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, status.c_str(), status.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, result.c_str(), result.length());
+
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_CMD_UPDATE_RESULT(?, ?, ?)}"));
+}

@@ -164,6 +164,18 @@ public:
 	// 8v8 uye sil (lider yanlis eklediyse) — direkt DELETE, MATRIX SP gerek yok
 	bool    BracketPartyMemberDelete(int32_t bracketID, uint16 clanID,
 	                                 const std::string& memberCharName);
+
+	// S115 — Tournament Command Queue (GM web manuel kontrol, MATRIX 115)
+	struct _TOURNAMENT_CMD_ROW {
+		int32_t      commandID;
+		std::string  commandType;
+		std::string  params;
+		std::string  requestedBy;
+	};
+	bool    TournamentCommandNextPending(std::vector<_TOURNAMENT_CMD_ROW>& outRows);
+	bool    TournamentCommandUpdateResult(int32_t commandID,
+	                                      const std::string& status,
+	                                      const std::string& result);
 	// RAM cache fill — bracket maclarini cek (S115 BUG #2 fix)
 	struct _BRACKET_MATCH_ROW {
 		int32_t matchID;
