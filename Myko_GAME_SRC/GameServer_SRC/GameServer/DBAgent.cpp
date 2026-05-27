@@ -6144,7 +6144,7 @@ bool CDBAgent::BracketPartyMemberCheck(int32_t bracketID, uint16 clanID,
 	dbCommand->AddParameter(SQL_PARAM_INPUT, memberCharName.c_str(), memberCharName.length());
 
 	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_PARTY_MEMBER_CHECK(?, ?, ?)}"))) {
-		// SP yoksa veya hata: false don (giris engelleme tasarim karari B fazinda fail-closed)
+		// SP yok veya hata — caller fail-open/closed karari kendisi verir
 		return false;
 	}
 
