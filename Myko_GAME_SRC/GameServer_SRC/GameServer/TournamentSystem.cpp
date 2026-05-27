@@ -126,253 +126,94 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	g_pMain->Send_All(&pkt);
 }
 
+// S115 Plan A — Helper: Tek zone tournament timer adımı
+// Mantık:
+//   Faz 1 (isStarted=true, Timer>0): geri sayım, 5sn'de bir paket yayınla
+//   Faz 2 (Timer==0, isStarted=true): bitir + ödül + isStarted=false + OutTimer=now+60
+//   Faz 3 (isStarted=false, OutTimer<=UNIXTIME): kick out + delete (RAM temizle)
+static void TickOneTournamentZone(CGameServerDlg* pMain, uint8 zoneID)
+{
+	_TOURNAMENT_DATA* info = pMain->m_ClanVsDataList.GetData(zoneID);
+	if (info == nullptr) return;
+
+	// Faz 2: Aktif tournament suresi bitti
+	if (info->aTournamentisStarted && info->aTournamentTimer == 0)
+	{
+		HandleTournamentEnd(info);
+		info->aTournamentOutTimer  = UNIXTIME + 60;  // 60sn geri donus suresi
+		info->aTournamentisStarted = false;
+		info->aTournamentisFinished = true;
+		return; // sonraki saniyede cleanup blokuna gelir
+	}
+
+	// Faz 3: Bitmis tournament, kick + cleanup zamani gelmis
+	if (!info->aTournamentisStarted && info->aTournamentisFinished
+		&& info->aTournamentOutTimer != 0 && info->aTournamentOutTimer <= UNIXTIME)
+	{
+		pMain->KickOutZoneUsers(zoneID, ZONE_MORADON, (uint8)Nation::ALL);
+		pMain->m_ClanVsDataList.DeleteData(zoneID);
+		return;
+	}
+
+	// Faz 1: Aktif, geri sayim + 5sn paket
+	if (info->aTournamentisStarted)
+	{
+		if (info->aTournamentTimer > 0)
+			info->aTournamentTimer--;
+
+		// Her 5sn'de bir scoreboard + timer yayinla (client UI senkron)
+		if ((info->aTournamentTimer % 5) == 0)
+			SendTournamentScorePacket(info);
+
+		// S115 TUR 3 — Geri sayim duyurusu (60/30/10/5/1)
+		// PG kontrolu: sade chat paketi (WIZ_CHAT), yeni opcode YOK ✅
+		const uint32 t = info->aTournamentTimer;
+		if (t == 60 || t == 30 || t == 10 || t == 5 || t == 1)
+		{
+			const char* zoneName =
+				(info->aTournamentZoneID == 77) ? "Ardream"   :
+				(info->aTournamentZoneID == 78) ? "Ronark"    :
+				(info->aTournamentZoneID == 96) ? "PartyVs-1" :
+				(info->aTournamentZoneID == 97) ? "PartyVs-2" :
+				(info->aTournamentZoneID == 98) ? "PartyVs-3" :
+				(info->aTournamentZoneID == 99) ? "PartyVs-4" : "?";
+
+			char buf[160] = { 0 };
+			if (t == 60)
+				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+					"[CLAN WAR %s] 1 dakika kaldi! Son saldiri!", zoneName);
+			else if (t == 30)
+				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+					"[CLAN WAR %s] 30 saniye!", zoneName);
+			else if (t == 10)
+				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+					"[CLAN WAR %s] 10... savas bitiyor!", zoneName);
+			else if (t == 5)
+				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+					"[CLAN WAR %s] 5...", zoneName);
+			else // t == 1
+				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+					"[CLAN WAR %s] 1!", zoneName);
+
+			std::string notice = buf;
+			Packet pkt;
+			ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
+			// Sadece tournament zone'una yayinla (zone disi spam yapma)
+			pMain->Send_Zone(&pkt, info->aTournamentZoneID);
+		}
+	}
+}
+
 #pragma region CGameServerDlg::ClanTournamentTimer()
 void CGameServerDlg::ClanTournamentTimer()
 {
-	_TOURNAMENT_DATA* TournamentAndream = g_pMain->m_ClanVsDataList.GetData(77);
-	if (TournamentAndream != nullptr)
-	{
-		if (TournamentAndream->aTournamentisStarted == true)
-		{
-			if (TournamentAndream->aTournamentisFinished == false)
-			{
-				if (TournamentAndream->aTournamentTimer == 0)
-				{
-					// S115 Plan A — sade chat + odul dagit (helper)
-					HandleTournamentEnd(TournamentAndream);
-					TournamentAndream->aTournamentOutTimer = UNIXTIME + 60;  // 60sn geri donus
-					TournamentAndream->aTournamentisStarted = false;
-				}
-			}
-
-			if (TournamentAndream->aTournamentOutTimer != 0 && TournamentAndream->aTournamentOutTimer <= UNIXTIME)
-				TournamentAndream->aTournamentisFinished = true;
-
-			if (TournamentAndream->aTournamentOutTimer <= UNIXTIME
-				&& TournamentAndream->aTournamentisFinished == true)
-			{
-				
-				CKnights *pRedClan = g_pMain->GetClanPtr(TournamentAndream->aTournamentClanNum[0]);/*Red Clan*/
-				CKnights *pBlueClan = g_pMain->GetClanPtr(TournamentAndream->aTournamentClanNum[1]);/*Blue Clan*/
-				
-				/*DateTime time;
-				WriteTournamentLogs(string_format("[Tournament Finish Time - %d:%d:%d] Red Clan Name = %s : %s Blue Clan Name (Red Board %d : %d Blue Board)\n",
-					time.GetHour(), time.GetMinute(), time.GetSecond(), pRedClan == nullptr ? "null" : pRedClan->GetName().c_str(), pBlueClan == nullptr ? "null" : pBlueClan->GetName().c_str(), TournamentAndream->aTournamentScoreBoard[0], TournamentAndream->aTournamentScoreBoard[1]));*/
-
-				KickOutZoneUsers(ZONE_CLAN_WAR_ARDREAM, ZONE_MORADON);
-				m_ClanVsDataList.DeleteData(77);
-			}
-		}
-
-		if (TournamentAndream->aTournamentTimer > 0)
-			TournamentAndream->aTournamentTimer--;
-
-		// S115 Plan A — Her 5sn'de bir scoreboard+timer yayinla (client UI senkron)
-		if (TournamentAndream->aTournamentisStarted && (TournamentAndream->aTournamentTimer % 5) == 0)
-			SendTournamentScorePacket(TournamentAndream);
-	}
-
-	_TOURNAMENT_DATA* TournamentRonarkLand = g_pMain->m_ClanVsDataList.GetData(78);
-	if (TournamentRonarkLand != nullptr)
-	{
-		if (TournamentRonarkLand->aTournamentisStarted == true)
-		{
-			if (TournamentRonarkLand->aTournamentisFinished == false)
-			{
-				if (TournamentRonarkLand->aTournamentTimer == 0)
-				{
-					HandleTournamentEnd(TournamentRonarkLand);
-					TournamentRonarkLand->aTournamentOutTimer = UNIXTIME + 60;
-					TournamentRonarkLand->aTournamentisStarted = false;
-				}
-			}
-
-			if (TournamentRonarkLand->aTournamentOutTimer != 0 && TournamentRonarkLand->aTournamentOutTimer <= UNIXTIME)
-				TournamentRonarkLand->aTournamentisFinished = true;
-
-			if (TournamentRonarkLand->aTournamentOutTimer <= UNIXTIME
-				&& TournamentRonarkLand->aTournamentisFinished == true)
-			{
-				
-				CKnights *pRedClan = g_pMain->GetClanPtr(TournamentRonarkLand->aTournamentClanNum[0]);/*Red Clan*/
-				CKnights *pBlueClan = g_pMain->GetClanPtr(TournamentRonarkLand->aTournamentClanNum[1]);/*Blue Clan*/
-				
-				/*DateTime time;
-				WriteTournamentLogs(string_format("[Tournament Finish Time - %d:%d:%d] Red Clan Name = %s : %s Blue Clan Name (Red Board %d : %d Blue Board)\n",
-					time.GetHour(), time.GetMinute(), time.GetSecond(), pRedClan == nullptr ? "null" : pRedClan->GetName().c_str(), pBlueClan == nullptr ? "null" : pBlueClan->GetName().c_str(), TournamentRonarkLand->aTournamentScoreBoard[0], TournamentRonarkLand->aTournamentScoreBoard[1]));*/
-
-				KickOutZoneUsers(ZONE_CLAN_WAR_RONARK, ZONE_MORADON);
-				m_ClanVsDataList.DeleteData(78);
-			}
-		}
-
-		if (TournamentRonarkLand->aTournamentTimer > 0)
-			TournamentRonarkLand->aTournamentTimer--;
-
-		if (TournamentRonarkLand->aTournamentisStarted && (TournamentRonarkLand->aTournamentTimer % 5) == 0)
-			SendTournamentScorePacket(TournamentRonarkLand);
-	}
-
-	_TOURNAMENT_DATA* TournamentParty1 = g_pMain->m_ClanVsDataList.GetData(96);
-	if (TournamentParty1 != nullptr)
-	{
-		if (TournamentParty1->aTournamentisStarted == true)
-		{
-			if (TournamentParty1->aTournamentisFinished == false)
-			{
-				if (TournamentParty1->aTournamentTimer == 0)
-				{
-					HandleTournamentEnd(TournamentParty1);
-					TournamentParty1->aTournamentOutTimer = UNIXTIME + 60;
-					TournamentParty1->aTournamentisStarted = false;
-				}
-			}
-
-			if (TournamentParty1->aTournamentOutTimer != 0 && TournamentParty1->aTournamentOutTimer <= UNIXTIME)
-				TournamentParty1->aTournamentisFinished = true;
-
-			if (TournamentParty1->aTournamentOutTimer <= UNIXTIME
-				&& TournamentParty1->aTournamentisFinished == true)
-			{
-				CKnights *pRedClan = g_pMain->GetClanPtr(TournamentParty1->aTournamentClanNum[0]);/*Red Clan*/
-				CKnights *pBlueClan = g_pMain->GetClanPtr(TournamentParty1->aTournamentClanNum[1]);/*Blue Clan*/
-				
-				/*DateTime time;
-				WriteTournamentLogs(string_format("[Tournament Finish Time - %d:%d:%d] Red Clan Name = %s : %s Blue Clan Name (Red Board %d : %d Blue Board)\n",
-					time.GetHour(), time.GetMinute(), time.GetSecond(), pRedClan == nullptr ? "null" : pRedClan->GetName().c_str(), pBlueClan == nullptr ? "null" : pBlueClan->GetName().c_str(), TournamentParty1->aTournamentScoreBoard[0], TournamentParty1->aTournamentScoreBoard[1]));*/
-
-				KickOutZoneUsers(ZONE_PARTY_VS_1, ZONE_MORADON);
-				m_ClanVsDataList.DeleteData(96);
-			}
-		}
-
-		if (TournamentParty1->aTournamentTimer > 0)
-			TournamentParty1->aTournamentTimer--;
-
-		if (TournamentParty1->aTournamentisStarted && (TournamentParty1->aTournamentTimer % 5) == 0)
-			SendTournamentScorePacket(TournamentParty1);
-	}
-
-	_TOURNAMENT_DATA* TournamentParty2 = g_pMain->m_ClanVsDataList.GetData(97);
-	if (TournamentParty2 != nullptr)
-	{
-		if (TournamentParty2->aTournamentisStarted == true)
-		{
-			if (TournamentParty2->aTournamentisFinished == false)
-			{
-				if (TournamentParty2->aTournamentTimer == 0)
-				{
-					HandleTournamentEnd(TournamentParty2);
-					TournamentParty2->aTournamentOutTimer = UNIXTIME + 60;
-					TournamentParty2->aTournamentisStarted = false;
-				}
-			}
-
-			if (TournamentParty2->aTournamentOutTimer != 0 && TournamentParty2->aTournamentOutTimer <= UNIXTIME)
-				TournamentParty2->aTournamentisFinished = true;
-
-			if (TournamentParty2->aTournamentOutTimer <= UNIXTIME
-				&& TournamentParty2->aTournamentisFinished == true)
-			{
-				CKnights *pRedClan = g_pMain->GetClanPtr(TournamentParty2->aTournamentClanNum[0]);/*Red Clan*/
-				CKnights *pBlueClan = g_pMain->GetClanPtr(TournamentParty2->aTournamentClanNum[1]);/*Blue Clan*/
-				
-				/*DateTime time;
-				WriteTournamentLogs(string_format("[Tournament Finish Time - %d:%d:%d] Red Clan Name = %s : %s Blue Clan Name (Red Board %d : %d Blue Board)\n",
-					time.GetHour(), time.GetMinute(), time.GetSecond(), pRedClan == nullptr ? "null" : pRedClan->GetName().c_str(), pBlueClan == nullptr ? "null" : pBlueClan->GetName().c_str(), TournamentParty2->aTournamentScoreBoard[0], TournamentParty2->aTournamentScoreBoard[1]));*/
-
-				KickOutZoneUsers(ZONE_PARTY_VS_2, ZONE_MORADON);
-				m_ClanVsDataList.DeleteData(97);
-			}
-		}
-
-		if (TournamentParty2->aTournamentTimer > 0)
-			TournamentParty2->aTournamentTimer--;
-
-		if (TournamentParty2->aTournamentisStarted && (TournamentParty2->aTournamentTimer % 5) == 0)
-			SendTournamentScorePacket(TournamentParty2);
-	}
-
-	_TOURNAMENT_DATA* TournamentParty3 = g_pMain->m_ClanVsDataList.GetData(98);
-	if (TournamentParty3 != nullptr)
-	{
-		if (TournamentParty3->aTournamentisStarted == true)
-		{
-			if (TournamentParty3->aTournamentisFinished == false)
-			{
-				if (TournamentParty3->aTournamentTimer == 0)
-				{
-					HandleTournamentEnd(TournamentParty3);
-					TournamentParty3->aTournamentOutTimer = UNIXTIME + 60;
-					TournamentParty3->aTournamentisStarted = false;
-				}
-			}
-
-			if (TournamentParty3->aTournamentOutTimer != 0 && TournamentParty3->aTournamentOutTimer <= UNIXTIME)
-				TournamentParty3->aTournamentisFinished = true;
-
-			if (TournamentParty3->aTournamentOutTimer <= UNIXTIME
-				&& TournamentParty3->aTournamentisFinished == true)
-			{
-				
-				CKnights *pRedClan = g_pMain->GetClanPtr(TournamentParty3->aTournamentClanNum[0]);/*Red Clan*/
-				CKnights *pBlueClan = g_pMain->GetClanPtr(TournamentParty3->aTournamentClanNum[1]);/*Blue Clan*/
-				
-				/*DateTime time;
-				WriteTournamentLogs(string_format("[Tournament Finish Time - %d:%d:%d] Red Clan Name = %s : %s Blue Clan Name (Red Board %d : %d Blue Board)\n",
-					time.GetHour(), time.GetMinute(), time.GetSecond(), pRedClan == nullptr ? "null" : pRedClan->GetName().c_str(), pBlueClan == nullptr ? "null" : pBlueClan->GetName().c_str(), TournamentParty3->aTournamentScoreBoard[0], TournamentParty3->aTournamentScoreBoard[1]));*/
-
-				KickOutZoneUsers(ZONE_PARTY_VS_3, ZONE_MORADON);
-				m_ClanVsDataList.DeleteData(98);
-			}
-		}
-
-		if (TournamentParty3->aTournamentTimer > 0)
-			TournamentParty3->aTournamentTimer--;
-
-		if (TournamentParty3->aTournamentisStarted && (TournamentParty3->aTournamentTimer % 5) == 0)
-			SendTournamentScorePacket(TournamentParty3);
-	}
-
-	_TOURNAMENT_DATA* TournamentParty4 = g_pMain->m_ClanVsDataList.GetData(99);
-	if (TournamentParty4 != nullptr)
-	{
-		if (TournamentParty4->aTournamentisStarted == true)
-		{
-			if (TournamentParty4->aTournamentisFinished == false)
-			{
-				if (TournamentParty4->aTournamentTimer == 0)
-				{
-					HandleTournamentEnd(TournamentParty4);
-					TournamentParty4->aTournamentOutTimer = UNIXTIME + 60;
-					TournamentParty4->aTournamentisStarted = false;
-				}
-			}
-
-			if (TournamentParty4->aTournamentOutTimer != 0 && TournamentParty4->aTournamentOutTimer <= UNIXTIME)
-				TournamentParty4->aTournamentisFinished = true;
-
-			if (TournamentParty4->aTournamentOutTimer <= UNIXTIME
-				&& TournamentParty4->aTournamentisFinished == true)
-			{
-				CKnights *pRedClan = g_pMain->GetClanPtr(TournamentParty4->aTournamentClanNum[0]);/*Red Clan*/
-				CKnights *pBlueClan = g_pMain->GetClanPtr(TournamentParty4->aTournamentClanNum[1]);/*Blue Clan*/
-				
-				/*DateTime time;
-				WriteTournamentLogs(string_format("[Tournament Finish Time - %d:%d:%d] Red Clan Name = %s : %s Blue Clan Name (Red Board %d : %d Blue Board)\n",
-					time.GetHour(), time.GetMinute(), time.GetSecond(), pRedClan == nullptr ? "null" : pRedClan->GetName().c_str(), pBlueClan == nullptr ? "null" : pBlueClan->GetName().c_str(), TournamentParty4->aTournamentScoreBoard[0], TournamentParty4->aTournamentScoreBoard[1]));*/
-
-				KickOutZoneUsers(ZONE_PARTY_VS_4, ZONE_MORADON);
-				m_ClanVsDataList.DeleteData(99);
-			}
-		}
-
-		if (TournamentParty4->aTournamentTimer > 0)
-			TournamentParty4->aTournamentTimer--;
-
-		if (TournamentParty4->aTournamentisStarted && (TournamentParty4->aTournamentTimer % 5) == 0)
-			SendTournamentScorePacket(TournamentParty4);
-	}
+	// S115 Plan A — Refactor: 6 zone tek helper ile, faz bazli temiz akis
+	TickOneTournamentZone(this, ZONE_CLAN_WAR_ARDREAM);  // 77
+	TickOneTournamentZone(this, ZONE_CLAN_WAR_RONARK);   // 78
+	TickOneTournamentZone(this, ZONE_PARTY_VS_1);        // 96
+	TickOneTournamentZone(this, ZONE_PARTY_VS_2);        // 97
+	TickOneTournamentZone(this, ZONE_PARTY_VS_3);        // 98
+	TickOneTournamentZone(this, ZONE_PARTY_VS_4);        // 99
 }
 #pragma endregion
 
@@ -439,24 +280,9 @@ void CNpc::TournamentMonumentKillProcess(CUser* puser)
 	if (!TournamentTrueZone)
 		return;
 
-	CKnights *pUserClan = g_pMain->GetClanPtr(puser->GetClanID());
+	// S115 Plan A — Validation gevsetildi (eski kod GM monument kirinca Dis ediyordu)
 	_TOURNAMENT_DATA* TournamentClanInfo = g_pMain->m_ClanVsDataList.GetData(puser->GetZoneID());
-	if (pUserClan == nullptr
-		|| TournamentClanInfo == nullptr
-		|| (pUserClan->GetID() != TournamentClanInfo->aTournamentClanNum[0]
-			&& pUserClan->GetID() != TournamentClanInfo->aTournamentClanNum[1]))
-	{
-		puser->NativeZoneReturn();
-		puser->UserDataSaveToAgent();
-		puser->Disconnect();
-		return;
-	}
-
-	// S115 Plan A — Monument kill catch-up bonus (refactor)
-	// Eski kod yanlis kontrol yapiyordu (klan ID karsilastirma -> kucuk ID hep bonus alirdi)
-	// Dogru mantik: Anit kiran klan'in score'u EZILIYORSA (geride ise) +bonus al
-	if (TournamentClanInfo == nullptr) return;
-	if (!TournamentClanInfo->aTournamentisStarted) return;
+	if (TournamentClanInfo == nullptr || !TournamentClanInfo->aTournamentisStarted) return;
 	if (TournamentClanInfo->aTournamentTimer == 0) return;
 
 	uint16 killerClan = puser->GetClanID();
