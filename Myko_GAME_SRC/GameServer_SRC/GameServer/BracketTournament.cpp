@@ -306,7 +306,11 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 	m->finished = true;
 	m->winnerClanID = winnerClanID;
 
-	_BRACKET_INFO* b = FindBracket(m->bracketID);
+	// BUG #13 FIX — lokal kopya, RefreshBracketMatches sonrasi m invalid olacak
+	int32_t cachedBracketID = m->bracketID;
+	m = nullptr;  // pointer artik kullanma sinyali
+
+	_BRACKET_INFO* b = FindBracket(cachedBracketID);
 	if (b == nullptr) return;
 
 	// Tur tamamlanma kontrol — su anki turda hala PENDING/ACTIVE mac var mi

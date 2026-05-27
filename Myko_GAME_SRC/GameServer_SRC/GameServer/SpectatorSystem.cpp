@@ -61,7 +61,10 @@ COMMAND_HANDLER(CUser::HandleSpectateCommand)
 			return true;
 		}
 		RemoveSpectator(GetID());
-		ZoneChange(ZONE_MORADON, 905.0f, 870.0f); // moradon'a at
+
+		// BUG #17 FIX — Invisible state temizle, sonra zone change (GM mode pattern)
+		m_bAbnormalType = ABNORMAL_NORMAL;
+		ZoneChange(ZONE_MORADON, 905.0f, 870.0f);
 		g_pMain->SendHelpDescription(this, "Spectator modundan ciktin.");
 		return true;
 	}
@@ -103,8 +106,13 @@ COMMAND_HANDLER(CUser::HandleSpectateCommand)
 		g_spectatorUsers.insert(GetID());
 	}
 
-	// Zone'a teleport (orta nokta)
-	ZoneChange(zoneID, 700.0f, 700.0f);
+	// BUG #17/#18 FIX — GM pattern: UserInOut(INOUT_OUT) ONCE, sonra ABNORMAL_INVISIBLE
+	// PVP target olmaz, oldurulmez (RegionHandler invisible kullanicilari atlar)
+	UserInOut(INOUT_OUT);
+	m_bAbnormalType = ABNORMAL_INVISIBLE;
+
+	// Zone'a teleport (orta nokta) — check=false ile CanChangeZone bypass (spectator yetki)
+	ZoneChange(zoneID, 700.0f, 700.0f, -1, false);
 
 	char buf[200] = { 0 };
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,

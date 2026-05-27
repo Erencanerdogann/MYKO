@@ -58,21 +58,9 @@ COMMAND_HANDLER(CUser::HandleBracket8v8AddCommand)
 		return true;
 	}
 
-	// Eklenen oyuncunun klan uyesi oldugunu dogrula (online + ayni klan)
-	bool isClanMember = false;
-	for (uint16 i = 0; i < MAX_USER; i++) {
-		CUser* pTarget = g_pMain->GetUserPtr(i);
-		if (pTarget == nullptr || !pTarget->isInGame()) continue;
-		if (pTarget->GetName() == nick && pTarget->GetClanID() == GetClanID()) {
-			isClanMember = true;
-			break;
-		}
-	}
-	if (!isClanMember) {
-		g_pMain->SendHelpDescription(this,
-			"Bu oyuncu klan uyesi degil veya online degil.");
-		return true;
-	}
+	// BUG #19 FIX: Offline uyesi de eklenebilmeli (mac oncesi pre-register).
+	// Klan uyeligi kontrol MATRIX SP_BRACKET_PARTY_MEMBER_ADD icinde yapilir
+	// (DB sorgusu USERDATA.Knights = ?). SP ALREADY_IN_PARTY/NOT_CLAN_MEMBER doner.
 
 	// DB SP_BRACKET_PARTY_MEMBER_ADD (MATRIX MSG:5915)
 	std::string result;
