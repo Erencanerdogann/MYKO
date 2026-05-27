@@ -538,84 +538,112 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 
 // =====================================================================
 // TIMER — her saniye GameEventMainTimer'dan cagrilir (DependsOnMatch ve WALKOVER icin)
+//
+// ITERATOR INVALIDATION DIKKAT: OnBracketMatchFinish() icinde
+// RefreshBracketMatches() cagrilir, bu b.matches.clear() yapar.
+// Bu yuzden BYE ve WALKOVER aksiyonlarini TOPLAYIP loop sonrasi isliyoruz.
 // =====================================================================
+struct _BRACKET_FINISH_ACTION {
+	int32_t matchID;
+	uint16  winnerClanID;
+	uint16  redScore;
+	uint16  blueScore;
+	uint8   zoneID;       // > 0 ise tournament_data cleanup yap (no-show case)
+	bool    isNoShow;     // true = zone kick + DeleteData gerek
+};
+
 void BracketAutoStartTimer()
 {
-	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
+	std::vector<_BRACKET_FINISH_ACTION> pendingFinishes;
 
-	for (auto& b : g_brackets) {
-		if (b.status != "ACTIVE") continue;
+	{
+		std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
 
-		for (auto& m : b.matches) {
-			if (m.round != b.currentRound) continue;
-			if (m.status != "PENDING") continue;
+		// Indeks loop — vector resize edilebilir ihtimaline karsi guvenli
+		for (size_t bi = 0; bi < g_brackets.size(); bi++) {
+			_BRACKET_INFO& b = g_brackets[bi];
+			if (b.status != "ACTIVE") continue;
 
-			// DependsOnMatch1 var mi, bittik mi?
-			if (m.dependsOnMatch1 > 0) {
-				_BRACKET_MATCH_INFO* dep = FindMatch(m.dependsOnMatch1);
-				if (dep == nullptr || dep->status != "FINISHED") continue;
+			// PASS 1 — Mac baslatma (PENDING -> ACTIVE) ve BYE detection
+			for (size_t mi = 0; mi < b.matches.size(); mi++) {
+				_BRACKET_MATCH_INFO& m = b.matches[mi];
+				if (m.round != b.currentRound) continue;
+				if (m.status != "PENDING") continue;
+
+				// DependsOnMatch1 var mi, bittik mi?
+				if (m.dependsOnMatch1 > 0) {
+					_BRACKET_MATCH_INFO* dep = FindMatch(m.dependsOnMatch1);
+					if (dep == nullptr || dep->status != "FINISHED") continue;
+				}
+
+				// Tek tarafli kayit (BYE) — rakipsiz mac, finish-action kuyruga ekle
+				if (m.redClanID == 0 || m.blueClanID == 0) {
+					uint16 walkoverWinner = (m.redClanID > 0) ? m.redClanID : m.blueClanID;
+					if (walkoverWinner == 0) {
+						// Iki klan da bos — bracket bozuk, atla (log)
+						printf("[BRACKET] BYE: matchID=%d iki klan da bos, atlandi\n", m.matchID);
+						m.status = "WALKOVER";
+						continue;
+					}
+					printf("[BRACKET] BYE: matchID=%d winner=%u (rakip yok)\n",
+						m.matchID, walkoverWinner);
+
+					_BRACKET_FINISH_ACTION a;
+					a.matchID = m.matchID;
+					a.winnerClanID = walkoverWinner;
+					a.redScore = 1;
+					a.blueScore = 0;
+					a.zoneID = 0;       // BYE — tournament data yok
+					a.isNoShow = false;
+					pendingFinishes.push_back(a);
+					continue;
+				}
+
+				// Zone'da aktif tournament var mi?
+				if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
+
+				// Bu mac'i otomatik baslat
+				StartBracketMatchTournament(m, b.name);
 			}
 
-			// Tek tarafli kayit (BYE) — rakipsiz mac otomatik WALKOVER
-			if (m.redClanID == 0 || m.blueClanID == 0) {
-				uint16 walkoverWinner = (m.redClanID > 0) ? m.redClanID : m.blueClanID;
-				printf("[BRACKET] BYE: matchID=%d winner=%u (rakip yok)\n",
-					m.matchID, walkoverWinner);
+			// PASS 2 — 5dk sonra hala 0-0 ise no-show WALKOVER (ACTIVE maclar icin)
+			const time_t WALKOVER_TIMEOUT_SEC = 5 * 60;
+			for (size_t mi = 0; mi < b.matches.size(); mi++) {
+				_BRACKET_MATCH_INFO& m = b.matches[mi];
+				if (m.status != "ACTIVE") continue;
+				if (m.startTime == 0) continue;
+				if ((UNIXTIME - m.startTime) < WALKOVER_TIMEOUT_SEC) continue;
 
-				m.status    = "WALKOVER";
-				m.finished  = true;
-				m.winnerClanID = walkoverWinner;
+				_TOURNAMENT_DATA* tInfo = g_pMain->m_ClanVsDataList.GetData(m.zoneID);
+				if (tInfo == nullptr) continue;  // zaten cleanup olmus
 
-				// DB walkover skor (1-0) ve OnBracketMatchFinish ile sonraki tur tetiklemesi
-				// NOT: g_bracketLock recursive_mutex — OnBracketMatchFinish ayni lock'u tekrar alabilir
-				OnBracketMatchFinish(m.matchID, walkoverWinner, 1, 0);
-				continue;
+				uint16 redScore  = tInfo->aTournamentScoreBoard[0];
+				uint16 blueScore = tInfo->aTournamentScoreBoard[1];
+				if (redScore != 0 || blueScore != 0) continue;  // savas var, normal timer bitirecek
+
+				// No-show: kimse gelmedi 5dk gecti → red default kazanan
+				printf("[BRACKET] WALKOVER (no-show 5dk): matchID=%d red=%u default winner\n",
+					m.matchID, m.redClanID);
+
+				_BRACKET_FINISH_ACTION a;
+				a.matchID = m.matchID;
+				a.winnerClanID = m.redClanID;
+				a.redScore = 1;
+				a.blueScore = 0;
+				a.zoneID = m.zoneID;   // cleanup gerekiyor
+				a.isNoShow = true;
+				pendingFinishes.push_back(a);
 			}
-
-			// Zone'da aktif tournament var mi?
-			if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
-
-			// Bu mac'i otomatik baslat — _TOURNAMENT_DATA olustur + bracketMatchID set
-			StartBracketMatchTournament(m, b.name);
 		}
+	}
 
-		// WALKOVER kontrol — 5 dakika sonra hala ACTIVE ise klan gelmemis
-		// _TOURNAMENT_DATA yoksa veya skor 0-0 ise klan zone'a hic girmemis sayilir
-		const time_t WALKOVER_TIMEOUT_SEC = 5 * 60;
-		for (auto& m : b.matches) {
-			if (m.status != "ACTIVE") continue;
-			if (m.startTime == 0) continue;
-			if ((UNIXTIME - m.startTime) < WALKOVER_TIMEOUT_SEC) continue;
-
-			_TOURNAMENT_DATA* tInfo = g_pMain->m_ClanVsDataList.GetData(m.zoneID);
-			if (tInfo == nullptr) {
-				// Tournament data zaten silinmis (HandleTournamentEnd cagrildi) — OnBracketMatchFinish
-				// nin cagrilmis olmasi gerek; durumu temizle (kismi cleanup, defansif)
-				continue;
-			}
-
-			// Skor 0-0 ise ve 5dk gectiyse: kimse zone'a girmemis = cift tarafli WALKOVER (NO_SHOW)
-			// Tek tarafli skor varsa: skor sahibi kazanir (rakip gelmedi)
-			uint16 redScore  = tInfo->aTournamentScoreBoard[0];
-			uint16 blueScore = tInfo->aTournamentScoreBoard[1];
-
-			if (redScore == 0 && blueScore == 0) {
-				// Cift tarafli no-show — bracket icin red'i kazanan ata (en azindan turnuva ilerlesin)
-				// Daha temiz cozum acilis sonrasi: cift WALKOVER = bracket cancel veya re-draw
-				printf("[BRACKET] WALKOVER (no-show 5dk): matchID=%d → red default winner\n",
-					m.matchID);
-				uint16 winnerCID = m.redClanID;
-
-				// Tournament data temizle (HandleTournamentEnd benzeri sade cleanup)
-				g_pMain->KickOutZoneUsers(m.zoneID, ZONE_MORADON, (uint8)Nation::ALL);
-				g_pMain->m_ClanVsDataList.DeleteData(m.zoneID);
-
-				m.status       = "WALKOVER";
-				m.finished     = true;
-				m.winnerClanID = winnerCID;
-				OnBracketMatchFinish(m.matchID, winnerCID, 1, 0);
-			}
-			// Skor > 0 ise normal tournament timer kendisi bitirecek, ek aksiyon yok
+	// PASS 3 — Toplanmis finish action'lari isle (g_bracketLock disinda da olabilir,
+	// OnBracketMatchFinish kendi lock'unu alir; ama no-show cleanup g_pMain ile etkilesir)
+	for (auto& a : pendingFinishes) {
+		if (a.isNoShow && a.zoneID > 0) {
+			g_pMain->KickOutZoneUsers(a.zoneID, ZONE_MORADON, (uint8)Nation::ALL);
+			g_pMain->m_ClanVsDataList.DeleteData(a.zoneID);
 		}
+		OnBracketMatchFinish(a.matchID, a.winnerClanID, a.redScore, a.blueScore);
 	}
 }
