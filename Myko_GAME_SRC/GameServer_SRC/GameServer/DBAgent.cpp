@@ -6504,5 +6504,16 @@ bool CDBAgent::OneVsOneCancel(int32_t bid)
 	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
 	if (dbCommand.get() == nullptr) return false;
 	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBID);
-	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_CANCEL(?)}"));
+
+	// SP varsa onu kullan, yoksa direkt UPDATE fallback (MATRIX tasariminda SP atlanmis,
+	// MSG:5939 ile bildirildi; SP ekleninceye kadar UPDATE garanti calisir).
+	if (dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_1V1_CANCEL(?)}"))) {
+		return true;
+	}
+
+	// Fallback — direkt UPDATE (SP yoksa hata almaz)
+	std::unique_ptr<OdbcCommand> dbCommand2(GetGameDB()->CreateCommand());
+	if (dbCommand2.get() == nullptr) return false;
+	dbCommand2->AddParameter(SQL_PARAM_INPUT, &pBID);
+	return dbCommand2->Execute(_T("UPDATE KO_LOG.dbo._MK_1V1_TOURNAMENT SET Status = 'CANCELLED', EndTime = GETDATE() WHERE BID = ? AND Status IN ('OPEN', 'STARTED')"));
 }
