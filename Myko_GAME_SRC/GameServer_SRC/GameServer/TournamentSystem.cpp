@@ -165,6 +165,40 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
 	g_pMain->Send_All(&pkt);
 
+	// S115 TUR 7 — Klan Premium 24sa kazanana
+	// Kazanan klan'in sPremiumTime = UNIXTIME + 86400 (24sa) set edilir
+	// Tum klan uyeleri exp/drop bonus alir (mevcut premium sistem)
+	{
+		CKnights* pWinnerClan = nullptr;
+		if (redScore > blueScore)       pWinnerClan = pRedClan;
+		else if (blueScore > redScore)  pWinnerClan = pBlueClan;
+		// Berabere durumunda premium YOK
+
+		if (pWinnerClan != nullptr)
+		{
+			pWinnerClan->sPremiumTime = (uint32)UNIXTIME + 86400; // 24 saat
+
+			// Klan uyelerine premium paketi yolla (online olanlar)
+			for (uint16 i = 0; i < MAX_USER; i++)
+			{
+				CUser* pUser = g_pMain->GetUserPtr(i);
+				if (pUser == nullptr || !pUser->isInGame()) continue;
+				if (pUser->GetClanID() != pWinnerClan->GetID()) continue;
+				pUser->SendClanPremium(pWinnerClan, false);
+			}
+
+			// Duyuru (sade chat)
+			char premBuf[200] = { 0 };
+			_snprintf_s(premBuf, sizeof(premBuf), _TRUNCATE,
+				"[CLAN WAR %s] %s klanin 24 saat klan premium aktif!",
+				zoneName, pWinnerClan->GetName().c_str());
+			std::string premMsg = premBuf;
+			Packet premPkt;
+			ChatPacket::Construct(&premPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &premMsg);
+			g_pMain->Send_All(&premPkt);
+		}
+	}
+
 	// S115 TUR 5 — MVP hesapla + ekstra odul
 	if (!info->killCountByUser.empty())
 	{
