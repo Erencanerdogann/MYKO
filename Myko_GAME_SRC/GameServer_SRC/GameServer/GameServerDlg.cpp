@@ -1341,6 +1341,11 @@ void CGameServerDlg::GameEventMainTimer()
 	DrakiTowerLimitReset();
 	BDWMonumentAltarTimer();
 	ClanTournamentTimer();
+	{
+		// S115 TUR 10 — Tournament Auto-Schedule (her dakika)
+		extern void TournamentScheduleTimer();
+		TournamentScheduleTimer();
+	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();
 	ChaosStoneRespawnTimer();
