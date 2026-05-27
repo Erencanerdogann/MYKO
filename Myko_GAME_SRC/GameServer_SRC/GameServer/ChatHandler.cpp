@@ -161,6 +161,8 @@ void CUser::InitChatCommands()
 		{ "bracket8v8add",		&CUser::HandleBracket8v8AddCommand,				"8v8 uye ekle (klan lideri). Ornek: +bracket8v8add 1 Nick [Party#]" },
 		{ "bracket8v8list",		&CUser::HandleBracket8v8ListCommand,			"8v8 atanmis uyeler. Ornek: +bracket8v8list 1" },
 		{ "spectate",			&CUser::HandleSpectateCommand,					"Tournament izleyici ol. Ornek: +spectate 96 veya +spectate exit" },
+		{ "klansponsor",		&CUser::HandleKlanSponsorCommand,				"Klanina Noah sponsor ol. Ornek: +klansponsor 5000000" },
+		{ "klansponsornp",		&CUser::HandleKlanSponsorNPCommand,				"Klanina NP sponsor ol. Ornek: +klansponsornp 1000" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		
