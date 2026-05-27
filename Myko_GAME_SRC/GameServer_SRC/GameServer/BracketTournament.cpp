@@ -336,7 +336,9 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 
 	b->currentRound++;
 	// S115 BUG #2 FIX — Yeni tur DB'den RAM'e cek
+	// BUG #13 NOT: `m` pointer'i bu satirdan sonra INVALID — `m` kullanma!
 	RefreshBracketMatches(b);
+	// m = nullptr;  // güvenlik (compile error vermesin diye komment)
 
 	// S115 BUG #3 FIX — Final tamamlandi mi kontrol et + odul dagit
 	// Final tamamlanma kriteri: yeni tur olusmayinca veya tum maclar bitince
