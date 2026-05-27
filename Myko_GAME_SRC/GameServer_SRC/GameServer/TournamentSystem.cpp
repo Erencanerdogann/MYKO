@@ -165,6 +165,16 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
 	g_pMain->Send_All(&pkt);
 
+	// S115 TUR 8 — Spectator Bet havuzunu cozumle
+	{
+		uint16 winnerCID = 0;
+		if (redScore > blueScore && pRedClan)  winnerCID = pRedClan->GetID();
+		else if (blueScore > redScore && pBlueClan) winnerCID = pBlueClan->GetID();
+		// Berabere durumunda winnerCID = 0 -> iade
+		extern void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID);
+		ResolveTournamentBets(info->aTournamentZoneID, winnerCID);
+	}
+
 	// S115 TUR 7 — Klan Premium 24sa kazanana
 	// Kazanan klan'in sPremiumTime = UNIXTIME + 86400 (24sa) set edilir
 	// Tum klan uyeleri exp/drop bonus alir (mevcut premium sistem)

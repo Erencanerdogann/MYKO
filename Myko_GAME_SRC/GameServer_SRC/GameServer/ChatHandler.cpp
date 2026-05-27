@@ -148,6 +148,7 @@ void CUser::InitChatCommands()
 		{ "summonknights",		&CUser::HandleKnightsSummonCommand,				"Belirtilen Clanı Yanına Işınlar - Teleport the clan users. Arguments: clan name" },
 		{ "tournamentstart",	&CUser::HandleTournamentStartUserCommand,		"Clan tournament baslatir. Ornek: +tournamentstart RedClan BlueClan ZoneID(77/78/96-99) Dakika(1-60)" },
 		{ "tournamentclose",	&CUser::HandleTournamentCloseUserCommand,		"Clan tournament kapatir. Ornek: +tournamentclose ZoneID(77/78/96-99)" },
+		{ "bet",				&CUser::HandleTournamentBetCommand,				"Tournament'a bahis koy. Ornek: +bet ILKCLAN 100000 (Klan ad, Noah miktari)" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		
@@ -358,6 +359,17 @@ void CUser::Chat(Packet & pkt)
 		&& ProcessChatCommand(chatstr))
 	{
 		ChatInsertLog(type, "KING", chatstr, pUser);
+		return;
+	}
+
+	// S115 TUR 8 — Spectator Bet: tum oyuncular +bet komutunu kullanabilir
+	// Kendi klanına da bahis yapabilir (patron karari)
+	if (!isGM() && !isGMUser()
+		&& chatstr.size() > 4 && chatstr[0] == CHAT_COMMAND_PREFIX
+		&& _strnicmp(chatstr.c_str() + 1, "bet", 3) == 0
+		&& ProcessChatCommand(chatstr))
+	{
+		ChatInsertLog(type, "BET", chatstr, pUser);
 		return;
 	}
 
@@ -1402,6 +1414,10 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 		return true;
 	}
 
+	// S115 TUR 8 — Spectator Bet alanini ac (2dk bahis penceresi baslar)
+	extern void OpenTournamentBets(uint8 zoneID);
+	OpenTournamentBets(zoneID);
+
 	// Sunucu duyurusu (tum oyunculara) — sade chat, SERVER_RESOURCE bug yok
 	// IDS_CLAN_WAR_NOTICE (275) "winner" mesaji oldugu icin acilis icin uygun degil
 	const char* zoneName =
@@ -1423,10 +1439,34 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 	ChatPacket::Construct(&result, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
 	Send_All(&result);
 
-	// S115 Plan A — B7 OTOMATIK KLAN CAGRI: iki klanin online tum uyelerini tournament zone'una warp
-	// Spawn koordinati zone init (Moradon'a benzer sekilde — ZoneChange 0,0 default init pozisyonu kullanir)
+	// S115 Plan A — B7 OTOMATIK KLAN CAGRI + AYRI BASE SPAWN
+	// Red ve Blue klanlari ayri koordinat'lara (kendi base'lerine) atilir
+	// Zone bazli sabit koordinat (standart KO clan war map layout: Red sol-ust, Blue sag-alt)
 	uint16 redClanID  = pRedClan->GetID();
 	uint16 blueClanID = pBlueClan->GetID();
+
+	// Zone bazli spawn koordinatlari (manual layout — map editor'le degil, deneme/yanilma ile kalibre edilebilir)
+	float redX = 0.0f, redZ = 0.0f, blueX = 0.0f, blueZ = 0.0f;
+	switch (zoneID)
+	{
+		case 77: // Clan War Ardream (freezone_a_event2012.smd, ~2048x2048 map)
+			redX = 400.0f;  redZ = 1600.0f;   // Red base: sol-ust
+			blueX = 1600.0f; blueZ = 400.0f;  // Blue base: sag-alt
+			break;
+		case 78: // Clan War Ronark (freezone_b_2012event.smd)
+			redX = 400.0f;  redZ = 1600.0f;
+			blueX = 1600.0f; blueZ = 400.0f;
+			break;
+		case 96: case 97: case 98: case 99: // Party VS (In_dungeon06.smd — kucuk arena)
+			redX = 80.0f;   redZ = 130.0f;
+			blueX = 175.0f; blueZ = 130.0f;
+			break;
+		default:
+			redX = blueX = 1000.0f;
+			redZ = blueZ = 1000.0f;
+			break;
+	}
+
 	int warpedCount = 0;
 	for (uint16 i = 0; i < MAX_USER; i++)
 	{
@@ -1442,13 +1482,16 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 		if (pTarget->GetZoneID() == zoneID)
 			continue;
 
-		// Tournament zone'una isinla (init koordinat — ZoneChange 0,0 = zone default spawn)
-		pTarget->ZoneChange(zoneID, 0.0f, 0.0f);
+		// Klan'a gore farkli base'e warp
+		bool isRed = (tClanID == redClanID);
+		pTarget->ZoneChange(zoneID,
+			isRed ? redX  : blueX,
+			isRed ? redZ  : blueZ);
 
 		// Karaktere private notice
-		std::string privNotice = (tClanID == redClanID)
-			? "[CLAN WAR] Klanin tournament icin Ardream'a aktarildi! Savas!"
-			: "[CLAN WAR] Klanin tournament icin Ardream'a aktarildi! Savas!";
+		std::string privNotice = isRed
+			? "[CLAN WAR] Red base'e aktarildin! Hazirlan, savasa!"
+			: "[CLAN WAR] Blue base'e aktarildin! Hazirlan, savasa!";
 		Packet privPkt;
 		ChatPacket::Construct(&privPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &privNotice);
 		pTarget->Send(&privPkt);

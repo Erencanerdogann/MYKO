@@ -1639,6 +1639,7 @@ public:
 	COMMAND_HANDLER(HandleKnightsSummonCommand);
 	COMMAND_HANDLER(HandleTournamentStartUserCommand);    // S115 Plan A — oyun ici GM
 	COMMAND_HANDLER(HandleTournamentCloseUserCommand);    // S115 Plan A — oyun ici GM
+	COMMAND_HANDLER(HandleTournamentBetCommand);          // S115 TUR 8 — Spectator Bet (tum oyuncu)
 	COMMAND_HANDLER(HandleWarResultCommand);
 	COMMAND_HANDLER(HandleResetPlayerRankingCommand);
 

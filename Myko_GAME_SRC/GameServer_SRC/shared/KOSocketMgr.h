@@ -12,6 +12,8 @@ struct _control_check
 
 typedef std::map<uint16_t, KOSocket*> SessionMap;
 typedef std::map<std::string, uint32> SocketControlCheck;
+// S115 — IP basina son baglanti zamani (auto-cleanup eski limit'leri silmek icin)
+typedef std::map<std::string, time_t>  SocketControlLastSeen;
 
 template <class T>
 class KOSocketMgr : public SocketMgr
@@ -85,6 +87,7 @@ protected:
 	SessionMap m_idleSessions, m_activeSessions, sessizmap;// kanka sana sunucudan tw vereyim benim net yava� i�in zorla�mas�n fark etmz dur az kald�
 	std::recursive_mutex m_lock;
 	SocketControlCheck m_ConnectionCheck;
+	SocketControlLastSeen m_ConnectionLastSeen;  // S115 — IP zamanlamasi (5dk inaktif ise temizlenir)
 	SRWLock	m_sessionLock;
 private:
 	ListenSocket<T> * m_server;
@@ -133,16 +136,36 @@ Socket* KOSocketMgr<T>::AssignSocket(SOCKET socket, sockaddr_in m_tempAddress)
 	std::lock_guard<std::recursive_mutex> lock(m_lock);
 	//LockSessionsWrite();
 
+	// S115 — Limit 10 -> 30 (3-4 karakter X 3-4 retry buffer)
+	// + Time-based unblock: IP 5 dakika hareketsiz ise sayac sifirlanir
+	//   (disconnect callback cagrilmadigi/timeout durumlari icin)
+	static const uint32 CONN_LIMIT_PER_IP = 30;
+	static const time_t CONN_LIMIT_STALE_SEC = 300; // 5 dakika
+
 	if (strIP != local_ip)
 	{
 		auto find = m_ConnectionCheck.find(strIP.c_str());
 		if (find != m_ConnectionCheck.end())
 		{
-			uint32 nCount = find->second;
-			if (nCount >= 10)
+			// Eger IP'nin son baglanti zamani 5dk eski ise auto-temizle
+			auto findTime = m_ConnectionLastSeen.find(strIP.c_str());
+			if (findTime != m_ConnectionLastSeen.end()
+				&& (time(nullptr) - findTime->second) > CONN_LIMIT_STALE_SEC)
 			{
-				printf("[CONN_LIMIT] IP=%s blocked, Active Connections=%d (max 10)\n", strIP.c_str(), nCount);
-				return nullptr;
+				printf("[CONN_LIMIT] IP=%s auto-cleared (5min stale, old count=%d)\n",
+					strIP.c_str(), find->second);
+				m_ConnectionCheck.erase(find);
+				m_ConnectionLastSeen.erase(findTime);
+			}
+			else
+			{
+				uint32 nCount = find->second;
+				if (nCount >= CONN_LIMIT_PER_IP)
+				{
+					printf("[CONN_LIMIT] IP=%s blocked, Active=%d (max %d)\n",
+						strIP.c_str(), nCount, CONN_LIMIT_PER_IP);
+					return nullptr;
+				}
 			}
 		}
 	}
@@ -165,6 +188,8 @@ Socket* KOSocketMgr<T>::AssignSocket(SOCKET socket, sockaddr_in m_tempAddress)
 				find->second++;
 			else
 				m_ConnectionCheck.insert(std::make_pair(strIP.c_str(), 1));
+			// S115 — Son baglanti zamanini guncelle (stale cleanup icin)
+			m_ConnectionLastSeen[strIP.c_str()] = time(nullptr);
 		}
 
 		if (!OpenDesyncPacket && m_activeSessions.size() > 5 && !isMultiThreaded)
@@ -208,7 +233,11 @@ void KOSocketMgr<T>::DisconnectCallback(Socket *pSock)
 					it->second--;
 
 				if (it->second == 0)
+				{
 					m_ConnectionCheck.erase(it);
+					// S115 — LastSeen temizle (eslik et)
+					m_ConnectionLastSeen.erase(strIP);
+				}
 			}
 		}
 
