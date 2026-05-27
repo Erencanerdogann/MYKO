@@ -28,30 +28,50 @@ static std::vector<_TOURNAMENT_SCHEDULE_ENTRY> g_schedules;
 static std::recursive_mutex g_scheduleLock;
 static time_t g_lastScheduleCheck = 0;
 
-// MATRIX SP'sinden yukle (acilis sonrasi DB entegrasyon)
-// Su an iskelet — DB tablo hazir olunca CDBAgent::LoadTournamentSchedule cagrı eklenecek
+// MATRIX MSG:5897 — _MK_TOURNAMENT_SCHEDULE tablosu canli (bos, GM doldurur)
+// GameServer init'inde + reload komutunda cagrilir
 void LoadTournamentScheduleFromDB()
 {
 	std::lock_guard<std::recursive_mutex> lock(g_scheduleLock);
 	g_schedules.clear();
 
-	// TODO: MATRIX brief MSG:5888 _MK_TOURNAMENT_SCHEDULE tablosu okunacak
-	// Su an PATRON karari: tablo bos, GM elden ekler.
-	// Iskelet hazir, sonra uncomment:
-	//
-	// unique_ptr<OdbcCommand> dbCommand(g_pMain->GetGameDB()->CreateCommand());
-	// if (dbCommand->Execute(_T("SELECT ZoneID, DayOfWeek, HourUTC, DurationMinutes, Enabled FROM _MK_TOURNAMENT_SCHEDULE WHERE Enabled = 1"))) {
-	//     while (dbCommand->hasData()) {
-	//         _TOURNAMENT_SCHEDULE_ENTRY entry;
-	//         dbCommand->FetchByte(1, entry.zoneID);
-	//         dbCommand->FetchByte(2, entry.dayOfWeek);
-	//         dbCommand->FetchByte(3, entry.hourUTC);
-	//         dbCommand->FetchUInt16(4, entry.durationMinutes);
-	//         entry.enabled = true;
-	//         entry.lastTriggered = 0;
-	//         g_schedules.push_back(entry);
-	//     }
-	// }
+	std::unique_ptr<OdbcCommand> dbCommand(g_DBAgent.GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) {
+		printf("[TOURNAMENT_SCHEDULE] DB command olusturulamadi\n");
+		return;
+	}
+
+	// Tum aktif schedule kayitlarini cek
+	if (!dbCommand->Execute(_T("SELECT ZoneID, DayOfWeek, HourUTC, DurationMinutes, Enabled FROM KO_LOG.dbo._MK_TOURNAMENT_SCHEDULE WHERE Enabled = 1"))) {
+		// DB hata - bos calisir
+		printf("[TOURNAMENT_SCHEDULE] DB SELECT hata (tablo bos olabilir)\n");
+		return;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_TOURNAMENT_SCHEDULE_ENTRY entry;
+		uint8 zid = 0, dow = 0, hour = 0;
+		int16 dur = 30;
+		uint8 enabled = 1;
+
+		dbCommand->FetchByte(1, zid);
+		dbCommand->FetchByte(2, dow);
+		dbCommand->FetchByte(3, hour);
+		dbCommand->FetchInt16(4, dur);
+		dbCommand->FetchByte(5, enabled);
+
+		entry.zoneID = zid;
+		entry.dayOfWeek = dow;
+		entry.hourUTC = hour;
+		entry.durationMinutes = (uint16)dur;
+		entry.enabled = (enabled != 0);
+		entry.lastTriggered = 0;
+		// Klan adlari su an scheduled tablosunda yok — GM run-time karar verir
+		// Veya tablo'ya kolon eklemek lazim (acilis sonrasi)
+		entry.redClanName.clear();
+		entry.blueClanName.clear();
+		g_schedules.push_back(entry);
+	}
 
 	printf("[TOURNAMENT_SCHEDULE] Loaded %zu schedules from DB\n", g_schedules.size());
 }

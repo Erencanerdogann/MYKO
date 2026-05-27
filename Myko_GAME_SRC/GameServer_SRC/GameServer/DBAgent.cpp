@@ -5934,3 +5934,195 @@ bool CDBAgent::LoadTournamentRewards(uint8 zoneID, const std::string& position,
 
 	return true;
 }
+
+// =====================================================================
+// S115 — Bracket Tournament DB (MATRIX MSG:5914 SP'leri — 10 SP)
+// SU AN COMMENT — MATRIX bittikten sonra uncomment edilecek.
+// Comment'siz hata yontemli: SP yoksa Execute false dondurur, fonksiyon
+// false/0 doner, RAM-only bracket iskelet calismaya devam eder.
+// =====================================================================
+
+// SP_BRACKET_CREATE — yeni bracket olustur, ID dondurur
+int32_t CDBAgent::BracketCreate(const std::string& name, uint8 maxClans, const std::string& gm)
+{
+	int32 pMaxClans = (int32)maxClans;
+	int32 pNewBracketID = 0;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, name.c_str(), name.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMaxClans);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, gm.c_str(), gm.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pNewBracketID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_CREATE(?, ?, ?, ?)}"))) {
+		// SP yoksa hata sessiz — RAM iskelet calisir
+		return 0;
+	}
+	while (dbCommand->MoveNext()) {}
+	return pNewBracketID;
+}
+
+// SP_BRACKET_REGISTER — klan kayit (max + duplicate kontrol)
+bool CDBAgent::BracketRegister(int32_t bracketID, uint16 clanID,
+                                const std::string& clanName, const std::string& leaderName,
+                                std::string& outResult)
+{
+	int32 pBracketID = bracketID;
+	int16 pClanID    = (int16)clanID;
+	char  pResult[64] = {0};
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, clanName.c_str(),   clanName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, leaderName.c_str(), leaderName.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, pResult, sizeof(pResult));
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_REGISTER(?, ?, ?, ?, ?)}"))) {
+		outResult = "DB_ERROR";
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}
+	outResult = pResult;
+	return (outResult == "OK");
+}
+
+// SP_BRACKET_GENERATE_MATCHES — Round 1 maclari olustur
+bool CDBAgent::BracketGenerateMatches(int32_t bracketID)
+{
+	int32 pBracketID = bracketID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_GENERATE_MATCHES(?)}"))) {
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}
+	return true;
+}
+
+// SP_BRACKET_MATCH_FINISH — mac sonucu yaz
+bool CDBAgent::BracketMatchFinish(int32_t matchID, uint16 redScore, uint16 blueScore, uint16 winnerClanID)
+{
+	int32 pMatchID = matchID;
+	int16 pRedScore = (int16)redScore;
+	int16 pBlueScore = (int16)blueScore;
+	int16 pWinnerClanID = (int16)winnerClanID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMatchID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRedScore);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBlueScore);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pWinnerClanID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_MATCH_FINISH(?, ?, ?, ?)}"))) {
+		return false;
+	}
+	return true;
+}
+
+// SP_BRACKET_NEXT_ROUND_GENERATE — sonraki tur maclari olustur
+bool CDBAgent::BracketNextRoundGenerate(int32_t bracketID, uint8 currentRound)
+{
+	int32 pBracketID = bracketID;
+	uint8 pCurrentRound = currentRound;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pCurrentRound);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_NEXT_ROUND_GENERATE(?, ?)}"))) {
+		return false;
+	}
+	return true;
+}
+
+// SP_BRACKET_CANCEL — bracket iptal (active maclar WALKOVER)
+bool CDBAgent::BracketCancel(int32_t bracketID)
+{
+	int32 pBracketID = bracketID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_CANCEL(?, NULL)}"))) {
+		return false;
+	}
+	return true;
+}
+
+// SP_BRACKET_GET_REWARDS — pozisyon basina odul
+bool CDBAgent::BracketGetRewards(int32_t bracketID, const std::string& position,
+                                  int32_t& goldOut, int32_t& npOut, int32_t& itemIDOut,
+                                  int16_t& itemCountOut, int32_t& premiumHoursOut)
+{
+	goldOut = npOut = itemIDOut = premiumHoursOut = 0;
+	itemCountOut = 0;
+	int32 pBracketID = bracketID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, position.c_str(), position.length());
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_GET_REWARDS(?, ?)}"))) {
+		return false;
+	}
+
+	bool found = false;
+	while (dbCommand->MoveNext()) {
+		int32 g = 0, n = 0, iid = 0, ph = 0;
+		int16 ic = 0;
+		dbCommand->FetchInt32(1, g);
+		dbCommand->FetchInt32(2, n);
+		dbCommand->FetchInt32(3, iid);
+		dbCommand->FetchInt16(4, ic);
+		dbCommand->FetchInt32(5, ph);
+		goldOut = g; npOut = n; itemIDOut = iid; itemCountOut = ic; premiumHoursOut = ph;
+		found = true;
+	}
+	return found;
+}
+
+// SP_BRACKET_PARTY_MEMBER_ADD — 8v8 hazirligi (su an pasif)
+bool CDBAgent::BracketPartyMemberAdd(int32_t bracketID, uint16 clanID,
+                                      const std::string& memberCharName, uint8 partyNumber,
+                                      const std::string& assignedBy, std::string& outResult)
+{
+	int32 pBracketID = bracketID;
+	int16 pClanID = (int16)clanID;
+	uint8 pPartyNumber = partyNumber;
+	char  pResult[64] = {0};
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, memberCharName.c_str(), memberCharName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pPartyNumber);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, assignedBy.c_str(), assignedBy.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, pResult, sizeof(pResult));
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_PARTY_MEMBER_ADD(?, ?, ?, ?, ?, ?)}"))) {
+		outResult = "DB_ERROR";
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}
+	outResult = pResult;
+	return (outResult == "OK");
+}

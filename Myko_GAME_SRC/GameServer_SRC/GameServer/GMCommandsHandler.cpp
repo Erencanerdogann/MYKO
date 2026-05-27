@@ -3257,4 +3257,130 @@ COMMAND_HANDLER(CUser::HandleTournamentCloseUserCommand)
 	g_pMain->SendHelpDescription(this, "Tournament kapatildi (bet iade, DB log)");
 	return true;
 }
+
+// =====================================================================
+// S115 — Bracket Tournament komutlari (CGameServerDlg console + CUser oyun ici)
+// MATRIX MSG:5914 SP'leri + BracketTournament.cpp engine
+// =====================================================================
+
+extern int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM);
+extern bool    RegisterClanToBracket(int32_t bracketID, uint16 clanID,
+                                     const std::string& clanName, const std::string& leaderName);
+extern bool    StartBracket(int32_t bracketID);
+extern bool    CancelBracket(int32_t bracketID);
+extern void    GetBracketStatus(int32_t bracketID);
+
+// /bracketcreate "AdSec" MaxKlan
+COMMAND_HANDLER(CGameServerDlg::HandleBracketCreateCommand)
+{
+	if (vargs.size() < 2)
+	{
+		printf("Using: /bracketcreate \"AdSec\" MaxKlan (4/8/16/32)\n");
+		return true;
+	}
+
+	std::string bracketName = vargs.front(); vargs.pop_front();
+	uint8 maxClans = (uint8)SafeAtoi(vargs.front(), 4, 32);
+
+	int32_t newID = CreateBracket(bracketName, maxClans, "console");
+	if (newID > 0)
+		printf("[BRACKET] Created: ID=%d Name='%s' MaxClans=%u\n",
+			newID, bracketName.c_str(), maxClans);
+	else
+		printf("[BRACKET] Create FAILED (DB hata veya MATRIX SP yok)\n");
+	return true;
+}
+
+// /bracketstart BracketID
+COMMAND_HANDLER(CGameServerDlg::HandleBracketStartCommand)
+{
+	if (vargs.empty())
+	{
+		printf("Using: /bracketstart BracketID\n");
+		return true;
+	}
+
+	int32_t bracketID = (int32_t)SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	if (StartBracket(bracketID))
+		printf("[BRACKET] Started: ID=%d (Round 1 mac'lari DB'de)\n", bracketID);
+	else
+		printf("[BRACKET] Start FAILED ID=%d\n", bracketID);
+	return true;
+}
+
+// /bracketstatus BracketID
+COMMAND_HANDLER(CGameServerDlg::HandleBracketStatusCommand)
+{
+	if (vargs.empty())
+	{
+		printf("Using: /bracketstatus BracketID\n");
+		return true;
+	}
+
+	int32_t bracketID = (int32_t)SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	GetBracketStatus(bracketID);
+	return true;
+}
+
+// /bracketcancel BracketID
+COMMAND_HANDLER(CGameServerDlg::HandleBracketCancelCommand)
+{
+	if (vargs.empty())
+	{
+		printf("Using: /bracketcancel BracketID\n");
+		return true;
+	}
+
+	int32_t bracketID = (int32_t)SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	if (CancelBracket(bracketID))
+		printf("[BRACKET] Cancelled: ID=%d\n", bracketID);
+	else
+		printf("[BRACKET] Cancel FAILED ID=%d\n", bracketID);
+	return true;
+}
+
+// +bracketreg BracketID (oyun ici, klan lideri)
+COMMAND_HANDLER(CUser::HandleBracketRegisterCommand)
+{
+	if (!isInClan())
+	{
+		g_pMain->SendHelpDescription(this, "Klan uyesi olmalisin.");
+		return true;
+	}
+	if (!isClanLeader())
+	{
+		g_pMain->SendHelpDescription(this, "Sadece klan lideri kayit yapabilir.");
+		return true;
+	}
+	if (vargs.empty())
+	{
+		g_pMain->SendHelpDescription(this, "Ornek: +bracketreg 1 (BracketID)");
+		return true;
+	}
+
+	int32_t bracketID = (int32_t)SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	CKnights* pClan = g_pMain->GetClanPtr(GetClanID());
+	if (pClan == nullptr)
+	{
+		g_pMain->SendHelpDescription(this, "Klan bulunamadi.");
+		return true;
+	}
+
+	if (RegisterClanToBracket(bracketID, pClan->GetID(), pClan->GetName(), GetName()))
+	{
+		char buf[200] = { 0 };
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[BRACKET] %s klani Bracket #%d'a kayit oldu!",
+			pClan->GetName().c_str(), bracketID);
+		std::string msg = buf;
+		Packet pkt;
+		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+		g_pMain->Send_All(&pkt);
+	}
+	else
+	{
+		g_pMain->SendHelpDescription(this, "Kayit basarisiz (BracketID yanlis veya bracket dolu/kapali).");
+	}
+	return true;
+}
 #pragma endregion

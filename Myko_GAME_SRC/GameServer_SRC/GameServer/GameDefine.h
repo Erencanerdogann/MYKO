@@ -3506,6 +3506,9 @@ struct _TOURNAMENT_DATA
 	// S115 TUR 9 — DB log (MATRIX SP'leri ile entegre)
 	int32_t dbTournamentID;                    // SP_CLAN_TOURNAMENT_START'tan donen ID, FINISH'te kullanilir
 
+	// S115 — Bracket Tournament entegrasyon
+	int32_t bracketMatchID;                    // 0 = standalone tournament, >0 = bracket'a bagli mac
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3528,6 +3531,7 @@ struct _TOURNAMENT_DATA
 		firstBloodUserID = 0;
 		firstBloodUserName.clear();
 		dbTournamentID = 0;
+		bracketMatchID = 0;
 	}
 };
 

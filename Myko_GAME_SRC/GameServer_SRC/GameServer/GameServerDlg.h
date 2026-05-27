@@ -1384,6 +1384,12 @@ public:
 	COMMAND_HANDLER(HandleTournamentStart);
 	COMMAND_HANDLER(HandleTournamentClose);
 	COMMAND_HANDLER(HandleTournamentRegListCommand);   // S115 TUR 11 — Reg listesi
+
+	// S115 — Bracket Tournament GM komutlari (MATRIX MSG:5914 + CHIP Bracket Engine)
+	COMMAND_HANDLER(HandleBracketCreateCommand);
+	COMMAND_HANDLER(HandleBracketStartCommand);
+	COMMAND_HANDLER(HandleBracketStatusCommand);
+	COMMAND_HANDLER(HandleBracketCancelCommand);
 	COMMAND_HANDLER(Handleunbannedcommand);
 	COMMAND_HANDLER(Handlebannedcommand);
 

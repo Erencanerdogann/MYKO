@@ -84,6 +84,10 @@ void CGameServerDlg::InitServerCommands()
 		{ "tournamentstart",	&CGameServerDlg::HandleTournamentStart,				"Start is Clan Tournament" },
 		{ "tournamentclose",	&CGameServerDlg::HandleTournamentClose,				"Close is Clan Tournament" },
 		{ "tournamentreglist",	&CGameServerDlg::HandleTournamentRegListCommand,	"Tournament kayitli klan listesi (console)" },
+		{ "bracketcreate",		&CGameServerDlg::HandleBracketCreateCommand,		"Bracket olustur. Ornek: /bracketcreate \"Acilis Cup\" 16" },
+		{ "bracketstart",		&CGameServerDlg::HandleBracketStartCommand,			"Bracket baslat. Ornek: /bracketstart 1" },
+		{ "bracketstatus",		&CGameServerDlg::HandleBracketStatusCommand,		"Bracket durumu. Ornek: /bracketstatus 1" },
+		{ "bracketcancel",		&CGameServerDlg::HandleBracketCancelCommand,		"Bracket iptal. Ornek: /bracketcancel 1" },
 		{ "chaosopen",			&CGameServerDlg::HandleChaosExpansionOpen,			"Chaos Event başlatır - Open is Chaos Expansion" },
 		{ "borderopen",			&CGameServerDlg::HandleBorderDefenceWar,			"BDW Event Başlatır - Open is Border Defence War" },
 		{ "juraidopen",			&CGameServerDlg::HandleJuraidMountain,				"JR Event Başlatır - Open is Juraid Mountain" },
@@ -151,6 +155,7 @@ void CUser::InitChatCommands()
 		{ "tournamentclose",	&CUser::HandleTournamentCloseUserCommand,		"Clan tournament kapatir. Ornek: +tournamentclose ZoneID(77/78/96-99)" },
 		{ "bet",				&CUser::HandleTournamentBetCommand,				"Tournament'a bahis koy. Ornek: +bet ILKCLAN 100000 (Klan ad, Noah miktari)" },
 		{ "tournamentreg",		&CUser::HandleTournamentRegCommand,				"Klani turnuvaya kayit et (klan lideri). Ornek: +tournamentreg veya +tournamentreg cancel" },
+		{ "bracketreg",			&CUser::HandleBracketRegisterCommand,			"Bracket'a klan kayit (klan lideri). Ornek: +bracketreg 1" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		
@@ -382,6 +387,16 @@ void CUser::Chat(Packet & pkt)
 		&& ProcessChatCommand(chatstr))
 	{
 		ChatInsertLog(type, "TOURNAMENT_REG", chatstr, pUser);
+		return;
+	}
+
+	// S115 — Bracket kayit: klan lideri kullanir (+bracketreg BracketID)
+	if (!isGM() && !isGMUser()
+		&& chatstr.size() > 11 && chatstr[0] == CHAT_COMMAND_PREFIX
+		&& _strnicmp(chatstr.c_str() + 1, "bracketreg", 10) == 0
+		&& ProcessChatCommand(chatstr))
+	{
+		ChatInsertLog(type, "BRACKET_REG", chatstr, pUser);
 		return;
 	}
 

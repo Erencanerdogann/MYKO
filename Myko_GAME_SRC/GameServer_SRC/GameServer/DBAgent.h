@@ -126,6 +126,24 @@ public:
 	// S115 — Tournament Reward DB-driven
 	bool    LoadTournamentRewards(uint8 zoneID, const std::string& position,
 	                              std::vector<std::pair<uint32, uint16>>& rewards);
+
+	// S115 — Bracket Tournament DB (MATRIX MSG:5914 — 9 fonksiyon)
+	// SP'ler MATRIX hazir olunca uncomment edilecek
+	int32_t BracketCreate(const std::string& name, uint8 maxClans, const std::string& gm);
+	bool    BracketRegister(int32_t bracketID, uint16 clanID,
+	                        const std::string& clanName, const std::string& leaderName,
+	                        std::string& outResult);
+	bool    BracketGenerateMatches(int32_t bracketID);
+	bool    BracketMatchFinish(int32_t matchID, uint16 redScore, uint16 blueScore, uint16 winnerClanID);
+	bool    BracketNextRoundGenerate(int32_t bracketID, uint8 currentRound);
+	bool    BracketCancel(int32_t bracketID);
+	bool    BracketGetRewards(int32_t bracketID, const std::string& position,
+	                          int32_t& goldOut, int32_t& npOut, int32_t& itemIDOut,
+	                          int16_t& itemCountOut, int32_t& premiumHoursOut);
+	// PartyMembers (8v8 hazirligi — su an pasif)
+	bool    BracketPartyMemberAdd(int32_t bracketID, uint16 clanID,
+	                              const std::string& memberCharName, uint8 partyNumber,
+	                              const std::string& assignedBy, std::string& outResult);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);
