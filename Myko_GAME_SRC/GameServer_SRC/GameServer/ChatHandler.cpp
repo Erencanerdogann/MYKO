@@ -160,6 +160,7 @@ void CUser::InitChatCommands()
 		{ "bracketreg",			&CUser::HandleBracketRegisterCommand,			"Bracket'a klan kayit (klan lideri). Ornek: +bracketreg 1" },
 		{ "bracket8v8add",		&CUser::HandleBracket8v8AddCommand,				"8v8 uye ekle (klan lideri). Ornek: +bracket8v8add 1 Nick [Party#]" },
 		{ "bracket8v8list",		&CUser::HandleBracket8v8ListCommand,			"8v8 atanmis uyeler. Ornek: +bracket8v8list 1" },
+		{ "spectate",			&CUser::HandleSpectateCommand,					"Tournament izleyici ol. Ornek: +spectate 96 veya +spectate exit" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		
