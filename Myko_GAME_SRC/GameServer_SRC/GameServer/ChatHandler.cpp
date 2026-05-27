@@ -156,6 +156,8 @@ void CUser::InitChatCommands()
 		{ "bet",				&CUser::HandleTournamentBetCommand,				"Tournament'a bahis koy. Ornek: +bet ILKCLAN 100000 (Klan ad, Noah miktari)" },
 		{ "tournamentreg",		&CUser::HandleTournamentRegCommand,				"Klani turnuvaya kayit et (klan lideri). Ornek: +tournamentreg veya +tournamentreg cancel" },
 		{ "bracketreg",			&CUser::HandleBracketRegisterCommand,			"Bracket'a klan kayit (klan lideri). Ornek: +bracketreg 1" },
+		{ "bracket8v8add",		&CUser::HandleBracket8v8AddCommand,				"8v8 uye ekle (klan lideri). Ornek: +bracket8v8add 1 Nick [Party#]" },
+		{ "bracket8v8list",		&CUser::HandleBracket8v8ListCommand,			"8v8 atanmis uyeler. Ornek: +bracket8v8list 1" },
 		{ "warresult",			&CUser::HandleWarResultCommand,					"Savaş skortu gösterir - Set result for War"},
 		{ "resetranking",		&CUser::HandleResetPlayerRankingCommand,		"Oyuncu siralamasini sifirlar. Ornek: +resetranking ZoneID"},
 		
