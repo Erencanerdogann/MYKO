@@ -553,7 +553,24 @@ COMMAND_HANDLER(CGameServerDlg::HandleOneVsOneCancelCommand)
 	if (g_DBAgent.OneVsOneCancel(bid)) {
 		std::lock_guard<std::recursive_mutex> lock(g_1v1Lock);
 		_1V1_INFO* b = Find1v1Bracket(bid);
-		if (b) b->status = "CANCELLED";
+		if (b) {
+			b->status = "CANCELLED";
+
+			// Aktif maclari WALKOVER yap + zone'daki kullanicilari Moradon'a
+			for (auto& m : b->matches) {
+				if (m.status != "ACTIVE") continue;
+
+				// Iki kullaniciyi Moradon'a
+				CUser* pRed  = FindUserByDBID(m.redUserID);
+				CUser* pBlue = FindUserByDBID(m.blueUserID);
+				if (pRed && pRed->isInGame())   pRed->ZoneChange(ZONE_MORADON, 905.0f, 870.0f);
+				if (pBlue && pBlue->isInGame()) pBlue->ZoneChange(ZONE_MORADON, 905.0f, 870.0f);
+
+				m.status = "WALKOVER";
+				m.finished = true;
+				printf("[1V1] Cancel: matchID=%d WALKOVER + user kick out\n", m.matchID);
+			}
+		}
 		printf("[1V1] Cancelled: BID=%d\n", bid);
 	} else {
 		printf("[1V1] Cancel hata: BID=%d\n", bid);
