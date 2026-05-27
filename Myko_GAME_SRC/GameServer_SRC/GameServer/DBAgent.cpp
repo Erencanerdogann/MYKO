@@ -5774,3 +5774,129 @@ bool CDBAgent::TournamentLogFinish(int32_t tournamentID, uint16 redScore, uint16
 	}
 	return true;
 }
+
+// =====================================================================
+// S115 TUR 8 — Tournament Bet DB (MATRIX MSG:5907 SP'leri)
+// =====================================================================
+
+// SP_TOURNAMENT_BET_PLACE — yeni bahis kaydet, ID dondurur
+int32_t CDBAgent::TournamentBetPlace(uint8 zoneID, const std::string& betterAccountID,
+                                     const std::string& betterCharName, uint16 betClanID,
+                                     const std::string& betClanName, int32_t betAmount)
+{
+	uint8 pZoneID    = zoneID;
+	int16 pClanID    = (int16)betClanID;
+	int32 pAmount    = betAmount;
+	int32 pNewBetID  = 0;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, betterAccountID.c_str(), betterAccountID.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, betterCharName.c_str(),  betterCharName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, betClanName.c_str(),     betClanName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pAmount);
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pNewBetID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_BET_PLACE(?, ?, ?, ?, ?, ?, ?)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return 0;
+	}
+	while (dbCommand->MoveNext()) {}
+	return pNewBetID;
+}
+
+// SP_TOURNAMENT_BET_RESOLVE — havuzu dagit (kazananlar 2x, kaybedenler kaybetti)
+// Server bunu sadece DB'ye yazıyor; oyuncuya odeme RAM'den (TournamentBet.cpp::ResolveTournamentBets) yapilir
+bool CDBAgent::TournamentBetResolve(uint8 zoneID, uint16 winnerClanID)
+{
+	uint8 pZoneID         = zoneID;
+	int16 pWinnerClanID   = (int16)winnerClanID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pWinnerClanID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_BET_RESOLVE(?, ?)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}  // returned rows tuket
+	return true;
+}
+
+// SP_TOURNAMENT_BET_REFUND — tournament iptal/berabere, bahisleri iade et
+bool CDBAgent::TournamentBetRefund(uint8 zoneID)
+{
+	uint8 pZoneID = zoneID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_BET_REFUND(?)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}
+	return true;
+}
+
+// =====================================================================
+// S115 TUR 11 — Tournament Registration DB (MATRIX MSG:5907 SP'leri)
+// =====================================================================
+
+// SP_TOURNAMENT_REG_INSERT — klan kayit (NPC + Web + Chat ayni)
+// Returns: 0 = ALREADY_REGISTERED veya hata, >0 = yeni RegID
+int32_t CDBAgent::TournamentRegInsert(uint16 clanID, const std::string& clanName,
+                                      const std::string& leaderName, const std::string& leaderAccountID,
+                                      const std::string& registeredVia)
+{
+	int16 pClanID    = (int16)clanID;
+	int32 pNewRegID  = 0;
+	// Result string: NVARCHAR — biz string olarak fetch etmek istemiyoruz, varchar buffer
+	char pResult[64] = {0};
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, clanName.c_str(),         clanName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, leaderName.c_str(),       leaderName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, leaderAccountID.c_str(),  leaderAccountID.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, registeredVia.c_str(),    registeredVia.length());
+	// @TournamentDate NULL — pass empty/null (skip optional)
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pNewRegID);
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, pResult, sizeof(pResult));
+
+	// MATRIX SP imzasi: @ClanID, @ClanName, @LeaderName, @LeaderAccountID, @RegisteredVia, @TournamentDate=NULL, @NewRegID OUT, @Result OUT
+	// @TournamentDate icin NULL gondermek karmasik — su an default null bekleyen SP
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_REG_INSERT(?, ?, ?, ?, ?, NULL, ?, ?)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return 0;
+	}
+	while (dbCommand->MoveNext()) {}
+	return pNewRegID;
+}
+
+// SP_TOURNAMENT_REG_CANCEL — klan kaydini iptal et
+bool CDBAgent::TournamentRegCancel(uint16 clanID)
+{
+	int16 pClanID = (int16)clanID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_REG_CANCEL(?, NULL)}"))) {
+		ReportSQLError(GetGameDB()->GetError());
+		return false;
+	}
+	return true;
+}

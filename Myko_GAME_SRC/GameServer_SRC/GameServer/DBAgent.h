@@ -109,6 +109,19 @@ public:
 	                           uint16 durationMinutes, const std::string& startedByGM);
 	bool    TournamentLogFinish(int32_t tournamentID, uint16 redScore, uint16 blueScore,
 	                            uint8 monumentKilled, uint16 winnerClanID);
+
+	// S115 TUR 8 — Tournament Bet DB (MATRIX MSG:5907)
+	int32_t TournamentBetPlace(uint8 zoneID, const std::string& betterAccountID,
+	                           const std::string& betterCharName, uint16 betClanID,
+	                           const std::string& betClanName, int32_t betAmount);
+	bool    TournamentBetResolve(uint8 zoneID, uint16 winnerClanID);
+	bool    TournamentBetRefund(uint8 zoneID);
+
+	// S115 TUR 11 — Tournament Registration DB (MATRIX MSG:5907)
+	int32_t TournamentRegInsert(uint16 clanID, const std::string& clanName,
+	                            const std::string& leaderName, const std::string& leaderAccountID,
+	                            const std::string& registeredVia);
+	bool    TournamentRegCancel(uint16 clanID);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);

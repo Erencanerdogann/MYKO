@@ -102,8 +102,11 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 	g_activeBets.erase(it);
 	g_betCloseTime.erase(zoneID);
 
-	// TODO: MATRIX SP cagri — DB persistence (acilis sonrasi entegrasyon)
-	// CDBAgent::TournamentBetResolve(zoneID, winnerClanID);
+	// S115 TUR 8 DB entegrasyon — MATRIX MSG:5907 (SP_TOURNAMENT_BET_RESOLVE veya REFUND)
+	if (winnerClanID == 0)
+		g_DBAgent.TournamentBetRefund(zoneID);   // berabere -> iade
+	else
+		g_DBAgent.TournamentBetResolve(zoneID, winnerClanID);  // kazanan belli -> dagit
 }
 
 // +bet ClanAdı Miktar
@@ -214,8 +217,9 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	bet.resolved      = false;
 	g_activeBets[targetZoneID].push_back(bet);
 
-	// TODO: MATRIX SP cagri — DB persistence (acilis sonrasi entegrasyon)
-	// CDBAgent::TournamentBetPlace(targetZoneID, GetStrAccount(), GetName(), targetClanID, targetClanName, amount);
+	// S115 TUR 8 DB entegrasyon — MATRIX MSG:5907 (SP_TOURNAMENT_BET_PLACE)
+	g_DBAgent.TournamentBetPlace(targetZoneID, GetAccountName(), GetName(),
+	                              targetClanID, targetClanName, (int32_t)amount);
 
 	char buf[200] = { 0 };
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,

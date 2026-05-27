@@ -46,8 +46,9 @@ bool RegisterClanForTournament(uint16 clanID, const std::string& clanName,
 	reg.registeredVia = via;
 	g_registrations.push_back(reg);
 
-	// TODO: MATRIX SP_TOURNAMENT_REG_INSERT cagri (acilis sonrasi)
-	// CDBAgent::TournamentRegInsert(clanID, clanName, leaderName, "", via, nullptr);
+	// S115 TUR 11 DB entegrasyon — MATRIX MSG:5907 (SP_TOURNAMENT_REG_INSERT)
+	// leaderAccountID bos string (chat komutdan veri yok, NPC ise dolu olabilir)
+	g_DBAgent.TournamentRegInsert(clanID, clanName, leaderName, "", via);
 
 	printf("[TOURNAMENT_REG] Clan registered: %s (via %s)\n", clanName.c_str(), via.c_str());
 	return true;
@@ -63,7 +64,9 @@ bool UnregisterClanForTournament(uint16 clanID)
 		{
 			g_registrations.erase(it);
 
-			// TODO: MATRIX SP_TOURNAMENT_REG_CANCEL cagri
+			// S115 TUR 11 DB entegrasyon — MATRIX MSG:5907 (SP_TOURNAMENT_REG_CANCEL)
+			g_DBAgent.TournamentRegCancel(clanID);
+
 			return true;
 		}
 	}
