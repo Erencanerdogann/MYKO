@@ -144,6 +144,22 @@ public:
 	bool    BracketPartyMemberAdd(int32_t bracketID, uint16 clanID,
 	                              const std::string& memberCharName, uint8 partyNumber,
 	                              const std::string& assignedBy, std::string& outResult);
+
+	// S115 — 8v8 query SP'leri (MATRIX 108b brief MSG:5929)
+	// Zone giris filtresi: kullanici listede mi?
+	bool    BracketPartyMemberCheck(int32_t bracketID, uint16 clanID,
+	                                const std::string& memberCharName);
+
+	// Klan'in atadigi uye listesi (GM + lider gosterimi)
+	struct _BPM_LIST_ROW {
+		int32_t      partyMemberID;
+		uint8        partyNumber;
+		std::string  memberCharName;
+		std::string  assignedBy;
+		std::string  addedAt;
+	};
+	bool    BracketPartyMemberList(int32_t bracketID, uint16 clanID,
+	                               std::vector<_BPM_LIST_ROW>& outRows);
 	// RAM cache fill — bracket maclarini cek (S115 BUG #2 fix)
 	struct _BRACKET_MATCH_ROW {
 		int32_t matchID;

@@ -815,6 +815,24 @@ bool CUser::CanChangeZone(C3DMap * pTargetMap, WarpListResponse & errorReason)
 			}
 		}
 		return true;
+
+		// S115 — Tournament/Bracket zone'lari (Bracket8v8 filtre + spectator bypass)
+		// Spectator'lar ZoneChange(... check=false) ile bu fonksiyonu atlar (SpectatorSystem.cpp).
+		// Normal warp/teleport ile gelen kullanicilar burada filtrelenir.
+		case ZONE_CLAN_WAR_ARDREAM:
+		case ZONE_CLAN_WAR_RONARK:
+		case ZONE_PARTY_VS_1:
+		case ZONE_PARTY_VS_2:
+		case ZONE_PARTY_VS_3:
+		case ZONE_PARTY_VS_4:
+		{
+			extern bool Bracket8v8CanEnterZone(uint16 clanID, const std::string& charName, uint8 zoneID);
+			if (!Bracket8v8CanEnterZone(GetClanID(), GetName(), (uint8)pTargetMap->GetID())) {
+				errorReason = WarpListResponse::WarpListGenericError;
+				return false;
+			}
+			return true;
+		}
 	default:
 		// War zones may only be entered if that war zone is active.
 		if (pTargetMap->isWarZone())

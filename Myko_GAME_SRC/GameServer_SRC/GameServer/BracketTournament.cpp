@@ -693,3 +693,41 @@ void BracketAutoStartTimer()
 		OnBracketMatchFinish(a.matchID, a.winnerClanID, a.redScore, a.blueScore);
 	}
 }
+
+// =====================================================================
+// PUBLIC HELPER — Bracket8v8.cpp ve ZoneChangeWarpHandler.cpp icin
+// =====================================================================
+
+// matchID -> bracketID lookup (TOURNAMENT_DATA.bracketMatchID'den BracketID cikarma)
+// Donus: 0 = bulunamadi
+int32_t BracketGetBracketIDByMatchID(int32_t matchID)
+{
+	if (matchID <= 0) return 0;
+	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
+	for (auto& b : g_brackets) {
+		for (auto& m : b.matches) {
+			if (m.matchID == matchID) return b.bracketID;
+		}
+	}
+	return 0;
+}
+
+// matchID -> _BRACKET_MATCH_INFO partial info (zone giris kontrolu icin)
+// Donus: true=bulundu, false=yok
+bool BracketGetMatchInfo(int32_t matchID, int32_t& bracketIDOut,
+                        uint16& redClanIDOut, uint16& blueClanIDOut)
+{
+	if (matchID <= 0) return false;
+	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
+	for (auto& b : g_brackets) {
+		for (auto& m : b.matches) {
+			if (m.matchID == matchID) {
+				bracketIDOut  = b.bracketID;
+				redClanIDOut  = m.redClanID;
+				blueClanIDOut = m.blueClanID;
+				return true;
+			}
+		}
+	}
+	return false;
+}

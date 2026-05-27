@@ -6127,6 +6127,75 @@ bool CDBAgent::BracketPartyMemberAdd(int32_t bracketID, uint16 clanID,
 	return (outResult == "OK");
 }
 
+// S115 — 8v8 zone giris kontrolu (MATRIX brief MSG:5929 108b)
+// SELECT EXISTS(...) — kullanici listede mi? Tek row TEK kolon (0/1)
+bool CDBAgent::BracketPartyMemberCheck(int32_t bracketID, uint16 clanID,
+                                       const std::string& memberCharName)
+{
+	int32 pBracketID = bracketID;
+	int16 pClanID = (int16)clanID;
+	int32 pIsAssigned = 0;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, memberCharName.c_str(), memberCharName.length());
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_PARTY_MEMBER_CHECK(?, ?, ?)}"))) {
+		// SP yoksa veya hata: false don (giris engelleme tasarim karari B fazinda fail-closed)
+		return false;
+	}
+
+	if (dbCommand->MoveNext()) {
+		dbCommand->FetchInt32(1, pIsAssigned);
+	}
+	return (pIsAssigned != 0);
+}
+
+// S115 — 8v8 klan uye listesi (MATRIX brief MSG:5929 108b)
+// SELECT N row: PartyMemberID, PartyNumber, MemberCharName, AssignedBy, AddedAt
+bool CDBAgent::BracketPartyMemberList(int32_t bracketID, uint16 clanID,
+                                      std::vector<_BPM_LIST_ROW>& outRows)
+{
+	int32 pBracketID = bracketID;
+	int16 pClanID = (int16)clanID;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_BRACKET_PARTY_MEMBER_LIST(?, ?)}"))) {
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_BPM_LIST_ROW row;
+		int32 pid = 0;
+		uint8 pn = 0;
+		char  mcn[64] = {0};
+		char  ab[16] = {0};
+		char  ad[32] = {0};
+
+		dbCommand->FetchInt32(1, pid);
+		dbCommand->FetchByte(2, pn);
+		dbCommand->FetchString(3, mcn, sizeof(mcn));
+		dbCommand->FetchString(4, ab, sizeof(ab));
+		dbCommand->FetchString(5, ad, sizeof(ad));
+
+		row.partyMemberID  = pid;
+		row.partyNumber    = pn;
+		row.memberCharName = mcn;
+		row.assignedBy     = ab;
+		row.addedAt        = ad;
+		outRows.push_back(row);
+	}
+	return true;
+}
+
 // S115 BUG #2 FIX — RAM cache fill (Bracket mac listesi)
 // SELECT _MK_BRACKET_MATCHES WHERE BracketID = ? ORDER BY RoundNumber, MatchOrder
 bool CDBAgent::BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows)
