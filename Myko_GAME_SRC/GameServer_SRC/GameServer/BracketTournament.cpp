@@ -10,8 +10,8 @@
 // Mac yapma: mevcut Tournament sistemi (_TOURNAMENT_DATA + HandleTournamentStart)
 // Bracket Engine: mac sonuclarini takip eder, sonraki tur eslesir
 //
-// MATRIX MSG:5914 DB hazir oldukta: g_DBAgent.BracketXxx fonksiyonlari calisir.
-// SP yoksa fonksiyonlar false/0 doner, RAM-only iskelet bozulmaz.
+// MATRIX migration 108 + 108b apply edildi: tum bracket SP'leri canli.
+// BracketAutoStartTimer her saniye PENDING maclari otomatik baslatir (Round zinciri).
 //
 // PG temiz: yeni opcode YOK, mevcut tournament sistemi uzerine kurulu.
 // =========================================================================
@@ -112,11 +112,31 @@ void LoadBracketsFromDB()
 	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
 	g_brackets.clear();
 
-	// MATRIX SP'leri hazir oldukta SELECT'ler buraya gelir.
-	// Su an iskelet: DB tablosu varsa runtime SELECT, yoksa 0 bracket.
-	// Refactor: g_DBAgent.BracketLoadActive(...) yontemi MATRIX cevabindan sonra eklenecek.
+	// Server restart sonrasi aktif bracket'lari geri yukle (REGISTRATION/ACTIVE)
+	std::vector<CDBAgent::_BRACKET_INFO_ROW> rows;
+	if (!g_DBAgent.BracketLoadActive(rows)) {
+		printf("[BRACKET] LoadBracketsFromDB: SELECT hata (tablo yok olabilir)\n");
+		return;
+	}
 
-	printf("[BRACKET] LoadBracketsFromDB: %zu active bracket (RAM iskelet)\n", g_brackets.size());
+	for (auto& r : rows) {
+		_BRACKET_INFO b;
+		b.bracketID      = r.bracketID;
+		b.name           = r.name;
+		b.maxClans       = r.maxClans;
+		b.currentRound   = r.currentRound;
+		b.status         = r.status;
+		b.winnerClanID   = r.winnerClanID;
+		b.winnerClanName = r.winnerClanName;
+		g_brackets.push_back(b);
+	}
+
+	// Her aktif bracket icin matches yukle
+	for (auto& b : g_brackets) {
+		RefreshBracketMatches(&b);
+	}
+
+	printf("[BRACKET] LoadBracketsFromDB: %zu aktif bracket yuklendi\n", g_brackets.size());
 }
 
 // =====================================================================

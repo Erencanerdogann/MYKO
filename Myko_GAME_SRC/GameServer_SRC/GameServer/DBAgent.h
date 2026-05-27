@@ -160,6 +160,10 @@ public:
 	};
 	bool    BracketPartyMemberList(int32_t bracketID, uint16 clanID,
 	                               std::vector<_BPM_LIST_ROW>& outRows);
+
+	// 8v8 uye sil (lider yanlis eklediyse) — direkt DELETE, MATRIX SP gerek yok
+	bool    BracketPartyMemberDelete(int32_t bracketID, uint16 clanID,
+	                                 const std::string& memberCharName);
 	// RAM cache fill — bracket maclarini cek (S115 BUG #2 fix)
 	struct _BRACKET_MATCH_ROW {
 		int32_t matchID;
@@ -173,6 +177,18 @@ public:
 		int32_t dependsOnMatch1;
 	};
 	bool    BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows);
+
+	// Server init RAM cache: aktif bracket listesi (REGISTRATION/ACTIVE)
+	struct _BRACKET_INFO_ROW {
+		int32_t bracketID;
+		std::string name;
+		uint8   maxClans;
+		uint8   currentRound;
+		std::string status;
+		uint16  winnerClanID;
+		std::string winnerClanName;
+	};
+	bool    BracketLoadActive(std::vector<_BRACKET_INFO_ROW>& outRows);
 
 	// S115 FAZ 13 — Crystal CTF DB (MATRIX migration 110)
 	int32_t CTFStart(uint8 zoneID, uint16 redClanID, const std::string& redName,

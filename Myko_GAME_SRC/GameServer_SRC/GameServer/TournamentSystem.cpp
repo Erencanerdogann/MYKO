@@ -31,7 +31,7 @@ static void SendTournamentScorePacket(_TOURNAMENT_DATA* info)
 static void DistributeTournamentRewards(uint16 winnerClanID, uint16 loserClanID,
                                         uint8 zoneID, uint16 winnerScore, uint16 loserScore)
 {
-	// Acilis Plan A — sabit odul (acilis sonrasi DB tablo `_MK_TOURNAMENT_REWARDS` ile dinamik olur)
+	// Base odul sabitleri (DB tablo `_MK_TOURNAMENT_REWARDS` ile chest item dinamik gelir, asagida)
 	const uint32 WINNER_GOLD = 5000000;   // 5M Noah
 	const uint32 WINNER_NP   = 1000;       // 1000 NP
 	const uint32 LOSER_GOLD  = 1000000;   // 1M Noah (katilim)

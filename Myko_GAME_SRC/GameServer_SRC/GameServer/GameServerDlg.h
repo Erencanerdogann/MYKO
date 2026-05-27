@@ -1395,6 +1395,7 @@ public:
 	COMMAND_HANDLER(HandleOneVsOneCreateCommand);          // S115 FAZ 16 — 1v1 Bracket
 	COMMAND_HANDLER(HandleOneVsOneStartCommand);           // S115 FAZ 16
 	COMMAND_HANDLER(HandleOneVsOneCancelCommand);          // S115 FAZ 16
+	COMMAND_HANDLER(HandleOneVsOneStatusCommand);          // S115 FAZ 16 — 1v1 status
 	COMMAND_HANDLER(Handleunbannedcommand);
 	COMMAND_HANDLER(Handlebannedcommand);
 

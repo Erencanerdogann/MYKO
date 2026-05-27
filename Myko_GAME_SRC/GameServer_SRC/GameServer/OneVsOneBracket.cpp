@@ -609,3 +609,36 @@ COMMAND_HANDLER(CUser::HandleOneVsOneRegCommand)
 	Send(&pkt);
 	return true;
 }
+
+// /1v1status BID — console GM komutu (bracket + mac listesi)
+COMMAND_HANDLER(CGameServerDlg::HandleOneVsOneStatusCommand)
+{
+	if (vargs.empty()) {
+		printf("Usage: /1v1status BID\n");
+		return true;
+	}
+	int32_t bid = SafeAtoi(vargs.front(), 0, 0x7FFFFFFF);
+
+	std::lock_guard<std::recursive_mutex> lock(g_1v1Lock);
+	_1V1_INFO* b = Find1v1Bracket(bid);
+	if (b == nullptr) {
+		printf("[1V1] Status: BID=%d RAM'de yok (LoadBrackets sonrasi tekrar dene)\n", bid);
+		return true;
+	}
+
+	printf("====== 1V1 BRACKET %d STATUS ======\n", bid);
+	printf("  Name:          %s\n", b->name.c_str());
+	printf("  Status:        %s\n", b->status.c_str());
+	printf("  MaxPlayers:    %u\n", b->maxPlayers);
+	printf("  CurrentRound:  %u\n", b->currentRound);
+	printf("  WinnerUserID:  %d (%s)\n", b->winnerUserID, b->winnerName.c_str());
+	printf("  Matches:       %zu\n", b->matches.size());
+	for (auto& m : b->matches) {
+		printf("    Round=%u MatchOrder=%u Red=%d(%s) Blue=%d(%s) Zone=%u Status=%s Winner=%d\n",
+			m.round, m.matchOrder, m.redUserID, m.redName.c_str(),
+			m.blueUserID, m.blueName.c_str(),
+			m.zoneID, m.status.c_str(), m.winnerUserID);
+	}
+	printf("===================================\n");
+	return true;
+}

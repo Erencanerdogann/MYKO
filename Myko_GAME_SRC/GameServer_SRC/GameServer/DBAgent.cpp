@@ -6196,6 +6196,62 @@ bool CDBAgent::BracketPartyMemberList(int32_t bracketID, uint16 clanID,
 	return true;
 }
 
+// Server init aktif bracket listesi (REGISTRATION + ACTIVE durumda olanlar)
+bool CDBAgent::BracketLoadActive(std::vector<_BRACKET_INFO_ROW>& outRows)
+{
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	if (!dbCommand->Execute(_T("SELECT BracketID, Name, MaxClans, CurrentRound, Status, ISNULL(WinnerClanID, 0), ISNULL(WinnerClanName, '') FROM KO_LOG.dbo._MK_BRACKET_TOURNAMENT WHERE Status IN ('REGISTRATION', 'ACTIVE')"))) {
+		return false;
+	}
+
+	while (dbCommand->MoveNext()) {
+		_BRACKET_INFO_ROW row;
+		int32 bid = 0;
+		uint8 mc = 0, cr = 0;
+		int16 wcl = 0;
+		char name[64] = {0}, st[32] = {0}, wname[64] = {0};
+
+		dbCommand->FetchInt32(1, bid);
+		dbCommand->FetchString(2, name, sizeof(name));
+		dbCommand->FetchByte(3, mc);
+		dbCommand->FetchByte(4, cr);
+		dbCommand->FetchString(5, st, sizeof(st));
+		dbCommand->FetchInt16(6, wcl);
+		dbCommand->FetchString(7, wname, sizeof(wname));
+
+		row.bracketID = bid;
+		row.name = name;
+		row.maxClans = mc;
+		row.currentRound = cr;
+		row.status = st;
+		row.winnerClanID = (uint16)wcl;
+		row.winnerClanName = wname;
+		outRows.push_back(row);
+	}
+	return true;
+}
+
+// 8v8 uye sil — direkt DELETE (klan lideri yanlis ekledigini geri alir)
+// MATRIX SP'si yok, dogrudan SQL: BracketID + ClanID + MemberCharName ile filtre.
+// Returns: true=sildi (1+ row), false=hata veya yok
+bool CDBAgent::BracketPartyMemberDelete(int32_t bracketID, uint16 clanID,
+                                        const std::string& memberCharName)
+{
+	int32 pBracketID = bracketID;
+	int16 pClanID = (int16)clanID;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, memberCharName.c_str(), memberCharName.length());
+
+	return dbCommand->Execute(_T("DELETE FROM KO_LOG.dbo._MK_BRACKET_PARTY_MEMBERS WHERE BracketID = ? AND ClanID = ? AND MemberCharName = ?"));
+}
+
 // S115 BUG #2 FIX — RAM cache fill (Bracket mac listesi)
 // SELECT _MK_BRACKET_MATCHES WHERE BracketID = ? ORDER BY RoundNumber, MatchOrder
 bool CDBAgent::BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows)

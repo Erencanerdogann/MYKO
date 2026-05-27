@@ -1644,6 +1644,7 @@ public:
 	COMMAND_HANDLER(HandleBracketRegisterCommand);        // S115 — Bracket kayit (klan lideri)
 	COMMAND_HANDLER(HandleBracket8v8AddCommand);          // S115 FAZ 12 — 8v8 uye ekle
 	COMMAND_HANDLER(HandleBracket8v8ListCommand);         // S115 FAZ 12 — 8v8 liste
+	COMMAND_HANDLER(HandleBracket8v8DelCommand);          // S115 FAZ 12 — 8v8 uye sil
 	COMMAND_HANDLER(HandleSpectateCommand);               // S115 FAZ 14 — Spectator mode
 	COMMAND_HANDLER(HandleKlanSponsorCommand);            // S115 FAZ 15 — Klan Noah sponsor
 	COMMAND_HANDLER(HandleKlanSponsorNPCommand);          // S115 FAZ 15 — Klan NP sponsor

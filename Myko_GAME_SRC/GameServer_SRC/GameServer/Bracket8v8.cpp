@@ -9,7 +9,7 @@
 // Komutlar (chat, klan lideri):
 //   +bracket8v8add  <BracketID> <Nick> [PartyNum]   — uye ekle (default party=1)
 //   +bracket8v8list <BracketID>                     — atanmis uyeler
-//   +bracket8v8del  <BracketID> <Nick>              — uye sil (su an pasif, DB SP yok)
+//   +bracket8v8del  <BracketID> <Nick>              — uye sil (lider, direkt DELETE)
 //
 // PG temiz: WIZ_CHAT, yeni opcode YOK.
 // =========================================================================
@@ -28,13 +28,10 @@
 //   4) Klan dogru ve MATRIX SP'si APPLY edildiyse: party member listesinde mi?
 //      Listede ise izin ver, degilse = lider eklemedi, izin VERME.
 //
-// fail-open tasarim: BracketPartyMemberCheck false dondugunde 2 sebep olabilir:
-//   (a) MATRIX SP henuz APPLY edilmedi (acilis oncesi gecici)
-//   (b) Lider gercekten eklemedi (asil senaryo)
-//   Ikisini ayirt etmek icin g_bracket_party_check_failed_once flag'i ile bir
-//   kerelik uyari log'la, sonra defansif olarak TRUE don (acilis maclarini
-//   bozmamak icin). MATRIX 108b APPLY edildiginde SP basarili calisir, filtre
-//   aktif olur. Defansif tasarim — patron lokal test edip MATRIX'i bekliyor.
+// fail-open tasarim: BracketPartyMemberList bos donerse (lider hic uye eklememis)
+// = fallback, herkes girer. Lider en az 1 uye eklemisse filtre aktif, sadece
+// listedekiler girer. DB hatasi durumunda da fail-open (log uyari).
+// MATRIX migration 108 + 108b APPLY edildi, SP'ler canli.
 //
 // Returns: true=giris izinli, false=giris engelli
 // =========================================================================
@@ -148,6 +145,46 @@ COMMAND_HANDLER(CUser::HandleBracket8v8AddCommand)
 	} else {
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
 			"[8v8] Hata: %s (bracket %d).", result.c_str(), bracketID);
+	}
+
+	std::string msg = buf;
+	Packet pkt;
+	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
+	Send(&pkt);
+	return true;
+}
+
+// +bracket8v8del <BracketID> <Nick> — klan lideri yanlis ekledigini siler
+COMMAND_HANDLER(CUser::HandleBracket8v8DelCommand)
+{
+	if (!isInClan()) {
+		g_pMain->SendHelpDescription(this, "Klan uyesi olmalisin.");
+		return true;
+	}
+	if (!isClanLeader()) {
+		g_pMain->SendHelpDescription(this, "Sadece klan lideri uye silebilir.");
+		return true;
+	}
+	if (vargs.size() < 2) {
+		g_pMain->SendHelpDescription(this,
+			"+bracket8v8del <BracketID> <Nick>. Ornek: +bracket8v8del 1 Erencan");
+		return true;
+	}
+
+	int32_t bracketID = SafeAtoi(vargs.front(), 0, 0x7FFFFFFF);
+	vargs.pop_front();
+	std::string nick = vargs.front();
+
+	bool ok = g_DBAgent.BracketPartyMemberDelete(bracketID, GetClanID(), nick);
+
+	char buf[200] = { 0 };
+	if (ok) {
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[8v8] %s bracket %d listesinden silindi.",
+			nick.c_str(), bracketID);
+	} else {
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[8v8] Silme hata (bracket %d, %s). DB baglantisi?", bracketID, nick.c_str());
 	}
 
 	std::string msg = buf;
