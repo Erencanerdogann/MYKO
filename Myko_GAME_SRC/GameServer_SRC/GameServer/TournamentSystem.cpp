@@ -124,6 +124,55 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	Packet pkt;
 	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
 	g_pMain->Send_All(&pkt);
+
+	// S115 TUR 5 — MVP hesapla + ekstra odul
+	if (!info->killCountByUser.empty())
+	{
+		uint16 mvpUserID = 0;
+		uint16 mvpKills  = 0;
+		for (auto& it : info->killCountByUser)
+		{
+			if (it.second > mvpKills)
+			{
+				mvpKills = it.second;
+				mvpUserID = it.first;
+			}
+		}
+
+		if (mvpUserID > 0 && mvpKills > 0)
+		{
+			CUser* pMVP = g_pMain->GetUserPtr(mvpUserID);
+			if (pMVP != nullptr && pMVP->isInGame())
+			{
+				// MVP odul: +2M gold + 500 NP
+				pMVP->GoldGain(2000000);
+				pMVP->SendLoyaltyChange("tournament_mvp", 500, false, false, false);
+
+				// Tum sunucuya MVP duyurusu
+				char mvpBuf[200] = { 0 };
+				_snprintf_s(mvpBuf, sizeof(mvpBuf), _TRUNCATE,
+					"[CLAN WAR %s] MVP: %s (%u kill) — +2M Noah +500 NP",
+					zoneName, pMVP->GetName().c_str(), mvpKills);
+				std::string mvpMsg = mvpBuf;
+				Packet mvpPkt;
+				ChatPacket::Construct(&mvpPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &mvpMsg);
+				g_pMain->Send_All(&mvpPkt);
+			}
+		}
+	}
+
+	// First Blood duyuru (sonuc ile birlikte hatirlat)
+	if (info->firstBloodUserID > 0 && !info->firstBloodUserName.empty())
+	{
+		char fbBuf[160] = { 0 };
+		_snprintf_s(fbBuf, sizeof(fbBuf), _TRUNCATE,
+			"[CLAN WAR %s] First Blood: %s",
+			zoneName, info->firstBloodUserName.c_str());
+		std::string fbMsg = fbBuf;
+		Packet fbPkt;
+		ChatPacket::Construct(&fbPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &fbMsg);
+		g_pMain->Send_All(&fbPkt);
+	}
 }
 
 // S115 Plan A — Helper: Tek zone tournament timer adımı
@@ -258,6 +307,36 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 		TournamentInfo->aTournamentScoreBoard[0]++;
 	else
 		TournamentInfo->aTournamentScoreBoard[1]++;
+
+	// S115 TUR 5 — MVP tracking (her oyuncunun kill sayisi)
+	uint16 killerUserID = pUser->GetID();
+	TournamentInfo->killCountByUser[killerUserID]++;
+
+	// S115 TUR 5 — First Blood (ilk kan)
+	if (TournamentInfo->firstBloodUserID == 0)
+	{
+		TournamentInfo->firstBloodUserID = killerUserID;
+		TournamentInfo->firstBloodUserName = pUser->GetName();
+
+		// Tournament zone'una duyuru
+		const char* zoneName =
+			(TournamentInfo->aTournamentZoneID == 77) ? "Ardream"   :
+			(TournamentInfo->aTournamentZoneID == 78) ? "Ronark"    :
+			(TournamentInfo->aTournamentZoneID == 96) ? "PartyVs-1" :
+			(TournamentInfo->aTournamentZoneID == 97) ? "PartyVs-2" :
+			(TournamentInfo->aTournamentZoneID == 98) ? "PartyVs-3" :
+			(TournamentInfo->aTournamentZoneID == 99) ? "PartyVs-4" : "?";
+		char fbBuf[160] = { 0 };
+		_snprintf_s(fbBuf, sizeof(fbBuf), _TRUNCATE,
+			"[CLAN WAR %s] FIRST BLOOD: %s!", zoneName, pUser->GetName().c_str());
+		std::string fbMsg = fbBuf;
+		Packet fbPkt;
+		ChatPacket::Construct(&fbPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &fbMsg);
+		Send_Zone(&fbPkt, TournamentInfo->aTournamentZoneID);
+
+		// First Blood odulu (+100k gold)
+		pUser->GoldGain(100000);
+	}
 
 	// Score + Timer paketi yayinla (helper kullan)
 	SendTournamentScorePacket(TournamentInfo);

@@ -3498,6 +3498,11 @@ struct _TOURNAMENT_DATA
 	bool aTournamentisStarted;
 	bool aTournamentisFinished;
 
+	// S115 TUR 5 — MVP + First Blood tracking
+	std::map<uint16, uint16> killCountByUser;  // key=userID, value=kill sayisi (MVP icin)
+	uint16 firstBloodUserID;                   // ilk kani alan oyuncu (0 = henuz yok)
+	std::string firstBloodUserName;            // ilk kani alan oyuncu adi (cache)
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3516,6 +3521,9 @@ struct _TOURNAMENT_DATA
 		aTournamentisAttackable = false;
 		aTournamentisStarted = false;
 		aTournamentisFinished = false;
+		killCountByUser.clear();
+		firstBloodUserID = 0;
+		firstBloodUserName.clear();
 	}
 };
 
