@@ -1288,8 +1288,138 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentClose)
 	return true;
 }
 
+// S115 v2.8 — Plan A: Clan Tournament acma komutu
+// Kullanim: /tournamentstart RedClanName BlueClanName ZoneID DurationMinutes
+//   ZoneID = 77 (Ardream) / 78 (Ronark) / 96-99 (Party Vs 1-4)
+//   Duration = 1-60 dakika
+// Ornek:    /tournamentstart MalaysiaKO PvPLords 77 30
 COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 {
+	if (vargs.size() < 4)
+	{
+		printf("Using: /tournamentstart RedClanName BlueClanName ZoneID DurationMinutes\n");
+		printf("  ZoneID: 77=Ardream 78=Ronark 96-99=PartyVs1-4\n");
+		printf("  Duration: 1-60 minutes\n");
+		return true;
+	}
+
+	std::string RedClanName  = vargs.front(); vargs.pop_front();
+	std::string BlueClanName = vargs.front(); vargs.pop_front();
+	uint8  zoneID   = SafeAtoi(vargs.front(), 0, 255); vargs.pop_front();
+	uint16 duration = SafeAtoi(vargs.front(), 1, 60);  vargs.pop_front();
+
+	// Zone validasyonu
+	bool validZone = (zoneID == 77 || zoneID == 78 ||
+	                  zoneID == 96 || zoneID == 97 ||
+	                  zoneID == 98 || zoneID == 99);
+	if (!validZone)
+	{
+		printf("Error: Invalid Tournament Zone(%d). Valid: 77/78/96/97/98/99\n", zoneID);
+		return true;
+	}
+
+	// Klan adi validasyonu
+	if (RedClanName.empty() || RedClanName.size() > 21)
+	{
+		printf("Error: RedClanName empty or > 21 chars\n");
+		return true;
+	}
+	if (BlueClanName.empty() || BlueClanName.size() > 21)
+	{
+		printf("Error: BlueClanName empty or > 21 chars\n");
+		return true;
+	}
+	if (RedClanName == BlueClanName)
+	{
+		printf("Error: Two clan names are the same\n");
+		return true;
+	}
+
+	// Duration validasyonu
+	if (duration < 1 || duration > 60)
+	{
+		printf("Error: Invalid Duration(%d). Must be 1-60 minutes\n", duration);
+		return true;
+	}
+
+	// Zone'da aktif tournament var mi?
+	if (g_pMain->m_ClanVsDataList.GetData(zoneID) != nullptr)
+	{
+		printf("Error: Tournament already active in Zone(%d). Close it first with /tournamentclose\n", zoneID);
+		return true;
+	}
+
+	// Klanlari DB'den bul (Close komutuyla ayni mantik)
+	CKnights *pRedClan = nullptr, *pBlueClan = nullptr;
+	g_pMain->m_KnightsArray.m_lock.lock();
+	foreach_stlmap_nolock(itr, g_pMain->m_KnightsArray)
+	{
+		if (itr->second == nullptr)
+			continue;
+
+		if (!itr->second->GetName().compare(RedClanName))
+			pRedClan = itr->second;
+
+		if (!itr->second->GetName().compare(BlueClanName))
+			pBlueClan = itr->second;
+	}
+	g_pMain->m_KnightsArray.m_lock.unlock();
+
+	if (pRedClan == nullptr)
+	{
+		printf("Error: Red clan not found: %s\n", RedClanName.c_str());
+		return true;
+	}
+	if (pBlueClan == nullptr)
+	{
+		printf("Error: Blue clan not found: %s\n", BlueClanName.c_str());
+		return true;
+	}
+
+	// _TOURNAMENT_DATA olustur (RAM'de cache)
+	_TOURNAMENT_DATA *pData = new _TOURNAMENT_DATA();
+	pData->aTournamentZoneID         = zoneID;
+	pData->aTournamentClanNum[0]     = pRedClan->GetID();
+	pData->aTournamentClanNum[1]     = pBlueClan->GetID();
+	pData->aTournamentScoreBoard[0]  = 0;
+	pData->aTournamentScoreBoard[1]  = 0;
+	pData->aTournamentTimer          = (uint32)duration * 60; // dakika -> saniye
+	pData->aTournamentMonumentKilled = 0;
+	pData->aTournamentOutTimer       = 0;
+	pData->aTournamentisAttackable   = true;
+	pData->aTournamentisStarted      = true;
+	pData->aTournamentisFinished     = false;
+
+	// Thread-safe insert (CSTLMap recursive_mutex korumali)
+	if (!g_pMain->m_ClanVsDataList.PutData(zoneID, pData))
+	{
+		delete pData;
+		printf("Error: PutData failed for Zone(%d)\n", zoneID);
+		return true;
+	}
+
+	// Sunucu duyurusu (tum oyunculara)
+	Packet result;
+	std::string notice;
+	GetServerResource(IDS_CLAN_WAR_NOTICE, &notice, 2,
+		pRedClan->GetName().c_str());
+	ChatPacket::Construct(&result, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
+	Send_All(&result);
+
+	result.clear();
+	GetServerResource(IDS_CLAN_WAR_NOTICE, &notice, 2,
+		pBlueClan->GetName().c_str());
+	ChatPacket::Construct(&result, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
+	Send_All(&result);
+
+	printf("===========================================================\n");
+	printf("Tournament STARTED!\n");
+	printf("  Zone:     %d\n", zoneID);
+	printf("  Red:      %s (ID %d)\n", pRedClan->GetName().c_str(),  pRedClan->GetID());
+	printf("  Blue:     %s (ID %d)\n", pBlueClan->GetName().c_str(), pBlueClan->GetID());
+	printf("  Duration: %d minutes (%d seconds)\n", duration, duration * 60);
+	printf("===========================================================\n");
+
 	return true;
 }
 
