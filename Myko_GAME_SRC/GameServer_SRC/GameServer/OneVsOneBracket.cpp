@@ -74,6 +74,10 @@ COMMAND_HANDLER(CGameServerDlg::HandleOneVsOneCancelCommand)
 // +1v1reg BID
 COMMAND_HANDLER(CUser::HandleOneVsOneRegCommand)
 {
+	if (isDead()) {
+		g_pMain->SendHelpDescription(this, "Olu iken 1v1 bracket kayit yapamazsin.");
+		return true;
+	}
 	if (vargs.empty()) {
 		g_pMain->SendHelpDescription(this, "+1v1reg BID. Ornek: +1v1reg 1");
 		return true;

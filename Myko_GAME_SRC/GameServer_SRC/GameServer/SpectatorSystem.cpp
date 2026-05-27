@@ -56,9 +56,11 @@ COMMAND_HANDLER(CUser::HandleSpectateCommand)
 
 	// Cikis
 	if (arg == "exit" || arg == "cikis" || arg == "out") {
+		if (!IsUserSpectator(GetID())) {
+			g_pMain->SendHelpDescription(this, "Zaten spectator degilsin.");
+			return true;
+		}
 		RemoveSpectator(GetID());
-		// ABNORMAL_INVISIBLE'i kaldir (basit)
-		// TODO: zaten degildiyse state korumali
 		ZoneChange(ZONE_MORADON, 905.0f, 870.0f); // moradon'a at
 		g_pMain->SendHelpDescription(this, "Spectator modundan ciktin.");
 		return true;

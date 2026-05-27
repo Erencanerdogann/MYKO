@@ -362,13 +362,27 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 		printf("[BRACKET] FINISHED: BracketID=%d Champion=%u (%s)\n",
 			b->bracketID, championClanID, b->winnerClanName.c_str());
 
+		// BUG #7 FIX: Final mac (en yuksek round) → kaybeden klan
+		// `m` parametre matchID ile FindMatch'ten geldi, bu son biten mac (Final olabilir)
+		// Guvenli: en yuksek round'daki maca bak
+		uint8 maxRound = 0;
+		_BRACKET_MATCH_INFO* finalMatch = nullptr;
+		for (auto& mm : b->matches) {
+			if (mm.round > maxRound) {
+				maxRound = mm.round;
+				finalMatch = &mm;
+			}
+		}
+
 		DistributeBracketRewards(b->bracketID, championClanID, "CHAMPION");
-		// 2. yari finalde elenenler RUNNER_UP (final kaybedeni)
-		// Su an basit: kazanan CHAMPION, kaybeden RUNNER_UP
-		// Final mac'inde kaybeden klan ID
-		uint16 finalLoserClanID = (m->redClanID == championClanID) ? m->blueClanID : m->redClanID;
-		if (finalLoserClanID > 0 && finalLoserClanID != championClanID) {
-			DistributeBracketRewards(b->bracketID, finalLoserClanID, "RUNNER_UP");
+
+		if (finalMatch != nullptr) {
+			uint16 finalLoserClanID = (finalMatch->redClanID == championClanID)
+				? finalMatch->blueClanID
+				: finalMatch->redClanID;
+			if (finalLoserClanID > 0 && finalLoserClanID != championClanID) {
+				DistributeBracketRewards(b->bracketID, finalLoserClanID, "RUNNER_UP");
+			}
 		}
 	}
 }

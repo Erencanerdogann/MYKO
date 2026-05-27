@@ -1354,6 +1354,16 @@ void CGameServerDlg::GameEventMainTimer()
 		extern void TournamentScheduleTimer();
 		TournamentScheduleTimer();
 	}
+	{
+		// S115 FAZ 13 — Crystal CTF timer (30dk mac kapanmasi)
+		extern void CTFTimer();
+		CTFTimer();
+	}
+	{
+		// S115 — Bracket auto-start (DependsOnMatch + WALKOVER kontrol)
+		extern void BracketAutoStartTimer();
+		BracketAutoStartTimer();
+	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();
 	ChaosStoneRespawnTimer();
