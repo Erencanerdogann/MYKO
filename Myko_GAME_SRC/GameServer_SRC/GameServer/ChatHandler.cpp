@@ -1398,17 +1398,24 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 		return true;
 	}
 
-	// Sunucu duyurusu (tum oyunculara)
-	Packet result;
-	std::string notice;
-	GetServerResource(IDS_CLAN_WAR_NOTICE, &notice, 2,
-		pRedClan->GetName().c_str());
-	ChatPacket::Construct(&result, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
-	Send_All(&result);
+	// Sunucu duyurusu (tum oyunculara) — sade chat, SERVER_RESOURCE bug yok
+	// IDS_CLAN_WAR_NOTICE (275) "winner" mesaji oldugu icin acilis icin uygun degil
+	const char* zoneName =
+		(zoneID == 77) ? "Ardream"   :
+		(zoneID == 78) ? "Ronark"    :
+		(zoneID == 96) ? "PartyVs-1" :
+		(zoneID == 97) ? "PartyVs-2" :
+		(zoneID == 98) ? "PartyVs-3" :
+		(zoneID == 99) ? "PartyVs-4" : "?";
 
-	result.clear();
-	GetServerResource(IDS_CLAN_WAR_NOTICE, &notice, 2,
-		pBlueClan->GetName().c_str());
+	char buf[256] = { 0 };
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+		"[CLAN WAR] %s (Red) vs %s (Blue) - %s Zone - %u minutes! Get ready!",
+		pRedClan->GetName().c_str(), pBlueClan->GetName().c_str(),
+		zoneName, (unsigned)duration);
+
+	std::string notice = buf;
+	Packet result;
 	ChatPacket::Construct(&result, (uint8)ChatType::WAR_SYSTEM_CHAT, &notice);
 	Send_All(&result);
 
