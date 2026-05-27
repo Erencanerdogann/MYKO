@@ -1306,7 +1306,26 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentClose)
 
 	if (TournamentClanInfo != nullptr)
 	{
-		// S115 Plan A B6 fix: Moradon (21) hedef + Nation::ALL (herkes)
+		// S115 SAGLAMLIK FIX: Manuel close'da da temizlik yapilmali (yoksa bet havuzu kaybolur, DB log ACTIVE kalir)
+
+		// 1. Bet havuzu iade (tournament tamamlanmadan kapatildi)
+		{
+			extern void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID);
+			ResolveTournamentBets(TournamentStartZoneID, 0); // winner=0 -> iade
+		}
+
+		// 2. DB log FINISH (Status=FINISHED, score=mevcut, winner=NULL)
+		if (TournamentClanInfo->dbTournamentID > 0)
+		{
+			g_DBAgent.TournamentLogFinish(
+				TournamentClanInfo->dbTournamentID,
+				TournamentClanInfo->aTournamentScoreBoard[0],
+				TournamentClanInfo->aTournamentScoreBoard[1],
+				TournamentClanInfo->aTournamentMonumentKilled,
+				0); // winnerClanID=0 (manuel close, kazanan yok)
+		}
+
+		// 3. Kick out + delete
 		KickOutZoneUsers(TournamentStartZoneID, ZONE_MORADON, (uint8)Nation::ALL);
 		g_pMain->m_ClanVsDataList.DeleteData(TournamentStartZoneID);
 	}

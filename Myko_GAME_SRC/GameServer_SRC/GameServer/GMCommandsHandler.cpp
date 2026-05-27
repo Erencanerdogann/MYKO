@@ -3237,9 +3237,24 @@ COMMAND_HANDLER(CUser::HandleTournamentCloseUserCommand)
 		return true;
 	}
 
+	// S115 SAGLAMLIK FIX: Manuel close'da temizlik (bet iade + DB log FINISH)
+	{
+		extern void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID);
+		ResolveTournamentBets(zoneID, 0); // iade
+	}
+	if (info->dbTournamentID > 0)
+	{
+		g_DBAgent.TournamentLogFinish(
+			info->dbTournamentID,
+			info->aTournamentScoreBoard[0],
+			info->aTournamentScoreBoard[1],
+			info->aTournamentMonumentKilled,
+			0); // winnerClanID=0
+	}
+
 	g_pMain->KickOutZoneUsers(zoneID, ZONE_MORADON, (uint8)Nation::ALL);
 	g_pMain->m_ClanVsDataList.DeleteData(zoneID);
-	g_pMain->SendHelpDescription(this, "Tournament kapatildi");
+	g_pMain->SendHelpDescription(this, "Tournament kapatildi (bet iade, DB log)");
 	return true;
 }
 #pragma endregion
