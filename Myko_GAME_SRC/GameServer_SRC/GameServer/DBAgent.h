@@ -157,6 +157,17 @@ public:
 		int32_t dependsOnMatch1;
 	};
 	bool    BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows);
+
+	// S115 FAZ 13 — Crystal CTF DB (MATRIX migration 110)
+	int32_t CTFStart(uint8 zoneID, uint16 redClanID, const std::string& redName,
+	                 uint16 blueClanID, const std::string& blueName);
+	bool    CTFFinish(int32_t ctfID, uint16 winnerClanID, uint8 redScore, uint8 blueScore);
+	bool    CTFFlagLog(int32_t ctfID, int32_t userID, const std::string& userName,
+	                   const std::string& action);
+
+	// S115 FAZ 15 — Klan Sponsorlugu DB (MATRIX migration 111)
+	int32_t ClanSponsorDeposit(uint16 clanID, int32_t userID, const std::string& userName,
+	                           int64_t noahAmount, int32_t npAmount);
 	bool UpdateUserReturnData(std::string & strCharID, CUser *pUser);
 	bool LoadChaosStoneFamilyStage();
 	bool LoadQuestData(std::string & strCharID, CUser *pUser);

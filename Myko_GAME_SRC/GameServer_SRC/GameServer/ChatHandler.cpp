@@ -88,6 +88,8 @@ void CGameServerDlg::InitServerCommands()
 		{ "bracketstart",		&CGameServerDlg::HandleBracketStartCommand,			"Bracket baslat. Ornek: /bracketstart 1" },
 		{ "bracketstatus",		&CGameServerDlg::HandleBracketStatusCommand,		"Bracket durumu. Ornek: /bracketstatus 1" },
 		{ "bracketcancel",		&CGameServerDlg::HandleBracketCancelCommand,		"Bracket iptal. Ornek: /bracketcancel 1" },
+		{ "ctfstart",			&CGameServerDlg::HandleCTFStartCommand,				"Crystal CTF basla. Ornek: /ctfstart RED BLUE 96" },
+		{ "ctfclose",			&CGameServerDlg::HandleCTFCloseCommand,				"Crystal CTF kapat. Ornek: /ctfclose 96" },
 		{ "chaosopen",			&CGameServerDlg::HandleChaosExpansionOpen,			"Chaos Event başlatır - Open is Chaos Expansion" },
 		{ "borderopen",			&CGameServerDlg::HandleBorderDefenceWar,			"BDW Event Başlatır - Open is Border Defence War" },
 		{ "juraidopen",			&CGameServerDlg::HandleJuraidMountain,				"JR Event Başlatır - Open is Juraid Mountain" },

@@ -6172,3 +6172,95 @@ bool CDBAgent::BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_
 	}
 	return true;
 }
+
+// =====================================================================
+// S115 FAZ 13 — Crystal CTF DB (MATRIX migration 110_crystal_ctf_db)
+// =====================================================================
+int32_t CDBAgent::CTFStart(uint8 zoneID, uint16 redClanID, const std::string& redName,
+                            uint16 blueClanID, const std::string& blueName)
+{
+	uint8 pZoneID = zoneID;
+	int16 pRedClanID = (int16)redClanID;
+	int16 pBlueClanID = (int16)blueClanID;
+	int32 pCTFID = 0;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRedClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, redName.c_str(), redName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBlueClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, blueName.c_str(), blueName.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pCTFID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_CTF_START(?, ?, ?, ?, ?, ?)}"))) {
+		return 0;
+	}
+	while (dbCommand->MoveNext()) {}
+	return pCTFID;
+}
+
+bool CDBAgent::CTFFinish(int32_t ctfID, uint16 winnerClanID, uint8 redScore, uint8 blueScore)
+{
+	int32 pCTFID = ctfID;
+	int16 pWinner = (int16)winnerClanID;
+	uint8 pRed = redScore;
+	uint8 pBlue = blueScore;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pCTFID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pWinner);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRed);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBlue);
+
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_CTF_FINISH(?, ?, ?, ?)}"));
+}
+
+bool CDBAgent::CTFFlagLog(int32_t ctfID, int32_t userID, const std::string& userName,
+                          const std::string& action)
+{
+	int32 pCTFID = ctfID;
+	int32 pUserID = userID;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pCTFID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pUserID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, userName.c_str(), userName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, action.c_str(), action.length());
+
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_CTF_FLAG_PICKUP(?, ?, ?, ?)}"));
+}
+
+// =====================================================================
+// S115 FAZ 15 — Klan Sponsorlugu DB (MATRIX migration 111_clan_sponsorship)
+// =====================================================================
+int32_t CDBAgent::ClanSponsorDeposit(uint16 clanID, int32_t userID, const std::string& userName,
+                                      int64_t noahAmount, int32_t npAmount)
+{
+	int16 pClanID = (int16)clanID;
+	int32 pUserID = userID;
+	int64 pNoah = noahAmount;
+	int32 pNP = npAmount;
+	int32 pNewSponsorID = 0;
+
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pUserID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, userName.c_str(), userName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pNoah);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pNP);
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pNewSponsorID);
+
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_CLAN_SPONSOR_DEPOSIT(?, ?, ?, ?, ?, ?)}"))) {
+		return 0;
+	}
+	while (dbCommand->MoveNext()) {}
+	return pNewSponsorID;
+}

@@ -1390,6 +1390,8 @@ public:
 	COMMAND_HANDLER(HandleBracketStartCommand);
 	COMMAND_HANDLER(HandleBracketStatusCommand);
 	COMMAND_HANDLER(HandleBracketCancelCommand);
+	COMMAND_HANDLER(HandleCTFStartCommand);                // S115 FAZ 13 — Crystal CTF
+	COMMAND_HANDLER(HandleCTFCloseCommand);                // S115 FAZ 13
 	COMMAND_HANDLER(Handleunbannedcommand);
 	COMMAND_HANDLER(Handlebannedcommand);
 
