@@ -124,12 +124,26 @@ void TournamentScheduleTimer()
 			continue;
 		}
 
-		// TODO: Otomatik HandleTournamentStart cagri
-		// Su an iskelet — ConsoleCommand::Process("tournamentstart Red Blue Zone Duration") yontemi var
-		// veya direkt _TOURNAMENT_DATA olustur + PutData
-		printf("[TOURNAMENT_SCHEDULE] WOULD TRIGGER: Zone=%d Red=%s Blue=%s Duration=%d\n",
+		// Otomatik HandleTournamentStart cagri — GM olarak elden tetiklemis gibi
+		// vargs = [RedClanName, BlueClanName, ZoneID, DurationMinutes]
+		CommandArgs vargs;
+		vargs.push_back(entry.redClanName);
+		vargs.push_back(entry.blueClanName);
+		char tmpZone[8] = {0}, tmpDur[8] = {0};
+		_snprintf_s(tmpZone, sizeof(tmpZone), _TRUNCATE, "%u", entry.zoneID);
+		_snprintf_s(tmpDur,  sizeof(tmpDur),  _TRUNCATE, "%u", entry.durationMinutes);
+		vargs.push_back(tmpZone);
+		vargs.push_back(tmpDur);
+
+		printf("[TOURNAMENT_SCHEDULE] AUTO-TRIGGER: Zone=%d Red=%s Blue=%s Duration=%d\n",
 			entry.zoneID, entry.redClanName.c_str(),
 			entry.blueClanName.c_str(), entry.durationMinutes);
+
+		// Cagri (g_pMain->HandleTournamentStart, ChatHandler.cpp:1369 mantigi)
+		// args ve description parametre olarak kullanilmiyor (logging amacli), bos verebilir
+		const char* dummyArgs = "scheduled_auto";
+		const char* dummyDesc = "Auto-schedule trigger";
+		g_pMain->HandleTournamentStart(vargs, dummyArgs, dummyDesc);
 
 		entry.lastTriggered = now;
 	}

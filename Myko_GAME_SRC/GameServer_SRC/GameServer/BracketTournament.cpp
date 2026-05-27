@@ -214,9 +214,10 @@ bool StartBracket(int32_t bracketID)
 	printf("[BRACKET] Started: BracketID=%d (Round 1, %zu mac RAM)\n",
 		bracketID, b->matches.size());
 
-	// TODO acilis sonrasi: ilk 6 mac'i otomatik /tournamentstart ile baslat (DependsOnMatch1=NULL olanlar)
-	// Su an manuel GM tetiklemesiyle calisir (her mac icin /tournamentstart cagrı)
-
+	// NOT: ilk 6 mac (Round 1, DependsOnMatch1=0 olanlar) BracketAutoStartTimer
+	// tarafindan otomatik baslatilir (her saniye GameEventMainTimer'dan).
+	// Round 2/3/Final hooks OnBracketMatchFinish -> RefreshBracketMatches -> tekrar
+	// AutoStartTimer pickup ile zincir devam eder.
 	return true;
 }
 
