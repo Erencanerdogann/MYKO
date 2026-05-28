@@ -116,6 +116,8 @@ public:
 	                           const std::string& betClanName, int32_t betAmount);
 	bool    TournamentBetResolve(uint8 zoneID, uint16 winnerClanID);
 	bool    TournamentBetRefund(uint8 zoneID);
+	// S115 — oyuncu kendi bahsini iptal (DB Status=CANCELLED, direkt UPDATE)
+	bool    TournamentBetCancelUser(uint8 zoneID, const std::string& betterAccountID);
 
 	// S115 TUR 11 — Tournament Registration DB (MATRIX MSG:5907)
 	int32_t TournamentRegInsert(uint16 clanID, const std::string& clanName,

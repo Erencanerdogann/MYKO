@@ -5847,6 +5847,22 @@ bool CDBAgent::TournamentBetRefund(uint8 zoneID)
 	return true;
 }
 
+// S115 — oyuncu kendi bahsini iptal (direkt UPDATE, SP gerek yok)
+// ACTIVE durumdaki bahisleri CANCELLED yapar (oyuncu +bet cancel ile)
+bool CDBAgent::TournamentBetCancelUser(uint8 zoneID, const std::string& betterAccountID)
+{
+	uint8 pZoneID = zoneID;
+
+	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pZoneID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, betterAccountID.c_str(), betterAccountID.length());
+
+	// Status='ACTIVE' olan bu account+zone bahislerini CANCELLED yap
+	return dbCommand->Execute(_T("UPDATE KO_LOG.dbo._MK_TOURNAMENT_BETS SET Status = 'CANCELLED', ResolvedTime = GETDATE() WHERE ZoneID = ? AND BetterAccountID = ? AND Status = 'ACTIVE'"));
+}
+
 // =====================================================================
 // S115 TUR 11 — Tournament Registration DB (MATRIX MSG:5907 SP'leri)
 // =====================================================================
