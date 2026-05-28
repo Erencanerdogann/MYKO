@@ -147,6 +147,11 @@ bool StartPartyVsMatch(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
 	pData->participantType           = 1;  // PARTY
 	pData->aTournamentPartyNum[0]    = redPartyID;
 	pData->aTournamentPartyNum[1]    = bluePartyID;
+	// Bahis pool hesabi aTournamentClanNum okur (betClanID ile eslesir). Party ID'yi
+	// buraya da yaz -> bahis kodu party ID'yi "katilimci ID" olarak kullanir, ResolveTournamentBets
+	// party ID ile cozer, eslesme tutar. (+bet komutu FAZ 5'te party-aware olacak.)
+	pData->aTournamentClanNum[0]     = redPartyID;
+	pData->aTournamentClanNum[1]     = bluePartyID;
 	pData->aTournamentTimer          = (uint32)durationMin * 60;
 	pData->aTournamentisAttackable   = true;
 	pData->aTournamentisStarted      = true;
@@ -743,12 +748,29 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 	if (TournamentInfo->aTournamentTimer == 0)
 		return;
 
-	uint16 killerClan = pUser->GetClanID();
-	uint16 redClan    = TournamentInfo->aTournamentClanNum[0];
-	uint16 blueClan   = TournamentInfo->aTournamentClanNum[1];
+	// S115 — PARTY VS: party tipinde clan yerine PARTY ID ile takim belirle
+	bool isRedSide = false, isParticipant = false;
+	if (TournamentInfo->participantType == 1)
+	{
+		uint16 killerParty = (uint16)pUser->GetPartyID();
+		uint16 redParty    = TournamentInfo->aTournamentPartyNum[0];
+		uint16 blueParty   = TournamentInfo->aTournamentPartyNum[1];
+		if (killerParty == 0xFFFF)  // party'de degil (GetPartyID -1 = 0xFFFF)
+			return;
+		if (killerParty == redParty)       { isRedSide = true;  isParticipant = true; }
+		else if (killerParty == blueParty) { isRedSide = false; isParticipant = true; }
+	}
+	else
+	{
+		uint16 killerClan = pUser->GetClanID();
+		uint16 redClan    = TournamentInfo->aTournamentClanNum[0];
+		uint16 blueClan   = TournamentInfo->aTournamentClanNum[1];
+		if (killerClan == redClan)       { isRedSide = true;  isParticipant = true; }
+		else if (killerClan == blueClan) { isRedSide = false; isParticipant = true; }
+	}
 
-	// Katilimci klan disi (klansiz, GM, baska klan) ise score sayma, gec
-	if (killerClan != redClan && killerClan != blueClan)
+	// Katilimci disi (klansiz/partysiz, GM, baska takim) ise score sayma, gec
+	if (!isParticipant)
 		return;
 
 	// Kill cooldown: spam onlemi (5 saniye iki kill arasinda)
@@ -756,7 +778,7 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 		return;
 	pUser->m_nLastTournamentKillTime = (uint32)UNIXTIME;
 
-	if (killerClan == redClan)
+	if (isRedSide)
 		TournamentInfo->aTournamentScoreBoard[0]++;
 	else
 		TournamentInfo->aTournamentScoreBoard[1]++;
@@ -798,8 +820,6 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 	// Izleyici oyuncular Moradon'dan/diger zone'lardan tournament score'unu gorur
 	// PG kontrolu: WIZ_CHAT (sade chat), yeni opcode YOK ✅
 	{
-		CKnights* pRedClan  = GetClanPtr(redClan);
-		CKnights* pBlueClan = GetClanPtr(blueClan);
 		const char* zoneName =
 			(TournamentInfo->aTournamentZoneID == 77) ? "Ardream"   :
 			(TournamentInfo->aTournamentZoneID == 78) ? "Ronark"    :
@@ -808,14 +828,26 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 			(TournamentInfo->aTournamentZoneID == 98) ? "PartyVs-3" :
 			(TournamentInfo->aTournamentZoneID == 99) ? "PartyVs-4" : "?";
 
+		// Takim isimleri: party tipinde RED/BLUE, clan tipinde klan adi
+		std::string redLabel = "Red", blueLabel = "Blue";
+		const char* eventLabel = "CLAN WAR";
+		if (TournamentInfo->participantType == 1) {
+			redLabel = "RED Party"; blueLabel = "BLUE Party"; eventLabel = "PARTY VS";
+		} else {
+			CKnights* pRedClan  = GetClanPtr(TournamentInfo->aTournamentClanNum[0]);
+			CKnights* pBlueClan = GetClanPtr(TournamentInfo->aTournamentClanNum[1]);
+			if (pRedClan)  redLabel  = pRedClan->GetName();
+			if (pBlueClan) blueLabel = pBlueClan->GetName();
+		}
+
 		char buf[200] = { 0 };
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[CLAN WAR %s] %s %u - %u %s",
-			zoneName,
-			pRedClan  ? pRedClan->GetName().c_str()  : "Red",
+			"[%s %s] %s %u - %u %s",
+			eventLabel, zoneName,
+			redLabel.c_str(),
 			TournamentInfo->aTournamentScoreBoard[0],
 			TournamentInfo->aTournamentScoreBoard[1],
-			pBlueClan ? pBlueClan->GetName().c_str() : "Blue");
+			blueLabel.c_str());
 
 		std::string notice = buf;
 		Packet pkt;
