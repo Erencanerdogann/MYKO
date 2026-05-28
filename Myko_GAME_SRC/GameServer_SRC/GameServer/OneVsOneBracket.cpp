@@ -126,6 +126,41 @@ static void Refresh1v1Matches(_1V1_INFO* b)
 	printf("[1V1] RefreshMatches bid=%d %zu mac yuklendi\n", b->bid, b->matches.size());
 }
 
+// Public helper — tek bir bracket'i RAM'e ekle (poller create sonrasi cagrir)
+// Tum bracket listesini reload eden LoadOneVsOneBracketsFromDB yerine kullanim:
+// startTime sifirlanma sorununu onler (mevcut ACTIVE maclar bozulmaz).
+bool AddOneVsOneBracketToRAM(int32_t bid, const std::string& name,
+                              uint8 maxPlayers, const std::string& createdBy)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_1v1Lock);
+	// Mevcut mu? (idempotent)
+	if (Find1v1Bracket(bid) != nullptr) return true;
+
+	_1V1_INFO b;
+	b.bid = bid;
+	b.name = name;
+	b.maxPlayers = maxPlayers;
+	b.currentRound = 0;
+	b.status = "OPEN";
+	b.winnerUserID = 0;
+	g_1v1Brackets.push_back(b);
+	return true;
+}
+
+// Public helper — tek bracket'i STARTED yap + matches refresh
+// (LoadOneVsOneBracketsFromDB komple reload yerine sadece bu BID)
+bool StartOneVsOneBracketRAM(int32_t bid)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_1v1Lock);
+	_1V1_INFO* b = Find1v1Bracket(bid);
+	if (b == nullptr) return false;
+
+	b->status = "STARTED";
+	b->currentRound = 1;
+	Refresh1v1Matches(b);
+	return true;
+}
+
 // =====================================================================
 // LOAD — server init'de cagrilir (mevcut acik 1v1 bracket'lari RAM'e cek)
 // =====================================================================

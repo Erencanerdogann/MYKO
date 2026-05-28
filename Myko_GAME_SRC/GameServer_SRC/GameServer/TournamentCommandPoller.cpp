@@ -27,12 +27,17 @@
 
 // Forward declarations (BracketTournament.cpp + CTFSystem.cpp + others)
 extern int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM);
+extern bool RegisterClanToBracket(int32_t bracketID, uint16 clanID,
+                                   const std::string& clanName, const std::string& leaderName);
 extern bool StartBracket(int32_t bracketID);
 extern bool CancelBracket(int32_t bracketID);
 extern int32_t StartCTFMatch(uint8 zoneID, uint16 redClanID, const std::string& redName,
                               uint16 blueClanID, const std::string& blueName);
 extern void FinishCTFMatch(uint8 zoneID, uint16 winnerClanID);
 extern void LoadOneVsOneBracketsFromDB();
+extern bool AddOneVsOneBracketToRAM(int32_t bid, const std::string& name,
+                                     uint8 maxPlayers, const std::string& createdBy);
+extern bool StartOneVsOneBracketRAM(int32_t bid);
 
 // =====================================================================
 // HELPER — pipe-separated string split
@@ -175,7 +180,10 @@ static _CMD_RESULT ExecTournamentClose(const std::string& params)
 	ResolveTournamentBets(zoneID, 0);  // winner=0 -> iade
 
 	if (tInfo->dbTournamentID > 0) {
-		g_DBAgent.TournamentLogFinish(tInfo->dbTournamentID, zoneID, 0, 0, 0);
+		// Manuel kapanis — skor 0-0, monument 0, winner 0 (iptal/iade)
+		g_DBAgent.TournamentLogFinish(tInfo->dbTournamentID,
+			/*redScore*/0, /*blueScore*/0,
+			/*monumentKilled*/0, /*winnerClanID*/0);
 	}
 
 	g_pMain->KickOutZoneUsers(zoneID, ZONE_MORADON, (uint8)Nation::ALL);
@@ -218,9 +226,13 @@ static _CMD_RESULT ExecBracketReg(const std::string& params, const std::string& 
 	CKnights* pClan = FindClanByName(clanName);
 	if (pClan == nullptr) { r.status = "FAILED"; r.result = "Klan yok: " + clanName; return r; }
 
-	std::string spResult;
-	bool ok = g_DBAgent.BracketRegister(bracketID, pClan->GetID(), clanName, gmNick, spResult);
-	if (!ok) { r.status = "FAILED"; r.result = "BracketRegister: " + spResult; return r; }
+	// RegisterClanToBracket helper'i mevcut: RAM bracket kontrol + status REGISTRATION check + DB INSERT
+	bool ok = RegisterClanToBracket(bracketID, pClan->GetID(), clanName, gmNick);
+	if (!ok) {
+		r.status = "FAILED";
+		r.result = "BracketRegister fail (bracket yok/REGISTRATION disi/DB hata)";
+		return r;
+	}
 
 	char buf[200] = {0};
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bracket %d'e %s klani kayit oldu (manuel GM)",
@@ -311,8 +323,9 @@ static _CMD_RESULT ExecOneVsOneCreate(const std::string& params, const std::stri
 	int32_t bid = g_DBAgent.OneVsOneCreate(name, maxPlayers, gmNick);
 	if (bid <= 0) { r.status = "FAILED"; r.result = "OneVsOneCreate DB hata"; return r; }
 
-	// RAM reload (LoadOneVsOneBracketsFromDB)
-	LoadOneVsOneBracketsFromDB();
+	// Sadece bu BID'i RAM'e ekle (LoadOneVsOneBracketsFromDB komple reload yerine —
+	// mevcut ACTIVE maclar bozulmaz, startTime sifirlanma sorununu onler)
+	AddOneVsOneBracketToRAM(bid, name, maxPlayers, gmNick);
 
 	char buf[128] = {0};
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "1v1 Bracket olusturuldu: BID=%d Name=%s Max=%u",
@@ -333,9 +346,11 @@ static _CMD_RESULT ExecOneVsOneStart(const std::string& params)
 		return r;
 	}
 
-	// DB'de status STARTED yap (manuel UPDATE, SP yoksa fallback)
-	// LoadOneVsOneBracketsFromDB cagri yetiyor (SELECT'te STARTED dahil)
-	LoadOneVsOneBracketsFromDB();
+	// Sadece bu BID'i STARTED + matches refresh (komple reload yerine)
+	if (!StartOneVsOneBracketRAM(bid)) {
+		r.status = "FAILED"; r.result = "1v1 RAM'de bracket yok (Create + Start arasinda restart oldu mu?)";
+		return r;
+	}
 
 	char buf[128] = {0};
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "1v1 Bracket %d basladi (AutoStartTimer maclari teleport eder)", bid);
