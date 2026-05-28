@@ -1641,6 +1641,7 @@ public:
 	COMMAND_HANDLER(HandleTournamentCloseUserCommand);    // S115 Plan A — oyun ici GM
 	COMMAND_HANDLER(HandleTournamentBetCommand);          // S115 TUR 8 — Spectator Bet (tum oyuncu)
 	COMMAND_HANDLER(HandleBetStatusCommand);              // S115 RUSH — +betstatus aktif bahis durumu
+	COMMAND_HANDLER(HandleLeagueRegCommand);              // S115 lig — +leaguereg klan kayit
 	COMMAND_HANDLER(HandleTournamentRegCommand);          // S115 TUR 11 — Klan lideri kayit
 	COMMAND_HANDLER(HandleBracketRegisterCommand);        // S115 — Bracket kayit (klan lideri)
 	COMMAND_HANDLER(HandleBracket8v8AddCommand);          // S115 FAZ 12 — 8v8 uye ekle

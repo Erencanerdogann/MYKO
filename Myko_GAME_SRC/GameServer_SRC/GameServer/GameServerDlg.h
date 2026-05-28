@@ -1389,6 +1389,10 @@ public:
 	COMMAND_HANDLER(HandleBetWindowCommand);           // S115 ekonomi — /betwindow SANIYE
 	COMMAND_HANDLER(HandleBetCommissionCommand);       // S115 ekonomi — /betcommission YUZDE
 	COMMAND_HANDLER(HandleBetCancelCommand);           // S115 ekonomi — /betcancel ZONE
+	COMMAND_HANDLER(HandleLeagueCreateCommand);        // S115 lig — /leaguecreate
+	COMMAND_HANDLER(HandleLeagueStartCommand);         // S115 lig — /leaguestart
+	COMMAND_HANDLER(HandleLeagueStatusCommand);        // S115 lig — /leaguestatus
+	COMMAND_HANDLER(HandleLeagueCancelCommand);        // S115 lig — /leaguecancel
 
 	// S115 — Bracket Tournament GM komutlari (MATRIX MSG:5914 + CHIP Bracket Engine)
 	COMMAND_HANDLER(HandleBracketCreateCommand);

@@ -119,6 +119,38 @@ public:
 	// S115 — oyuncu kendi bahsini iptal (DB Status=CANCELLED, direkt UPDATE)
 	bool    TournamentBetCancelUser(uint8 zoneID, const std::string& betterAccountID);
 
+	// S115 — League (lig) round-robin DB (MATRIX migration 118)
+	int32_t LeagueCreate(const std::string& name, uint8 maxClans, const std::string& gm);
+	bool    LeagueRegister(int32_t leagueID, uint16 clanID, const std::string& clanName,
+	                       const std::string& leaderName, std::string& outResult);
+	bool    LeagueGenerateFixtures(int32_t leagueID);
+	bool    LeagueMatchFinish(int32_t matchID, uint16 redScore, uint16 blueScore, uint16 winnerClanID);
+	bool    LeagueCancel(int32_t leagueID);
+	struct _LEAGUE_INFO_ROW {
+		int32_t leagueID;
+		std::string name;
+		uint8   maxClans;
+		uint8   currentRound;
+		uint8   totalRounds;
+		std::string status;
+		uint16  winnerClanID;
+		std::string winnerClanName;
+	};
+	bool    LeagueLoadActive(std::vector<_LEAGUE_INFO_ROW>& outRows);
+	struct _LEAGUE_MATCH_ROW {
+		int32_t matchID;
+		uint8   roundNumber;
+		uint8   matchOrder;
+		uint16  redClanID;
+		uint16  blueClanID;
+		std::string redName;
+		std::string blueName;
+		uint8   zoneID;
+		std::string status;
+		uint16  winnerClanID;
+	};
+	bool    LeagueLoadMatches(int32_t leagueID, std::vector<_LEAGUE_MATCH_ROW>& outRows);
+
 	// S115 TUR 11 — Tournament Registration DB (MATRIX MSG:5907)
 	int32_t TournamentRegInsert(uint16 clanID, const std::string& clanName,
 	                            const std::string& leaderName, const std::string& leaderAccountID,

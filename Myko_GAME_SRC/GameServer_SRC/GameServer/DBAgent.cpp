@@ -6636,3 +6636,133 @@ bool CDBAgent::TournamentCommandUpdateResult(int32_t commandID,
 
 	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_TOURNAMENT_CMD_UPDATE_RESULT(?, ?, ?)}"));
 }
+
+// =====================================================================
+// S115 — League (lig) round-robin DB (MATRIX migration 118)
+// =====================================================================
+int32_t CDBAgent::LeagueCreate(const std::string& name, uint8 maxClans, const std::string& gm)
+{
+	uint8 pMax = maxClans;
+	int32 pLID = 0;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return 0;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, name.c_str(), name.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMax);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, gm.c_str(), gm.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, &pLID);
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_LEAGUE_CREATE(?, ?, ?, ?)}"))) return 0;
+	while (dbCommand->MoveNext()) {}
+	return pLID;
+}
+
+bool CDBAgent::LeagueRegister(int32_t leagueID, uint16 clanID, const std::string& clanName,
+                              const std::string& leaderName, std::string& outResult)
+{
+	int32 pLID = leagueID;
+	int16 pClanID = (int16)clanID;
+	char pResult[64] = {0};
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pLID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pClanID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, clanName.c_str(), clanName.length());
+	dbCommand->AddParameter(SQL_PARAM_INPUT, leaderName.c_str(), leaderName.length());
+	dbCommand->AddParameter(SQL_PARAM_OUTPUT, pResult, sizeof(pResult));
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_LEAGUE_REGISTER(?, ?, ?, ?, ?)}"))) {
+		outResult = "DB_ERROR";
+		return false;
+	}
+	while (dbCommand->MoveNext()) {}
+	outResult = pResult;
+	return (outResult == "OK");
+}
+
+bool CDBAgent::LeagueGenerateFixtures(int32_t leagueID)
+{
+	int32 pLID = leagueID;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pLID);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_LEAGUE_GENERATE_FIXTURES(?)}"));
+}
+
+bool CDBAgent::LeagueMatchFinish(int32_t matchID, uint16 redScore, uint16 blueScore, uint16 winnerClanID)
+{
+	int32 pMID = matchID;
+	int16 pRed = (int16)redScore, pBlue = (int16)blueScore, pWin = (int16)winnerClanID;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pMID);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRed);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBlue);
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pWin);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_LEAGUE_MATCH_FINISH(?, ?, ?, ?)}"));
+}
+
+bool CDBAgent::LeagueCancel(int32_t leagueID)
+{
+	int32 pLID = leagueID;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pLID);
+	return dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_LEAGUE_CANCEL(?)}"));
+}
+
+bool CDBAgent::LeagueLoadActive(std::vector<_LEAGUE_INFO_ROW>& outRows)
+{
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	if (!dbCommand->Execute(_T("SELECT LeagueID, Name, MaxClans, CurrentRound, TotalRounds, Status, ISNULL(WinnerClanID,0), ISNULL(WinnerClanName,'') FROM KO_LOG.dbo._MK_LEAGUE WHERE Status IN ('REGISTRATION','ACTIVE')"))) {
+		return false;
+	}
+	while (dbCommand->MoveNext()) {
+		_LEAGUE_INFO_ROW row;
+		int32 lid = 0; uint8 mc = 0, cr = 0, tr = 0; int16 wcl = 0;
+		char name[64] = {0}, st[32] = {0}, wname[64] = {0};
+		dbCommand->FetchInt32(1, lid);
+		dbCommand->FetchString(2, name, sizeof(name));
+		dbCommand->FetchByte(3, mc);
+		dbCommand->FetchByte(4, cr);
+		dbCommand->FetchByte(5, tr);
+		dbCommand->FetchString(6, st, sizeof(st));
+		dbCommand->FetchInt16(7, wcl);
+		dbCommand->FetchString(8, wname, sizeof(wname));
+		row.leagueID = lid; row.name = name; row.maxClans = mc;
+		row.currentRound = cr; row.totalRounds = tr; row.status = st;
+		row.winnerClanID = (uint16)wcl; row.winnerClanName = wname;
+		outRows.push_back(row);
+	}
+	return true;
+}
+
+bool CDBAgent::LeagueLoadMatches(int32_t leagueID, std::vector<_LEAGUE_MATCH_ROW>& outRows)
+{
+	int32 pLID = leagueID;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pLID);
+	if (!dbCommand->Execute(_T("SELECT MatchID, RoundNumber, MatchOrder, RedClanID, BlueClanID, RedClanName, BlueClanName, ZoneID, Status, ISNULL(WinnerClanID,0) FROM KO_LOG.dbo._MK_LEAGUE_MATCHES WHERE LeagueID = ? ORDER BY RoundNumber, MatchOrder"))) {
+		return false;
+	}
+	while (dbCommand->MoveNext()) {
+		_LEAGUE_MATCH_ROW row;
+		int32 mid = 0; uint8 rnd = 0, ord = 0, zid = 0; int16 rcl = 0, bcl = 0, wcl = 0;
+		char rname[64] = {0}, bname[64] = {0}, st[32] = {0};
+		dbCommand->FetchInt32(1, mid);
+		dbCommand->FetchByte(2, rnd);
+		dbCommand->FetchByte(3, ord);
+		dbCommand->FetchInt16(4, rcl);
+		dbCommand->FetchInt16(5, bcl);
+		dbCommand->FetchString(6, rname, sizeof(rname));
+		dbCommand->FetchString(7, bname, sizeof(bname));
+		dbCommand->FetchByte(8, zid);
+		dbCommand->FetchString(9, st, sizeof(st));
+		dbCommand->FetchInt16(10, wcl);
+		row.matchID = mid; row.roundNumber = rnd; row.matchOrder = ord;
+		row.redClanID = (uint16)rcl; row.blueClanID = (uint16)bcl;
+		row.redName = rname; row.blueName = bname; row.zoneID = zid;
+		row.status = st; row.winnerClanID = (uint16)wcl;
+		outRows.push_back(row);
+	}
+	return true;
+}

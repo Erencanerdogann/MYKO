@@ -3509,6 +3509,9 @@ struct _TOURNAMENT_DATA
 	// S115 — Bracket Tournament entegrasyon
 	int32_t bracketMatchID;                    // 0 = standalone tournament, >0 = bracket'a bagli mac
 
+	// S115 — League (lig) entegrasyon
+	int32_t leagueMatchID;                     // 0 = standalone, >0 = lig macina bagli
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3532,6 +3535,7 @@ struct _TOURNAMENT_DATA
 		firstBloodUserName.clear();
 		dbTournamentID = 0;
 		bracketMatchID = 0;
+		leagueMatchID = 0;
 	}
 };
 

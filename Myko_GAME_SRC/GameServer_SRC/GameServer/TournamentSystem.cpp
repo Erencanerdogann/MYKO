@@ -189,6 +189,14 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 		OnBracketMatchFinish(info->bracketMatchID, winnerCID, redScore, blueScore);
 	}
 
+	// S115 — League (lig) hook: bu tournament bir lig macı ise puan guncelle
+	if (info->leagueMatchID > 0)
+	{
+		extern void OnLeagueMatchFinish(int32_t matchID, uint16 winnerClanID,
+		                                uint16 redScore, uint16 blueScore);
+		OnLeagueMatchFinish(info->leagueMatchID, winnerCID, redScore, blueScore);
+	}
+
 	// S115 TUR 7 — Klan Premium 24sa kazanana
 	// Kazanan klan'in sPremiumTime = UNIXTIME + 86400 (24sa) set edilir
 	// Tum klan uyeleri exp/drop bonus alir (mevcut premium sistem)

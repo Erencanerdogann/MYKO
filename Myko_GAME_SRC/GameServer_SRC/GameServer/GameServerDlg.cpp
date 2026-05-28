@@ -190,9 +190,11 @@ bool CGameServerDlg::Startup()
 		extern void LoadTournamentScheduleFromDB();
 		extern void LoadBracketsFromDB();
 		extern void LoadOneVsOneBracketsFromDB();
+		extern void LoadLeaguesFromDB();
 		LoadTournamentScheduleFromDB();
 		LoadBracketsFromDB();
 		LoadOneVsOneBracketsFromDB();
+		LoadLeaguesFromDB();
 	}
 
 	printf("\n");
@@ -1380,6 +1382,11 @@ void CGameServerDlg::GameEventMainTimer()
 		// S115 sabah RUSH — Bahis penceresi kapanma + periyodik status duyuru
 		extern void CheckBetWindowClose();
 		CheckBetWindowClose();
+	}
+	{
+		// S115 lig — League auto-start (PENDING maclari sirayla baslat)
+		extern void LeagueAutoStartTimer();
+		LeagueAutoStartTimer();
 	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();
