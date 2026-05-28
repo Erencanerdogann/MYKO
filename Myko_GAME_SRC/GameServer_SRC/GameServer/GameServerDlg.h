@@ -1393,6 +1393,7 @@ public:
 	COMMAND_HANDLER(HandleLeagueStartCommand);         // S115 lig — /leaguestart
 	COMMAND_HANDLER(HandleLeagueStatusCommand);        // S115 lig — /leaguestatus
 	COMMAND_HANDLER(HandleLeagueCancelCommand);        // S115 lig — /leaguecancel
+	COMMAND_HANDLER(HandleTournamentRewardCommand);    // S115 — GM manuel odul /tournamentreward
 
 	// S115 — Bracket Tournament GM komutlari (MATRIX MSG:5914 + CHIP Bracket Engine)
 	COMMAND_HANDLER(HandleBracketCreateCommand);

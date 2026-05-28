@@ -186,6 +186,11 @@ static void RefundAllBets(uint8 zoneID, std::vector<_TOURNAMENT_BET>& bets, cons
 			ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
 			pUser->Send(&pkt);
 		}
+		// KALICI LOG (iade kaniti — komisyon kesilmedi)
+		LOG(LogCategory::LOG_GENERAL,
+			"[BET REFUND] zone=%u char=%s amount=%u sebep=%s %s",
+			zoneID, bet.betterCharName.c_str(), bet.betAmount, reason,
+			(pUser != nullptr && pUser->isInGame()) ? "IADE_EDILDI" : "OFFLINE_IADE_EDILMEDI");
 	}
 }
 
@@ -347,6 +352,12 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 					ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
 					pUser->Send(&pkt);
 				}
+				// KALICI LOG (printf kaybolur, para kaniti dosyaya yaz)
+				LOG(LogCategory::LOG_GENERAL,
+					"[BET WIN] zone=%u char=%s bet=%u payout=%llu kar=%+lld winnerClan=%u %s",
+					zoneID, bet.betterCharName.c_str(), bet.betAmount,
+					(unsigned long long)payout, (long long)kar, winnerClanID,
+					(pUser != nullptr && pUser->isInGame()) ? "ODENDI" : "OFFLINE_ODENMEDI");
 			} else {
 				// Kaybetti — para gitti (havuza/kazananlara dagildi)
 				loserCount++;
@@ -356,6 +367,9 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 					ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
 					pUser->Send(&pkt);
 				}
+				LOG(LogCategory::LOG_GENERAL,
+					"[BET LOSE] zone=%u char=%s bet=%u kaybetti(havuza_dagildi) winnerClan=%u",
+					zoneID, bet.betterCharName.c_str(), bet.betAmount, winnerClanID);
 			}
 		}
 
@@ -384,9 +398,13 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 			g_pMain->SendNotice(msgTop.c_str());
 		}
 
-		printf("[BET ECONOMY] Zone %u: totalPool=%llu commission_SINK=%llu distributed=%llu (loserPool=%llu eritildi)\n",
+		// KALICI EKONOMI LOG (komisyon sink takibi — kac Noah eritildi)
+		// DENGE: totalPool = totalPaidOut + commission (server net 0)
+		LOG(LogCategory::LOG_GENERAL,
+			"[BET ECONOMY] zone=%u totalPool=%llu commission_SINK=%llu distributed=%llu winners=%zu losers=%d denge=%s",
 			zoneID, (unsigned long long)totalPool, (unsigned long long)commission,
-			(unsigned long long)totalPaidOut, (unsigned long long)loserPool);
+			(unsigned long long)totalPaidOut, winners.size(), loserCount,
+			((totalPaidOut + commission) == totalPool) ? "OK" : "UYARI_DENGESIZ");
 	}
 
 cleanup:
@@ -610,6 +628,12 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	// S115 TUR 8 DB entegrasyon — MATRIX MSG:5907 (SP_TOURNAMENT_BET_PLACE)
 	g_DBAgent.TournamentBetPlace(targetZoneID, GetAccountName(), GetName(),
 	                              targetClanID, targetClanName, (int32_t)amount);
+
+	// KALICI LOG (para cekildi — gold deduct kaniti)
+	LOG(LogCategory::LOG_GENERAL,
+		"[BET PLACE] zone=%u char=%s account=%s clan=%s(%u) amount=%u (gold cekildi)",
+		targetZoneID, GetName().c_str(), GetAccountName().c_str(),
+		targetClanName.c_str(), targetClanID, amount);
 
 	// PARIMUTUEL — su anki havuza gore tahmini oran/kazanc
 	uint64 myPool = 0, otherPool = 0;  // bu bahis dahil

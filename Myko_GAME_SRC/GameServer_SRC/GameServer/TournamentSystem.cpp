@@ -130,6 +130,85 @@ static void DistributeTournamentRewards(uint16 winnerClanID, uint16 loserClanID,
 	}
 }
 
+// =====================================================================
+// S115 — GM MANUEL ODUL (patron: "kazanana GM belirledigi odulu manuel verir")
+// Otomatik DistributeTournamentRewards'tan FARK: GM O AN miktari/tipi secer.
+// rewardType: 0=Noah(default) 1=Item 2=NP
+// targetType: 0=Klan tum uyeleri 1=Klan lideri 2=Tek oyuncu(isim)
+// targetClanID: targetType 0/1 icin | targetName: targetType 2 icin
+// amount: Noah miktari / NP miktari | itemID+itemCount: Item icin
+// Aninda teslim — online hedeflere direkt yansir, offline LOG'lanir.
+// Donus: kac kisiye verildi (0 = hedef bulunamadi/offline)
+// =====================================================================
+int GMGiveTournamentReward(uint8 rewardType, uint8 targetType,
+                           uint16 targetClanID, const std::string& targetName,
+                           uint32 amount, uint32 itemID, uint16 itemCount,
+                           const std::string& gmName)
+{
+	int givenCount = 0;
+
+	// Esnek odul verme — tek user'a uygular (icerde tip secimi)
+	auto giveOne = [&](CUser* pU) -> bool {
+		if (pU == nullptr || !pU->isInGame()) return false;
+		switch (rewardType) {
+			case 1:  // Item
+				if (itemID > 0 && itemCount > 0)
+					pU->GiveItem("gm_tournament_reward", itemID, itemCount, true, 0);
+				break;
+			case 2:  // NP
+				pU->SendLoyaltyChange("gm_tournament_reward", (int32)amount, false, false, false);
+				break;
+			default: // 0 = Noah (default)
+				pU->GoldGain(amount);
+				break;
+		}
+		// Bildirim
+		char nbuf[200] = {0};
+		if (rewardType == 1)
+			_snprintf_s(nbuf, sizeof(nbuf), _TRUNCATE,
+				"[GM ODUL / GM REWARD] Item #%u x%u verildi! | Item granted.", itemID, itemCount);
+		else if (rewardType == 2)
+			_snprintf_s(nbuf, sizeof(nbuf), _TRUNCATE,
+				"[GM ODUL / GM REWARD] +%u NP verildi! | National Points granted.", amount);
+		else
+			_snprintf_s(nbuf, sizeof(nbuf), _TRUNCATE,
+				"[GM ODUL / GM REWARD] +%u Noah verildi! | Gold granted.", amount);
+		std::string m = nbuf;
+		Packet p;
+		ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m);
+		pU->Send(&p);
+		return true;
+	};
+
+	if (targetType == 2) {
+		// Tek oyuncu (isim)
+		CUser* pU = g_pMain->GetUserPtr(targetName, NameType::TYPE_CHARACTER);
+		if (giveOne(pU)) givenCount++;
+	} else {
+		// Klan (tum uyeler veya sadece lider)
+		CKnights* pClan = g_pMain->GetClanPtr(targetClanID);
+		std::string leaderName = (pClan != nullptr) ? pClan->m_strChief : "";
+		for (uint16 i = 0; i < MAX_USER; i++) {
+			CUser* pU = g_pMain->GetUserPtr(i);
+			if (pU == nullptr || !pU->isInGame()) continue;
+			if (pU->GetClanID() != targetClanID) continue;
+			if (targetType == 1 && pU->GetName() != leaderName) continue;  // sadece lider
+			if (giveOne(pU)) givenCount++;
+		}
+	}
+
+	// KALICI LOG (GM kim, ne verdi, kime, kac kisi — denetim kaniti)
+	const char* rtName = (rewardType == 1) ? "ITEM" : (rewardType == 2) ? "NP" : "NOAH";
+	const char* ttName = (targetType == 1) ? "KLAN_LIDER" : (targetType == 2) ? "OYUNCU" : "KLAN_TUMU";
+	LOG(LogCategory::LOG_GM,
+		"[GM REWARD] gm=%s tip=%s hedef=%s clan=%u oyuncu=%s amount=%u item=%u x%u -> %d kisiye verildi",
+		gmName.c_str(), rtName, ttName, targetClanID,
+		targetName.empty() ? "-" : targetName.c_str(),
+		amount, itemID, itemCount, givenCount);
+
+	return givenCount;
+}
+
 // S115 Plan A — Helper: Tournament bittiginde duyuru + odul dagit
 // Tek yerden tum sonuc mantığı (6 zone'a kopyali kod kaldirildi)
 static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
@@ -623,3 +702,87 @@ void CUser::TournamentSendTimer()
 	}
 }
 #pragma endregion
+
+// =====================================================================
+// S115 — GM MANUEL ODUL KONSOL KOMUTU (/tournamentreward)
+// patron: "kazanana GM belirledigi odulu manuel girebilecegi sistem"
+// Kullanim:
+//   /tournamentreward noah klan <KlanAdi> <miktar>
+//   /tournamentreward noah lider <KlanAdi> <miktar>
+//   /tournamentreward noah oyuncu <Karakter> <miktar>
+//   /tournamentreward np   klan <KlanAdi> <miktar>
+//   /tournamentreward item oyuncu <Karakter> <itemID> <adet>
+// Tip: noah(default)/np/item | Hedef: klan/lider/oyuncu
+// Aninda teslim — online hedeflere yansir.
+// =====================================================================
+
+// Local helper — klan adindan ID bul (poller'daki static'e erisilemiyor)
+static uint16 RewardFindClanID(const std::string& name)
+{
+	uint16 found = 0;
+	g_pMain->m_KnightsArray.m_lock.lock();
+	foreach_stlmap_nolock(itr, g_pMain->m_KnightsArray) {
+		CKnights* pClan = itr->second;
+		if (pClan != nullptr && pClan->m_strName == name) {
+			found = pClan->GetID();
+			break;
+		}
+	}
+	g_pMain->m_KnightsArray.m_lock.unlock();
+	return found;
+}
+
+extern int GMGiveTournamentReward(uint8 rewardType, uint8 targetType,
+                                  uint16 targetClanID, const std::string& targetName,
+                                  uint32 amount, uint32 itemID, uint16 itemCount,
+                                  const std::string& gmName);
+
+COMMAND_HANDLER(CGameServerDlg::HandleTournamentRewardCommand)
+{
+	if (vargs.size() < 4) {
+		printf("Usage: /tournamentreward <noah|np|item> <klan|lider|oyuncu> <Ad> <miktar> [adet(item)]\n");
+		printf("  Ornek: /tournamentreward noah klan RedClan 5000000\n");
+		printf("  Ornek: /tournamentreward item oyuncu Ahmet 379010 1\n");
+		return true;
+	}
+
+	std::string sType   = vargs.front(); vargs.pop_front();
+	std::string sTarget = vargs.front(); vargs.pop_front();
+	std::string sName   = vargs.front(); vargs.pop_front();
+
+	uint8 rewardType = 0;  // 0=noah 1=item 2=np
+	if (sType == "item") rewardType = 1;
+	else if (sType == "np") rewardType = 2;
+
+	uint8 targetType = 0;  // 0=klan 1=lider 2=oyuncu
+	if (sTarget == "lider") targetType = 1;
+	else if (sTarget == "oyuncu") targetType = 2;
+
+	uint16 clanID = 0;
+	std::string charName;
+	if (targetType == 2) {
+		charName = sName;
+	} else {
+		clanID = RewardFindClanID(sName);
+		if (clanID == 0) { printf("[GM REWARD] Klan bulunamadi: %s\n", sName.c_str()); return true; }
+	}
+
+	uint32 amount = 0, itemID = 0;
+	uint16 itemCount = 1;
+	if (rewardType == 1) {
+		// item: <Ad> itemID adet
+		itemID = (uint32)SafeAtoi(vargs.front(), 0, 0x7FFFFFFF); vargs.pop_front();
+		if (!vargs.empty()) itemCount = (uint16)SafeAtoi(vargs.front(), 1, 9999);
+		if (itemID == 0) { printf("[GM REWARD] Gecersiz itemID\n"); return true; }
+	} else {
+		// noah/np: miktar
+		amount = (uint32)SafeAtoi(vargs.front(), 1, COIN_MAX);
+		if (amount == 0) { printf("[GM REWARD] Gecersiz miktar\n"); return true; }
+	}
+
+	int given = GMGiveTournamentReward(rewardType, targetType, clanID, charName,
+	                                   amount, itemID, itemCount, "console");
+	printf("[GM REWARD] %d kisiye verildi (tip=%s hedef=%s)\n",
+		given, sType.c_str(), sTarget.c_str());
+	return true;
+}

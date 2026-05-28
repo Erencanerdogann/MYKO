@@ -93,6 +93,7 @@ void CGameServerDlg::InitServerCommands()
 		{ "leaguestart",		&CGameServerDlg::HandleLeagueStartCommand,			"Lig basla (fikstur olusur). Ornek: /leaguestart 1" },
 		{ "leaguestatus",		&CGameServerDlg::HandleLeagueStatusCommand,			"Lig puan tablosu (console). Ornek: /leaguestatus 1" },
 		{ "leaguecancel",		&CGameServerDlg::HandleLeagueCancelCommand,			"Lig iptal. Ornek: /leaguecancel 1" },
+		{ "tournamentreward",	&CGameServerDlg::HandleTournamentRewardCommand,		"GM manuel odul. Ornek: /tournamentreward noah klan RedClan 5000000 | item oyuncu Ahmet 379010 1" },
 		{ "bracketcreate",		&CGameServerDlg::HandleBracketCreateCommand,		"Bracket olustur. Ornek: /bracketcreate \"Acilis Cup\" 16" },
 		{ "bracketstart",		&CGameServerDlg::HandleBracketStartCommand,			"Bracket baslat. Ornek: /bracketstart 1" },
 		{ "bracketstatus",		&CGameServerDlg::HandleBracketStatusCommand,		"Bracket durumu. Ornek: /bracketstatus 1" },

@@ -586,6 +586,74 @@ static _CMD_RESULT ExecDuelStart(const std::string& params)
 	return r;
 }
 
+// S115 — GM web manuel odul (kazanana elle odul ver)
+// Params: rewardType|targetType|targetName|amount|[itemID]|[itemCount]
+//   rewardType: noah|np|item    targetType: klan|lider|oyuncu
+//   noah/np -> amount kullanilir   item -> itemID + itemCount kullanilir
+//   Ornek: noah|klan|RedClan|5000000   |   item|oyuncu|Ahmet|0|379010|1
+static _CMD_RESULT ExecTournamentReward(const std::string& params, const std::string& requestedBy)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 4) {
+		r.status = "FAILED";
+		r.result = "Params: rewardType(noah/np/item)|targetType(klan/lider/oyuncu)|Ad|amount|[itemID]|[itemCount]";
+		return r;
+	}
+
+	std::string sType   = p[0];
+	std::string sTarget = p[1];
+	std::string sName   = p[2];
+
+	uint8 rewardType = 0;
+	if (sType == "item") rewardType = 1;
+	else if (sType == "np") rewardType = 2;
+
+	uint8 targetType = 0;
+	if (sTarget == "lider") targetType = 1;
+	else if (sTarget == "oyuncu") targetType = 2;
+
+	uint16 clanID = 0;
+	std::string charName;
+	if (targetType == 2) {
+		charName = sName;
+	} else {
+		CKnights* pClan = FindClanByName(sName);
+		if (pClan == nullptr) { r.status = "FAILED"; r.result = "Klan bulunamadi: " + sName; return r; }
+		clanID = pClan->GetID();
+	}
+
+	uint32 amount = (uint32)SafeAtoi(p[3], 0, COIN_MAX);
+	uint32 itemID = 0;
+	uint16 itemCount = 1;
+	if (rewardType == 1) {
+		if (p.size() < 6) { r.status = "FAILED"; r.result = "Item icin: ...|itemID|itemCount"; return r; }
+		itemID = (uint32)SafeAtoi(p[4], 0, 0x7FFFFFFF);
+		itemCount = (uint16)SafeAtoi(p[5], 1, 9999);
+		if (itemID == 0) { r.status = "FAILED"; r.result = "Gecersiz itemID"; return r; }
+	} else {
+		if (amount == 0) { r.status = "FAILED"; r.result = "Gecersiz miktar"; return r; }
+	}
+
+	extern int GMGiveTournamentReward(uint8 rewardType, uint8 targetType,
+	                                  uint16 targetClanID, const std::string& targetName,
+	                                  uint32 amount, uint32 itemID, uint16 itemCount,
+	                                  const std::string& gmName);
+	int given = GMGiveTournamentReward(rewardType, targetType, clanID, charName,
+	                                   amount, itemID, itemCount, requestedBy);
+
+	if (given == 0) {
+		r.status = "FAILED";
+		r.result = "Hedef online degil / bulunamadi (0 kisiye verildi)";
+		return r;
+	}
+	char buf[200] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+		"Odul verildi: tip=%s hedef=%s -> %d kisi", sType.c_str(), sTarget.c_str(), given);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
 // =====================================================================
 // POLLER — her 2 saniyede bir GameEventMainTimer'dan cagrilir
 // =====================================================================
@@ -633,6 +701,8 @@ void TournamentCommandPollerTimer()
 		else if (cmd.commandType == "LEAGUE_CANCEL")      r = ExecLeagueCancel(cmd.params);
 		// S115 — GM web duel (teke tek)
 		else if (cmd.commandType == "DUEL_START")         r = ExecDuelStart(cmd.params);
+		// S115 — GM web manuel odul (kazanana elle odul)
+		else if (cmd.commandType == "TOURNAMENT_REWARD")  r = ExecTournamentReward(cmd.params, cmd.requestedBy);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";
