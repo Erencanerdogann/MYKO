@@ -85,6 +85,20 @@ void GetEventDefaults(uint32& reg, uint32& bet, uint32& countdown, uint32& match
 }
 
 // =====================================================================
+// Zone bir event tarafindan rezerve mi? (REGISTRATION asamasinda mac verisi
+// henuz yok ama zone o event'e ait — anlik /partyvs/bracket/lig CARPMASIN).
+// Diger dosyalar (TournamentSystem/Bracket/League) bunu cagirir.
+// =====================================================================
+bool IsZoneReservedByEvent(uint8 zoneID)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_eventLock);
+	for (auto& e : g_events) {
+		if (e.zoneID == zoneID && e.phase != EventPhase::DONE) return true;
+	}
+	return false;
+}
+
+// =====================================================================
 // HELPER — zone adi
 // =====================================================================
 static const char* EventZoneName(uint8 z)

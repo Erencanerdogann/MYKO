@@ -449,6 +449,11 @@ void LeagueAutoStartTimer()
 
 			// Zone bos mu? (ayni zone'da baska tournament/lig maci varsa bekle)
 			if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
+			// Zone bir event'e rezerve mi (REGISTRATION asamasi)
+			{
+				extern bool IsZoneReservedByEvent(uint8 zoneID);
+				if (IsZoneReservedByEvent(m.zoneID)) continue;
+			}
 
 			// Katilimci var mi? (clan veya party — tipe gore kontrol)
 			bool exists;

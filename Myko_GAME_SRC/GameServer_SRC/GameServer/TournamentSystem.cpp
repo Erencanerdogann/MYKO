@@ -132,6 +132,14 @@ bool StartPartyVsMatch(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
 		printf("[PARTY VS] Start: Zone %u dolu, baska mac var\n", zoneID);
 		return false;
 	}
+	// Zone bir event'e rezerve mi (REGISTRATION asamasinda mac verisi yok ama zone o event'in)
+	{
+		extern bool IsZoneReservedByEvent(uint8 zoneID);
+		if (IsZoneReservedByEvent(zoneID)) {
+			printf("[PARTY VS] Start: Zone %u bir event'e rezerve, anlik mac baslamaz\n", zoneID);
+			return false;
+		}
+	}
 
 	// Lider isimleri (duyuru icin) — uid[0] genelde lider, ama isPartyLeader teyit
 	std::string redName = "RedParty", blueName = "BlueParty";

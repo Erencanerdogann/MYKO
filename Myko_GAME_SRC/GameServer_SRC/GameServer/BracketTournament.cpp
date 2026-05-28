@@ -712,6 +712,11 @@ void BracketAutoStartTimer()
 
 				// Zone'da aktif tournament var mi?
 				if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
+				// Zone bir event'e rezerve mi (REGISTRATION asamasi)
+				{
+					extern bool IsZoneReservedByEvent(uint8 zoneID);
+					if (IsZoneReservedByEvent(m.zoneID)) continue;
+				}
 
 				// Klan silinmis mi kontrol (silinmisse o klani kaybeden yap, log spam yok)
 				CKnights* pRedCheck  = g_pMain->GetClanPtr(m.redClanID);
