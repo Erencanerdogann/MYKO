@@ -1399,6 +1399,10 @@ public:
 	COMMAND_HANDLER(HandleEventConfigCommand);         // S115 — event sure ayar /eventconfig
 	COMMAND_HANDLER(HandleEventListCommand);           // S115 — aktif event'ler /eventlist
 	COMMAND_HANDLER(HandleEventCancelCommand);         // S115 — event iptal /eventcancel
+	COMMAND_HANDLER(HandlePartyBracketCreateCommand);  // S115 — party bracket /partybracketcreate
+	COMMAND_HANDLER(HandlePartyLeagueCreateCommand);   // S115 — party lig /partyleaguecreate
+	COMMAND_HANDLER(HandlePartyBracketStartCommand);   // S115 — party bracket basla
+	COMMAND_HANDLER(HandlePartyLeagueStartCommand);    // S115 — party lig basla
 
 	// S115 — Bracket Tournament GM komutlari (MATRIX MSG:5914 + CHIP Bracket Engine)
 	COMMAND_HANDLER(HandleBracketCreateCommand);

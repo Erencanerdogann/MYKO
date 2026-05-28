@@ -486,3 +486,87 @@ COMMAND_HANDLER(CGameServerDlg::HandleEventCancelCommand)
 	else printf("[EVENT] Bulunamadi: eventID=%d\n", eid);
 	return true;
 }
+
+// =====================================================================
+// PARTY BRACKET / LIG komutlari (DB persist'li — restart-safe)
+// =====================================================================
+extern int32_t CreateBracket(const std::string&, uint8, const std::string&, uint8);
+extern int32_t CreateLeague(const std::string&, uint8, const std::string&, uint8);
+extern bool RegisterPartyToBracket(int32_t bracketID, uint16 partyID, const std::string& leaderName, uint8 memberCount);
+extern bool RegisterPartyToLeague(int32_t leagueID, uint16 partyID, const std::string& leaderName);
+extern bool StartBracket(int32_t bracketID);
+extern bool StartLeague(int32_t leagueID);
+
+// /partybracketcreate "Ad" MaxParti(4/8/16) — party eleme turnuvasi olustur
+COMMAND_HANDLER(CGameServerDlg::HandlePartyBracketCreateCommand)
+{
+	if (vargs.size() < 2) { printf("Usage: /partybracketcreate \"Ad\" MaxParti(4/8/16)\n"); return true; }
+	std::string name = vargs.front(); vargs.pop_front();
+	uint8 maxP = (uint8)SafeAtoi(vargs.front(), 4, 32);
+	int32_t bid = CreateBracket(name, maxP, "console", 1);  // participantType=1 PARTY
+	if (bid > 0) printf("[PARTY BRACKET] Olusturuldu: ID=%d (party liderleri +partybracketreg %d ile kayit)\n", bid, bid);
+	else printf("[PARTY BRACKET] Olusturulamadi (maxParti 4/8/16/32 olmali)\n");
+	return true;
+}
+
+// /partyleaguecreate "Ad" MaxParti(3-8) — party lig olustur
+COMMAND_HANDLER(CGameServerDlg::HandlePartyLeagueCreateCommand)
+{
+	if (vargs.size() < 2) { printf("Usage: /partyleaguecreate \"Ad\" MaxParti(3-8)\n"); return true; }
+	std::string name = vargs.front(); vargs.pop_front();
+	uint8 maxP = (uint8)SafeAtoi(vargs.front(), 3, 8);
+	int32_t lid = CreateLeague(name, maxP, "console", 1);  // participantType=1 PARTY
+	if (lid > 0) printf("[PARTY LEAGUE] Olusturuldu: ID=%d (party liderleri +partyleaguereg %d ile kayit)\n", lid, lid);
+	else printf("[PARTY LEAGUE] Olusturulamadi\n");
+	return true;
+}
+
+// /partybracketstart <ID> | /partyleaguestart <ID> — fikstur olustur, maclar otomatik baslar
+COMMAND_HANDLER(CGameServerDlg::HandlePartyBracketStartCommand)
+{
+	if (vargs.empty()) { printf("Usage: /partybracketstart <ID>\n"); return true; }
+	int32_t bid = SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	if (StartBracket(bid)) printf("[PARTY BRACKET] Basladi: ID=%d (maclar AutoStartTimer ile)\n", bid);
+	else printf("[PARTY BRACKET] Baslatilamadi ID=%d\n", bid);
+	return true;
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandlePartyLeagueStartCommand)
+{
+	if (vargs.empty()) { printf("Usage: /partyleaguestart <ID>\n"); return true; }
+	int32_t lid = SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	if (StartLeague(lid)) printf("[PARTY LEAGUE] Basladi: ID=%d\n", lid);
+	else printf("[PARTY LEAGUE] Baslatilamadi ID=%d\n", lid);
+	return true;
+}
+
+// +partybracketreg <ID> — party lideri party'sini bracket'a kaydeder (oyuncu komutu)
+COMMAND_HANDLER(CUser::HandlePartyBracketRegCommand)
+{
+	if (vargs.empty()) { g_pMain->SendHelpDescription(this, "Kullanim: +partybracketreg <ID>"); return true; }
+	if (!isInParty()) { g_pMain->SendHelpDescription(this, "Party'de degilsin. | Not in a party."); return true; }
+	if (!isPartyLeader()) { g_pMain->SendHelpDescription(this, "Sadece party lideri kayit yapar. | Only party leader."); return true; }
+	int32_t bid = SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	uint16 partyID = (uint16)GetPartyID();
+	uint8 memberCount = GetPartyMemberAmount();
+	if (RegisterPartyToBracket(bid, partyID, GetName(), memberCount))
+		g_pMain->SendHelpDescription(this, "Party bracket'a kaydedildi! | Registered to party bracket.");
+	else
+		g_pMain->SendHelpDescription(this, "Kayit basarisiz (bracket yok/dolu/REGISTRATION disi). | Registration failed.");
+	return true;
+}
+
+// +partyleaguereg <ID> — party lideri party'sini lige kaydeder
+COMMAND_HANDLER(CUser::HandlePartyLeagueRegCommand)
+{
+	if (vargs.empty()) { g_pMain->SendHelpDescription(this, "Kullanim: +partyleaguereg <ID>"); return true; }
+	if (!isInParty()) { g_pMain->SendHelpDescription(this, "Party'de degilsin. | Not in a party."); return true; }
+	if (!isPartyLeader()) { g_pMain->SendHelpDescription(this, "Sadece party lideri kayit yapar. | Only party leader."); return true; }
+	int32_t lid = SafeAtoi(vargs.front(), 1, 0x7FFFFFFF);
+	uint16 partyID = (uint16)GetPartyID();
+	if (RegisterPartyToLeague(lid, partyID, GetName()))
+		g_pMain->SendHelpDescription(this, "Party lige kaydedildi! | Registered to party league.");
+	else
+		g_pMain->SendHelpDescription(this, "Kayit basarisiz (lig yok/dolu/REGISTRATION disi). | Registration failed.");
+	return true;
+}
