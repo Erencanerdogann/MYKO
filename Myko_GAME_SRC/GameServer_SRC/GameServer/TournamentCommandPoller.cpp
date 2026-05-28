@@ -749,6 +749,61 @@ static _CMD_RESULT ExecNotice(const std::string& params, const std::string& requ
 	return r;
 }
 
+// S115 — GM web PARTY BRACKET / LIG (DB persist'li, restart-safe)
+// (CreateBracket/CreateLeague/StartBracket/StartLeague/CancelBracket/CancelLeague extern yukarida)
+static _CMD_RESULT ExecPartyBracketCreate(const std::string& params, const std::string& gm)
+{
+	_CMD_RESULT r; auto p = SplitPipe(params);
+	if (p.size() < 2) { r.status = "FAILED"; r.result = "Params: Ad|MaxParti(4/8/16/32)"; return r; }
+	uint8 maxP = (uint8)SafeAtoi(p[1], 4, 32);
+	int32_t bid = CreateBracket(p[0], maxP, gm, 1);  // participantType=1
+	if (bid <= 0) { r.status = "FAILED"; r.result = "Olusturulamadi (maxParti 4/8/16/32)"; return r; }
+	char buf[120] = {0}; _snprintf_s(buf, sizeof(buf), _TRUNCATE, "Party bracket olustu ID=%d", bid);
+	r.status = "EXECUTED"; r.result = buf; return r;
+}
+static _CMD_RESULT ExecPartyLeagueCreate(const std::string& params, const std::string& gm)
+{
+	_CMD_RESULT r; auto p = SplitPipe(params);
+	if (p.size() < 2) { r.status = "FAILED"; r.result = "Params: Ad|MaxParti(3-8)"; return r; }
+	uint8 maxP = (uint8)SafeAtoi(p[1], 3, 8);
+	int32_t lid = CreateLeague(p[0], maxP, gm, 1);
+	if (lid <= 0) { r.status = "FAILED"; r.result = "Olusturulamadi"; return r; }
+	char buf[120] = {0}; _snprintf_s(buf, sizeof(buf), _TRUNCATE, "Party lig olustu ID=%d", lid);
+	r.status = "EXECUTED"; r.result = buf; return r;
+}
+static _CMD_RESULT ExecPartyBracketStart(const std::string& params)
+{
+	_CMD_RESULT r; auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: BracketID"; return r; }
+	int32_t bid = SafeAtoi(p[0], 1, 0x7FFFFFFF);
+	if (!StartBracket(bid)) { r.status = "FAILED"; r.result = "Baslatilamadi (yok/REGISTRATION disi)"; return r; }
+	r.status = "EXECUTED"; r.result = "Party bracket basladi"; return r;
+}
+static _CMD_RESULT ExecPartyLeagueStart(const std::string& params)
+{
+	_CMD_RESULT r; auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: LeagueID"; return r; }
+	int32_t lid = SafeAtoi(p[0], 1, 0x7FFFFFFF);
+	if (!StartLeague(lid)) { r.status = "FAILED"; r.result = "Baslatilamadi"; return r; }
+	r.status = "EXECUTED"; r.result = "Party lig basladi"; return r;
+}
+static _CMD_RESULT ExecPartyBracketCancel(const std::string& params)
+{
+	_CMD_RESULT r; auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: BracketID"; return r; }
+	int32_t bid = SafeAtoi(p[0], 1, 0x7FFFFFFF);
+	if (!CancelBracket(bid)) { r.status = "FAILED"; r.result = "Iptal edilemedi (yok)"; return r; }
+	r.status = "EXECUTED"; r.result = "Party bracket iptal"; return r;
+}
+static _CMD_RESULT ExecPartyLeagueCancel(const std::string& params)
+{
+	_CMD_RESULT r; auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: LeagueID"; return r; }
+	int32_t lid = SafeAtoi(p[0], 1, 0x7FFFFFFF);
+	if (!CancelLeague(lid)) { r.status = "FAILED"; r.result = "Iptal edilemedi"; return r; }
+	r.status = "EXECUTED"; r.result = "Party lig iptal"; return r;
+}
+
 // =====================================================================
 // POLLER — her 2 saniyede bir GameEventMainTimer'dan cagrilir
 // =====================================================================
@@ -803,6 +858,13 @@ void TournamentCommandPollerTimer()
 		// S115 — GM web zamanlanmis event (KAYIT->BAHIS->MAC) + hizli duyuru
 		else if (cmd.commandType == "EVENT_CREATE")       r = ExecEventCreate(cmd.params, cmd.requestedBy);
 		else if (cmd.commandType == "NOTICE")             r = ExecNotice(cmd.params, cmd.requestedBy);
+		// S115 — GM web party bracket/lig (DB persist, restart-safe)
+		else if (cmd.commandType == "PARTY_BRACKET_CREATE") r = ExecPartyBracketCreate(cmd.params, cmd.requestedBy);
+		else if (cmd.commandType == "PARTY_LEAGUE_CREATE")  r = ExecPartyLeagueCreate(cmd.params, cmd.requestedBy);
+		else if (cmd.commandType == "PARTY_BRACKET_START")  r = ExecPartyBracketStart(cmd.params);
+		else if (cmd.commandType == "PARTY_LEAGUE_START")   r = ExecPartyLeagueStart(cmd.params);
+		else if (cmd.commandType == "PARTY_BRACKET_CANCEL") r = ExecPartyBracketCancel(cmd.params);
+		else if (cmd.commandType == "PARTY_LEAGUE_CANCEL")  r = ExecPartyLeagueCancel(cmd.params);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";

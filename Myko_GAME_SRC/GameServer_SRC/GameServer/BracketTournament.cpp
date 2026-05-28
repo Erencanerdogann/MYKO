@@ -450,13 +450,23 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 		b->winnerClanID = championClanID;
 		b->status = "FINISHED";
 
-		CKnights* pChampion = g_pMain->GetClanPtr(championClanID);
-		if (pChampion) {
-			b->winnerClanName = pChampion->GetName();
+		// Sampiyon adi: party'de party lideri adi, clan'da klan adi
+		if (b->participantType == 1) {
+			_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(championClanID);  // championClanID = party ID
+			if (pParty != nullptr) {
+				CUser* pLeader = g_pMain->GetUserPtr(pParty->uid[0]);
+				b->winnerClanName = (pLeader != nullptr) ? (pLeader->GetName() + " Party") : "Party";
+			} else {
+				b->winnerClanName = "Party";
+			}
+		} else {
+			CKnights* pChampion = g_pMain->GetClanPtr(championClanID);
+			if (pChampion) b->winnerClanName = pChampion->GetName();
 		}
 
-		printf("[BRACKET] FINISHED: BracketID=%d Champion=%u (%s)\n",
-			b->bracketID, championClanID, b->winnerClanName.c_str());
+		printf("[BRACKET] FINISHED: BracketID=%d Champion=%u (%s) tip=%s\n",
+			b->bracketID, championClanID, b->winnerClanName.c_str(),
+			b->participantType == 1 ? "PARTY" : "CLAN");
 
 		// BUG #7 FIX: Final mac (en yuksek round) → kaybeden klan
 		// `m` parametre matchID ile FindMatch'ten geldi, bu son biten mac (Final olabilir)
