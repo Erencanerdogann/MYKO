@@ -547,6 +547,46 @@ static _CMD_RESULT ExecLeagueCancel(const std::string& params)
 }
 
 // =====================================================================
+// DUEL — GM iki oyuncuyu zone'a teleport (basit teke tek, eleme degil)
+// Params: PlayerA|PlayerB|Zone (Zone default 48 Arena)
+// =====================================================================
+static _CMD_RESULT ExecDuelStart(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 2) { r.status = "FAILED"; r.result = "Params: PlayerA|PlayerB|[Zone]"; return r; }
+	std::string nameA = p[0];
+	std::string nameB = p[1];
+	uint8 zoneID = (p.size() >= 3) ? (uint8)SafeAtoi(p[2], 1, 255) : 48;  // default Arena 48
+
+	CUser* pA = g_pMain->GetUserPtr(nameA, NameType::TYPE_CHARACTER);
+	CUser* pB = g_pMain->GetUserPtr(nameB, NameType::TYPE_CHARACTER);
+	if (pA == nullptr || !pA->isInGame()) { r.status = "FAILED"; r.result = "Oyuncu A offline/yok: " + nameA; return r; }
+	if (pB == nullptr || !pB->isInGame()) { r.status = "FAILED"; r.result = "Oyuncu B offline/yok: " + nameB; return r; }
+	if (pA == pB) { r.status = "FAILED"; r.result = "Ayni oyuncu secilemez"; return r; }
+	if (pA->isDead() || pB->isDead()) { r.status = "FAILED"; r.result = "Olu oyuncu duel yapamaz"; return r; }
+	if (pA->isTrading() || pB->isTrading()) { r.status = "FAILED"; r.result = "Ticaret durumunda duel yok"; return r; }
+
+	// Arena pattern teleport (1v1 ile ayni — karsi karsiya)
+	pA->ZoneChange(zoneID, 135.0f, 115.0f, -1, false);
+	pB->ZoneChange(zoneID, 120.0f, 115.0f, -1, false);
+
+	// Server-wide duyuru (TR/EN)
+	char ann[260] = {0};
+	_snprintf_s(ann, sizeof(ann), _TRUNCATE,
+		"[DUELLO / DUEL] %s vs %s @ Zone %u! Teke tek dovus / 1v1 fight!",
+		pA->GetName().c_str(), pB->GetName().c_str(), zoneID);
+	std::string msg = ann;
+	g_pMain->SendNotice(msg.c_str());
+
+	char buf[160] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Duel basladi: %s vs %s @ Zone %u",
+		nameA.c_str(), nameB.c_str(), zoneID);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+// =====================================================================
 // POLLER — her 2 saniyede bir GameEventMainTimer'dan cagrilir
 // =====================================================================
 static time_t g_lastCmdPoll = 0;
@@ -591,6 +631,8 @@ void TournamentCommandPollerTimer()
 		else if (cmd.commandType == "LEAGUE_REG")         r = ExecLeagueReg(cmd.params, cmd.requestedBy);
 		else if (cmd.commandType == "LEAGUE_START")       r = ExecLeagueStart(cmd.params);
 		else if (cmd.commandType == "LEAGUE_CANCEL")      r = ExecLeagueCancel(cmd.params);
+		// S115 — GM web duel (teke tek)
+		else if (cmd.commandType == "DUEL_START")         r = ExecDuelStart(cmd.params);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";
