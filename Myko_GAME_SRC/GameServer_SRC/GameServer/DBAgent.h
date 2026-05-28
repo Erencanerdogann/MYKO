@@ -243,6 +243,28 @@ public:
 	};
 	bool    BracketLoadActive(std::vector<_BRACKET_INFO_ROW>& outRows);
 
+	// S115 — PARTY bracket/lig DB persist (MATRIX migration 123/124)
+	// Row struct'lar clan'inkini yeniden kullanir (ID alani = party ID, name = lider adi).
+	// Tablolar: _MK_PARTY_BRACKET/REG/MATCHES + _MK_PARTY_LEAGUE/REG/MATCHES (MATRIX)
+	int32_t PartyBracketCreate(const std::string& name, uint8 maxParties, const std::string& gm);
+	bool    PartyBracketRegister(int32_t bracketID, uint16 partyID,
+	                             const std::string& leaderName, uint8 memberCount, std::string& outResult);
+	bool    PartyBracketGenerateMatches(int32_t bracketID);
+	bool    PartyBracketMatchFinish(int32_t matchID, uint16 winnerPartyID);
+	bool    PartyBracketNextRoundGenerate(int32_t bracketID, uint8 currentRound);
+	bool    PartyBracketCancel(int32_t bracketID);
+	bool    PartyBracketLoadActive(std::vector<_BRACKET_INFO_ROW>& outRows);
+	bool    PartyBracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows);
+
+	int32_t PartyLeagueCreate(const std::string& name, uint8 maxParties, const std::string& gm);
+	bool    PartyLeagueRegister(int32_t leagueID, uint16 partyID,
+	                            const std::string& leaderName, std::string& outResult);
+	bool    PartyLeagueGenerateFixtures(int32_t leagueID);
+	bool    PartyLeagueMatchFinish(int32_t matchID, uint16 redScore, uint16 blueScore, uint16 winnerPartyID);
+	bool    PartyLeagueCancel(int32_t leagueID);
+	bool    PartyLeagueLoadActive(std::vector<_LEAGUE_INFO_ROW>& outRows);
+	bool    PartyLeagueLoadMatches(int32_t leagueID, std::vector<_LEAGUE_MATCH_ROW>& outRows);
+
 	// S115 FAZ 13 — Crystal CTF DB (MATRIX migration 110)
 	int32_t CTFStart(uint8 zoneID, uint16 redClanID, const std::string& redName,
 	                 uint16 blueClanID, const std::string& blueName);
