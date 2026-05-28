@@ -49,6 +49,134 @@ void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID)
 		zoneID, redClanID, blueClanID, warpedCount);
 }
 
+// =====================================================================
+// S115 — PARTY VS PARTY: party uyelerini zone'a cagir (clan'in party versiyonu)
+// patron: "party leaderleri cekilince butun party all alana cekilmeli"
+// pParty->uid[0..MAX_PARTY_USERS] -> tum party uyeleri warp.
+// Red party sol-base, Blue party sag-base (clan war layout ile ayni).
+// Donus: kac uye warp edildi (Red + Blue toplam)
+// =====================================================================
+int SummonPartyToZone(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID)
+{
+	float redX = 0.0f, redZ = 0.0f, blueX = 0.0f, blueZ = 0.0f;
+	switch (zoneID)
+	{
+		case 77: case 78:
+			redX = 400.0f;  redZ = 1600.0f;
+			blueX = 1600.0f; blueZ = 400.0f;
+			break;
+		case 96: case 97: case 98: case 99:
+			redX = 80.0f;   redZ = 130.0f;
+			blueX = 175.0f; blueZ = 130.0f;
+			break;
+		default:
+			redX = blueX = 1000.0f; redZ = blueZ = 1000.0f;
+			break;
+	}
+
+	int warpedCount = 0;
+	// Iki party'yi sirayla isle (Red sonra Blue)
+	for (int side = 0; side < 2; side++)
+	{
+		uint16 partyID = (side == 0) ? redPartyID : bluePartyID;
+		if (partyID == 0xFFFF || partyID == 0) continue;
+
+		_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(partyID);
+		if (pParty == nullptr) continue;
+
+		bool isRed = (side == 0);
+		for (int i = 0; i < MAX_PARTY_USERS; i++)
+		{
+			CUser* pTarget = g_pMain->GetUserPtr(pParty->uid[i]);
+			if (pTarget == nullptr || !pTarget->isInGame()) continue;
+			if (pTarget->GetZoneID() == zoneID) continue;  // zaten zone'da
+
+			pTarget->ZoneChange(zoneID, isRed ? redX : blueX, isRed ? redZ : blueZ);
+
+			std::string privNotice =
+				"[PARTY VS] Base'e aktarildin, savasa hazirlan! | Warped to base, get ready!";
+			Packet privPkt;
+			ChatPacket::Construct(&privPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &privNotice);
+			pTarget->Send(&privPkt);
+			warpedCount++;
+		}
+	}
+	printf("[PARTY VS] SummonParty Zone=%u Red=%u Blue=%u -> %d uye cagirildi\n",
+		zoneID, redPartyID, bluePartyID, warpedCount);
+	return warpedCount;
+}
+
+// =====================================================================
+// S115 — PARTY VS PARTY duello baslatma (2 party tek mac)
+// Clan tournament motorunun party versiyonu. participantType=1 ile isaretlenir.
+// HandleTournamentEnd party tipini taniyip party odulu dagitir.
+// redPartyLeaderID / bluePartyLeaderID = party liderlerinin user ID'si
+// Donus: true = basladi
+// =====================================================================
+bool StartPartyVsMatch(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
+                       uint16 durationMin, const std::string& startedBy)
+{
+	_PARTY_GROUP* pRedParty  = g_pMain->GetPartyPtr(redPartyID);
+	_PARTY_GROUP* pBlueParty = g_pMain->GetPartyPtr(bluePartyID);
+	if (pRedParty == nullptr || pBlueParty == nullptr) {
+		printf("[PARTY VS] Start: party yok (red=%u blue=%u)\n", redPartyID, bluePartyID);
+		return false;
+	}
+	if (redPartyID == bluePartyID) {
+		printf("[PARTY VS] Start: ayni party secilemez\n");
+		return false;
+	}
+
+	// Zone bos mu? (clan tournament ile cakisma onle)
+	if (g_pMain->m_ClanVsDataList.GetData(zoneID) != nullptr) {
+		printf("[PARTY VS] Start: Zone %u dolu, baska mac var\n", zoneID);
+		return false;
+	}
+
+	// Lider isimleri (duyuru icin) — uid[0] genelde lider, ama isPartyLeader teyit
+	std::string redName = "RedParty", blueName = "BlueParty";
+	{
+		CUser* pRL = g_pMain->GetUserPtr(pRedParty->uid[0]);
+		if (pRL != nullptr) redName = pRL->GetName() + " Party";
+		CUser* pBL = g_pMain->GetUserPtr(pBlueParty->uid[0]);
+		if (pBL != nullptr) blueName = pBL->GetName() + " Party";
+	}
+
+	_TOURNAMENT_DATA* pData = new _TOURNAMENT_DATA();
+	pData->aTournamentZoneID         = zoneID;
+	pData->participantType           = 1;  // PARTY
+	pData->aTournamentPartyNum[0]    = redPartyID;
+	pData->aTournamentPartyNum[1]    = bluePartyID;
+	pData->aTournamentTimer          = (uint32)durationMin * 60;
+	pData->aTournamentisAttackable   = true;
+	pData->aTournamentisStarted      = true;
+	pData->aTournamentisFinished     = false;
+
+	if (!g_pMain->m_ClanVsDataList.PutData(zoneID, pData)) {
+		delete pData;
+		printf("[PARTY VS] Start: PutData fail (Zone=%u)\n", zoneID);
+		return false;
+	}
+
+	// Bahis penceresi ac (turnuva harici party vs'de dahi disardan bahis)
+	extern void OpenTournamentBets(uint8 zoneID);
+	OpenTournamentBets(zoneID);
+
+	// Party uyelerini otomatik zone'a cagir (patron: "butun party all alana cekilmeli")
+	SummonPartyToZone(zoneID, redPartyID, bluePartyID);
+
+	char buf[300] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+		"[PARTY VS / PARTY MATCH] %s vs %s @ Zone %u (%u dk/min)! Bahis acik / Betting open!",
+		redName.c_str(), blueName.c_str(), zoneID, durationMin);
+	std::string msg = buf;
+	g_pMain->SendNotice(msg.c_str());
+
+	printf("[PARTY VS] START Zone=%u Red=%u Blue=%u dk=%u by=%s\n",
+		zoneID, redPartyID, bluePartyID, durationMin, startedBy.c_str());
+	return true;
+}
+
 // S115 Plan A — Helper: Tournament zone'una scoreboard + timer paketi yayinla
 // Her 5 saniyede bir cagrilir (spam onlemi). Score paketinin disinda timer'in da
 // client UI'da AKMASI icin gerekli (zone giriste tek seferlik gonderim yetmez).
@@ -209,11 +337,102 @@ int GMGiveTournamentReward(uint8 rewardType, uint8 targetType,
 	return givenCount;
 }
 
+// =====================================================================
+// S115 — PARTY ODUL: kazanan party LIDERINE toplu odul (patron karari)
+// Lider bolustur. Default 5M Noah + 1000 NP (clan ile ayni base).
+// Berabere: iki party liderine katilim (1M Noah).
+// =====================================================================
+static void DistributePartyRewards(uint16 winnerPartyID, uint16 loserPartyID, bool isDraw)
+{
+	const uint32 WINNER_GOLD = 5000000, WINNER_NP = 1000;
+	const uint32 DRAW_GOLD   = 1000000, DRAW_NP   = 200;
+
+	auto giveToLeader = [&](uint16 partyID, uint32 gold, uint32 np, const char* label) {
+		_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(partyID);
+		if (pParty == nullptr) return;
+		// Lider = uid[0] (party olusturan), isPartyLeader ile teyit
+		CUser* pLeader = nullptr;
+		for (int i = 0; i < MAX_PARTY_USERS; i++) {
+			CUser* pU = g_pMain->GetUserPtr(pParty->uid[i]);
+			if (pU != nullptr && pU->isInGame() && pU->isPartyLeader()) { pLeader = pU; break; }
+		}
+		if (pLeader == nullptr) {  // lider offline -> uid[0] fallback
+			pLeader = g_pMain->GetUserPtr(pParty->uid[0]);
+			if (pLeader == nullptr || !pLeader->isInGame()) return;
+		}
+		pLeader->GoldGain(gold);
+		pLeader->SendLoyaltyChange("party_tournament", (int32)np, false, false, false);
+		char nbuf[220] = {0};
+		_snprintf_s(nbuf, sizeof(nbuf), _TRUNCATE,
+			"[PARTY VS] %s! Toplu odul lidere: +%u Noah +%u NP (party ile bolustur). | Reward to leader, share with party.",
+			label, gold, np);
+		std::string m = nbuf;
+		Packet p;
+		ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m);
+		pLeader->Send(&p);
+	};
+
+	if (isDraw) {
+		giveToLeader(winnerPartyID, DRAW_GOLD, DRAW_NP, "Berabere/Draw");
+		giveToLeader(loserPartyID,  DRAW_GOLD, DRAW_NP, "Berabere/Draw");
+	} else {
+		giveToLeader(winnerPartyID, WINNER_GOLD, WINNER_NP, "KAZANDINIZ/WON");
+	}
+}
+
 // S115 Plan A — Helper: Tournament bittiginde duyuru + odul dagit
 // Tek yerden tum sonuc mantığı (6 zone'a kopyali kod kaldirildi)
 static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 {
 	if (info == nullptr) return;
+
+	// S115 — PARTY VS PARTY: ayri akis (clan kodu calismasin, party ID'yi clan sanmasin)
+	if (info->participantType == 1)
+	{
+		uint16 redScoreP  = info->aTournamentScoreBoard[0];
+		uint16 blueScoreP = info->aTournamentScoreBoard[1];
+		uint16 redPartyID  = info->aTournamentPartyNum[0];
+		uint16 bluePartyID = info->aTournamentPartyNum[1];
+
+		// Bahis resolve — kazanan party ID'si (bahis betClanID alanini party ID olarak kullanir)
+		uint16 winnerPartyID = 0;
+		bool isDraw = (redScoreP == blueScoreP);
+		if (!isDraw) winnerPartyID = (redScoreP > blueScoreP) ? redPartyID : bluePartyID;
+
+		// Odul (party liderine toplu) — bahisten AYRI havuz (patron: karismaz)
+		if (isDraw)
+			DistributePartyRewards(redPartyID, bluePartyID, true);
+		else
+			DistributePartyRewards(winnerPartyID,
+				(winnerPartyID == redPartyID) ? bluePartyID : redPartyID, false);
+
+		// Bahis havuzu cozumle (turnuva harici dahi disardan bahis acilabilir)
+		{
+			extern void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID);
+			ResolveTournamentBets(info->aTournamentZoneID, winnerPartyID);
+		}
+
+		char pbuf[260] = {0};
+		if (isDraw)
+			_snprintf_s(pbuf, sizeof(pbuf), _TRUNCATE,
+				"[PARTY VS BITTI / ENDED] Zone %u — Berabere/Draw (%u-%u)",
+				info->aTournamentZoneID, redScoreP, blueScoreP);
+		else
+			_snprintf_s(pbuf, sizeof(pbuf), _TRUNCATE,
+				"[PARTY VS BITTI / ENDED] Zone %u — Kazanan party/Winner: %s (%u-%u)",
+				info->aTournamentZoneID,
+				(winnerPartyID == redPartyID) ? "RED" : "BLUE",
+				(redScoreP > blueScoreP) ? redScoreP : blueScoreP,
+				(redScoreP > blueScoreP) ? blueScoreP : redScoreP);
+		std::string pmsg = pbuf;
+		Packet ppkt;
+		ChatPacket::Construct(&ppkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &pmsg);
+		g_pMain->Send_All(&ppkt);
+
+		printf("[PARTY VS] FINISH Zone=%u Red=%u Blue=%u Winner=%u\n",
+			info->aTournamentZoneID, redScoreP, blueScoreP, winnerPartyID);
+		return;  // clan kodu calismasin
+	}
 
 	CKnights *pRedClan  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
 	CKnights *pBlueClan = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
@@ -784,5 +1003,47 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentRewardCommand)
 	                                   amount, itemID, itemCount, "console");
 	printf("[GM REWARD] %d kisiye verildi (tip=%s hedef=%s)\n",
 		given, sType.c_str(), sTarget.c_str());
+	return true;
+}
+
+// =====================================================================
+// S115 — PARTY VS PARTY duello konsol komutu (/partyvs)
+// patron: "party vs party yok, ozel karmasik party vsler de yapilabilmeli"
+// Kullanim: /partyvs <RedLiderKarakter> <BlueLiderKarakter> <Zone> <Dakika>
+//   GM iki party liderinin KARAKTER adini verir -> party ID'leri bulunur.
+//   Lider olmasa bile party'deyse o party kullanilir (uyari ile).
+// =====================================================================
+extern bool StartPartyVsMatch(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
+                              uint16 durationMin, const std::string& startedBy);
+
+COMMAND_HANDLER(CGameServerDlg::HandlePartyVsCommand)
+{
+	if (vargs.size() < 4) {
+		printf("Usage: /partyvs <RedLider> <BlueLider> <Zone(96-99/77/78)> <Dakika(1-60)>\n");
+		printf("  Ornek: /partyvs Ahmet Mehmet 96 10\n");
+		return true;
+	}
+
+	std::string redLeader  = vargs.front(); vargs.pop_front();
+	std::string blueLeader = vargs.front(); vargs.pop_front();
+	uint8  zoneID   = (uint8)SafeAtoi(vargs.front(), 1, 255); vargs.pop_front();
+	uint16 duration = (uint16)SafeAtoi(vargs.front(), 1, 60);
+
+	CUser* pRL = GetUserPtr(redLeader, NameType::TYPE_CHARACTER);
+	CUser* pBL = GetUserPtr(blueLeader, NameType::TYPE_CHARACTER);
+	if (pRL == nullptr || !pRL->isInGame()) { printf("[PARTY VS] Red lider offline/yok: %s\n", redLeader.c_str()); return true; }
+	if (pBL == nullptr || !pBL->isInGame()) { printf("[PARTY VS] Blue lider offline/yok: %s\n", blueLeader.c_str()); return true; }
+	if (!pRL->isInParty()) { printf("[PARTY VS] %s party'de degil\n", redLeader.c_str()); return true; }
+	if (!pBL->isInParty()) { printf("[PARTY VS] %s party'de degil\n", blueLeader.c_str()); return true; }
+
+	uint16 redPartyID  = (uint16)pRL->GetPartyID();
+	uint16 bluePartyID = (uint16)pBL->GetPartyID();
+	if (redPartyID == bluePartyID) { printf("[PARTY VS] Ikisi de ayni party'de\n"); return true; }
+
+	if (StartPartyVsMatch(zoneID, redPartyID, bluePartyID, duration, "console"))
+		printf("[PARTY VS] Basladi: %s(party %u) vs %s(party %u) @ Zone %u %u dk\n",
+			redLeader.c_str(), redPartyID, blueLeader.c_str(), bluePartyID, zoneID, duration);
+	else
+		printf("[PARTY VS] Baslatilamadi (zone dolu veya party yok)\n");
 	return true;
 }

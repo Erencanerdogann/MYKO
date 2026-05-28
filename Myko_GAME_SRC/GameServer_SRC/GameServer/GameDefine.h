@@ -3512,6 +3512,11 @@ struct _TOURNAMENT_DATA
 	// S115 — League (lig) entegrasyon
 	int32_t leagueMatchID;                     // 0 = standalone, >0 = lig macina bagli
 
+	// S115 — PARTY VS PARTY entegrasyon
+	// participantType: 0 = CLAN (clanNum kullan, mevcut), 1 = PARTY (partyNum kullan)
+	uint8  participantType;                    // 0=clan(default) 1=party
+	uint16 aTournamentPartyNum[2];             // party ID'ler (participantType=1 ise gecerli)
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3536,6 +3541,9 @@ struct _TOURNAMENT_DATA
 		dbTournamentID = 0;
 		bracketMatchID = 0;
 		leagueMatchID = 0;
+		participantType = 0;
+		aTournamentPartyNum[0] = 0;
+		aTournamentPartyNum[1] = 0;
 	}
 };
 
