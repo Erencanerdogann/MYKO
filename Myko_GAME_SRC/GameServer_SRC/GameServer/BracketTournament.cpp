@@ -526,6 +526,10 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 	extern void OpenTournamentBets(uint8 zoneID);
 	OpenTournamentBets(m.zoneID);
 
+	// Klan uyelerini otomatik zone'a cagir (manuel /tournamentstart ile ayni)
+	extern void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID);
+	SummonClanMembersToZone(m.zoneID, pRedClan->GetID(), pBlueClan->GetID());
+
 	// Server-wide duyuru
 	const char* zoneName =
 		(m.zoneID == 77) ? "Ardream"   :

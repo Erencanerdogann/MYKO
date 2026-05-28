@@ -1,5 +1,54 @@
 #include "stdafx.h"
 
+// =====================================================================
+// S115 — Ortak helper: Klan uyelerini tournament zone'una otomatik cagir
+// (Bracket + League auto-start maclarinda kullanilir; manuel /tournamentstart
+//  zaten kendi icinde yapiyor — bu helper kod tekrarini onler)
+// Red sol-base, Blue sag-base ayri spawn (clan war layout).
+// =====================================================================
+void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID)
+{
+	float redX = 0.0f, redZ = 0.0f, blueX = 0.0f, blueZ = 0.0f;
+	switch (zoneID)
+	{
+		case 77: case 78:  // Clan War (buyuk map)
+			redX = 400.0f;  redZ = 1600.0f;
+			blueX = 1600.0f; blueZ = 400.0f;
+			break;
+		case 96: case 97: case 98: case 99:  // Party VS (kucuk arena)
+			redX = 80.0f;   redZ = 130.0f;
+			blueX = 175.0f; blueZ = 130.0f;
+			break;
+		default:
+			redX = blueX = 1000.0f; redZ = blueZ = 1000.0f;
+			break;
+	}
+
+	int warpedCount = 0;
+	for (uint16 i = 0; i < MAX_USER; i++)
+	{
+		CUser* pTarget = g_pMain->GetUserPtr(i);
+		if (pTarget == nullptr || !pTarget->isInGame()) continue;
+
+		uint16 tClanID = pTarget->GetClanID();
+		if (tClanID != redClanID && tClanID != blueClanID) continue;
+		if (pTarget->GetZoneID() == zoneID) continue;  // zaten zone'da
+
+		bool isRed = (tClanID == redClanID);
+		pTarget->ZoneChange(zoneID, isRed ? redX : blueX, isRed ? redZ : blueZ);
+
+		std::string privNotice = isRed
+			? "[TURNUVA / MATCH] Base'e aktarildin, savasa hazirlan! | Warped to base, get ready!"
+			: "[TURNUVA / MATCH] Base'e aktarildin, savasa hazirlan! | Warped to base, get ready!";
+		Packet privPkt;
+		ChatPacket::Construct(&privPkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &privNotice);
+		pTarget->Send(&privPkt);
+		warpedCount++;
+	}
+	printf("[TOURNAMENT] SummonClanMembers Zone=%u Red=%u Blue=%u -> %d uye cagirildi\n",
+		zoneID, redClanID, blueClanID, warpedCount);
+}
+
 // S115 Plan A — Helper: Tournament zone'una scoreboard + timer paketi yayinla
 // Her 5 saniyede bir cagrilir (spam onlemi). Score paketinin disinda timer'in da
 // client UI'da AKMASI icin gerekli (zone giriste tek seferlik gonderim yetmez).

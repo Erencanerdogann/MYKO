@@ -298,6 +298,10 @@ static bool StartLeagueMatchTournament(_LEAGUE_MATCH_INFO& m, const std::string&
 	extern void OpenTournamentBets(uint8 zoneID);
 	OpenTournamentBets(m.zoneID);
 
+	// Klan uyelerini otomatik zone'a cagir
+	extern void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID);
+	SummonClanMembersToZone(m.zoneID, pRed->GetID(), pBlue->GetID());
+
 	const char* zoneName =
 		(m.zoneID == 77) ? "Ardream"   : (m.zoneID == 78) ? "Ronark"    :
 		(m.zoneID == 96) ? "PartyVs-1" : (m.zoneID == 97) ? "PartyVs-2" :
