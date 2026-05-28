@@ -79,8 +79,11 @@ static void RefreshLeagueMatches(_LEAGUE_INFO* l)
 {
 	if (l == nullptr) return;
 	std::vector<CDBAgent::_LEAGUE_MATCH_ROW> rows;
-	if (!g_DBAgent.LeagueLoadMatches(l->leagueID, rows)) {
-		printf("[LEAGUE] RefreshMatches DB hata leagueID=%d\n", l->leagueID);
+	bool loadOk = (l->participantType == 1)
+		? g_DBAgent.PartyLeagueLoadMatches(l->leagueID, rows)
+		: g_DBAgent.LeagueLoadMatches(l->leagueID, rows);
+	if (!loadOk) {
+		printf("[LEAGUE] RefreshMatches DB hata leagueID=%d tip=%u\n", l->leagueID, l->participantType);
 		return;
 	}
 	l->matches.clear();
@@ -127,16 +130,35 @@ void LoadLeaguesFromDB()
 		l.status = r.status;
 		l.winnerClanID = r.winnerClanID;
 		l.winnerClanName = r.winnerClanName;
+		l.participantType = 0;  // CLAN
 		g_leagues.push_back(l);
 	}
+	// PARTY ligleri de yukle (restart-safe)
+	std::vector<CDBAgent::_LEAGUE_INFO_ROW> prows;
+	if (g_DBAgent.PartyLeagueLoadActive(prows)) {
+		for (auto& r : prows) {
+			_LEAGUE_INFO l;
+			l.leagueID = r.leagueID;
+			l.name = r.name;
+			l.maxClans = r.maxClans;
+			l.currentRound = r.currentRound;
+			l.totalRounds = r.totalRounds;
+			l.status = r.status;
+			l.winnerClanID = r.winnerClanID;
+			l.winnerClanName = r.winnerClanName;
+			l.participantType = 1;  // PARTY
+			g_leagues.push_back(l);
+		}
+	}
 	for (auto& l : g_leagues) RefreshLeagueMatches(&l);
-	printf("[LEAGUE] LoadLeaguesFromDB: %zu lig yuklendi\n", g_leagues.size());
+	printf("[LEAGUE] LoadLeaguesFromDB: %zu lig yuklendi (clan+party)\n", g_leagues.size());
 }
 
 // =====================================================================
 // PUBLIC API — GM komutlari
 // =====================================================================
-int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string& createdByGM)
+int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string& createdByGM,
+                     uint8 participantType = 0)
 {
 	if (maxClans < 3 || maxClans > 8) {
 		printf("[LEAGUE] CreateLeague: maxClans 3-8 olmali (got %u)\n", maxClans);
@@ -144,10 +166,14 @@ int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string&
 	}
 	std::lock_guard<std::recursive_mutex> lock(g_leagueLock);
 
-	int32_t leagueID = g_DBAgent.LeagueCreate(name, maxClans, createdByGM);
+	int32_t leagueID = (participantType == 1)
+		? g_DBAgent.PartyLeagueCreate(name, maxClans, createdByGM)
+		: g_DBAgent.LeagueCreate(name, maxClans, createdByGM);
 	if (leagueID == 0) {
-		printf("[LEAGUE] CreateLeague DB hata\n");
-		return 0;
+		// DB yoksa RAM-only fallback (party duello gibi)
+		static int32_t s_nextRamLeagueID = 2000;
+		leagueID = s_nextRamLeagueID++;
+		printf("[LEAGUE] DB unavailable, RAM-only league ID=%d (tip=%u)\n", leagueID, participantType);
 	}
 	_LEAGUE_INFO l;
 	l.leagueID = leagueID;
@@ -157,10 +183,11 @@ int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string&
 	l.totalRounds = 0;
 	l.status = "REGISTRATION";
 	l.winnerClanID = 0;
+	l.participantType = participantType;
 	g_leagues.push_back(l);
 
-	printf("[LEAGUE] Created: ID=%d Name='%s' MaxClans=%u GM=%s\n",
-		leagueID, name.c_str(), maxClans, createdByGM.c_str());
+	printf("[LEAGUE] Created: ID=%d Name='%s' Max=%u tip=%s GM=%s\n",
+		leagueID, name.c_str(), maxClans, participantType == 1 ? "PARTY" : "CLAN", createdByGM.c_str());
 	return leagueID;
 }
 
@@ -187,6 +214,21 @@ bool RegisterClanToLeague(int32_t leagueID, uint16 clanID,
 	return true;
 }
 
+// PARTY kayit (party lideri party'sini lige kaydeder)
+bool RegisterPartyToLeague(int32_t leagueID, uint16 partyID, const std::string& leaderName)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_leagueLock);
+	_LEAGUE_INFO* l = FindLeague(leagueID);
+	if (l == nullptr) { printf("[LEAGUE-PARTY] Register: leagueID=%d yok\n", leagueID); return false; }
+	if (l->participantType != 1) { printf("[LEAGUE-PARTY] Register: leagueID=%d party lig DEGIL\n", leagueID); return false; }
+	if (l->status != "REGISTRATION") { printf("[LEAGUE-PARTY] Register: leagueID=%d REGISTRATION disi (%s)\n", leagueID, l->status.c_str()); return false; }
+	std::string result;
+	bool ok = g_DBAgent.PartyLeagueRegister(leagueID, partyID, leaderName, result);
+	if (!ok) { printf("[LEAGUE-PARTY] Register failed: party=%u lider=%s (%s)\n", partyID, leaderName.c_str(), result.c_str()); return false; }
+	printf("[LEAGUE-PARTY] Registered: leagueID=%d party=%u lider=%s\n", leagueID, partyID, leaderName.c_str());
+	return true;
+}
+
 bool StartLeague(int32_t leagueID)
 {
 	std::lock_guard<std::recursive_mutex> lock(g_leagueLock);
@@ -200,9 +242,12 @@ bool StartLeague(int32_t leagueID)
 		return false;
 	}
 
-	// DB fikstur olustur (round-robin)
-	if (!g_DBAgent.LeagueGenerateFixtures(leagueID)) {
-		printf("[LEAGUE] Start: GenerateFixtures DB hata leagueID=%d\n", leagueID);
+	// DB fikstur olustur (round-robin) — clan veya party tablosu
+	bool genOk = (l->participantType == 1)
+		? g_DBAgent.PartyLeagueGenerateFixtures(leagueID)
+		: g_DBAgent.LeagueGenerateFixtures(leagueID);
+	if (!genOk) {
+		printf("[LEAGUE] Start: GenerateFixtures DB hata leagueID=%d tip=%u\n", leagueID, l->participantType);
 		return false;
 	}
 
@@ -221,7 +266,10 @@ bool CancelLeague(int32_t leagueID)
 	_LEAGUE_INFO* l = FindLeague(leagueID);
 	if (l == nullptr) return false;
 
-	if (!g_DBAgent.LeagueCancel(leagueID)) {
+	bool cancelOk = (l->participantType == 1)
+		? g_DBAgent.PartyLeagueCancel(leagueID)
+		: g_DBAgent.LeagueCancel(leagueID);
+	if (!cancelOk) {
 		printf("[LEAGUE] Cancel DB hata leagueID=%d (RAM iptal)\n", leagueID);
 	}
 	l->status = "CANCELLED";
@@ -380,11 +428,12 @@ void OnLeagueMatchFinish(int32_t matchID, uint16 winnerClanID, uint16 redScore, 
 		if (lTip != nullptr) isPartyLeague = (lTip->participantType == 1);
 	}
 
-	// DB puan guncelle — SADECE clan ligde (party puani RAM'de, MATRIX party SP gelince DB)
-	if (!isPartyLeague) {
-		if (!g_DBAgent.LeagueMatchFinish(matchID, redScore, blueScore, winnerClanID)) {
-			printf("[LEAGUE] MatchFinish DB hata matchID=%d\n", matchID);
-		}
+	// DB puan guncelle — clan veya party tablosu (party SP artik var, MATRIX 124)
+	bool mfOk = isPartyLeague
+		? g_DBAgent.PartyLeagueMatchFinish(matchID, redScore, blueScore, winnerClanID)  // winnerClanID = party ID
+		: g_DBAgent.LeagueMatchFinish(matchID, redScore, blueScore, winnerClanID);
+	if (!mfOk) {
+		printf("[LEAGUE] MatchFinish DB hata matchID=%d tip=%s\n", matchID, isPartyLeague ? "PARTY" : "CLAN");
 	}
 
 	_LEAGUE_MATCH_INFO* m = FindLeagueMatch(matchID);

@@ -26,7 +26,7 @@
 #include "stdafx.h"
 
 // Forward declarations (BracketTournament.cpp + CTFSystem.cpp + others)
-extern int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM);
+extern int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM, uint8 participantType = 0);
 extern bool RegisterClanToBracket(int32_t bracketID, uint16 clanID,
                                    const std::string& clanName, const std::string& leaderName);
 extern bool StartBracket(int32_t bracketID);
@@ -50,7 +50,7 @@ extern void ForceCloseBetWindow(uint8 zoneID);  // manuel kapatma
 extern void ForceOpenBetWindow(uint8 zoneID);   // manuel acma
 
 // Lig (League) kontrol (LeagueTournament.cpp)
-extern int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string& createdByGM);
+extern int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string& createdByGM, uint8 participantType = 0);
 extern bool RegisterClanToLeague(int32_t leagueID, uint16 clanID,
                                  const std::string& clanName, const std::string& leaderName);
 extern bool StartLeague(int32_t leagueID);

@@ -79,8 +79,11 @@ static void RefreshBracketMatches(_BRACKET_INFO* b)
 {
 	if (b == nullptr) return;
 	std::vector<CDBAgent::_BRACKET_MATCH_ROW> rows;
-	if (!g_DBAgent.BracketLoadMatches(b->bracketID, rows)) {
-		printf("[BRACKET] RefreshMatches DB hata bracketID=%d\n", b->bracketID);
+	bool loadOk = (b->participantType == 1)
+		? g_DBAgent.PartyBracketLoadMatches(b->bracketID, rows)
+		: g_DBAgent.BracketLoadMatches(b->bracketID, rows);
+	if (!loadOk) {
+		printf("[BRACKET] RefreshMatches DB hata bracketID=%d tip=%u\n", b->bracketID, b->participantType);
 		return;
 	}
 	b->matches.clear();
@@ -130,15 +133,33 @@ void LoadBracketsFromDB()
 		b.status         = r.status;
 		b.winnerClanID   = r.winnerClanID;
 		b.winnerClanName = r.winnerClanName;
+		b.participantType = 0;  // CLAN
 		g_brackets.push_back(b);
 	}
 
-	// Her aktif bracket icin matches yukle
+	// PARTY bracket'leri de yukle (restart-safe)
+	std::vector<CDBAgent::_BRACKET_INFO_ROW> prows;
+	if (g_DBAgent.PartyBracketLoadActive(prows)) {
+		for (auto& r : prows) {
+			_BRACKET_INFO b;
+			b.bracketID      = r.bracketID;
+			b.name           = r.name;
+			b.maxClans       = r.maxClans;
+			b.currentRound   = r.currentRound;
+			b.status         = r.status;
+			b.winnerClanID   = r.winnerClanID;
+			b.winnerClanName = r.winnerClanName;
+			b.participantType = 1;  // PARTY
+			g_brackets.push_back(b);
+		}
+	}
+
+	// Her aktif bracket icin matches yukle (participantType'a gore party/clan tablosu)
 	for (auto& b : g_brackets) {
 		RefreshBracketMatches(&b);
 	}
 
-	printf("[BRACKET] LoadBracketsFromDB: %zu aktif bracket yuklendi\n", g_brackets.size());
+	printf("[BRACKET] LoadBracketsFromDB: %zu aktif bracket yuklendi (clan+party)\n", g_brackets.size());
 }
 
 // =====================================================================
@@ -146,7 +167,8 @@ void LoadBracketsFromDB()
 // =====================================================================
 
 // Yeni bracket olustur (DB + RAM)
-int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM)
+int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM,
+                      uint8 participantType = 0)
 {
 	if (maxClans != 4 && maxClans != 8 && maxClans != 16 && maxClans != 32) {
 		printf("[BRACKET] CreateBracket: maxClans must be 4/8/16/32 (got %u)\n", maxClans);
@@ -155,13 +177,15 @@ int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string
 
 	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
 
-	// DB INSERT (MATRIX SP_BRACKET_CREATE)
-	int32_t bracketID = g_DBAgent.BracketCreate(name, maxClans, createdByGM);
+	// DB INSERT — clan veya party tablosu (participantType'a gore)
+	int32_t bracketID = (participantType == 1)
+		? g_DBAgent.PartyBracketCreate(name, maxClans, createdByGM)
+		: g_DBAgent.BracketCreate(name, maxClans, createdByGM);
 	if (bracketID == 0) {
 		// DB yoksa RAM-only fallback
 		static int32_t s_nextRamBracketID = 1000;
 		bracketID = s_nextRamBracketID++;
-		printf("[BRACKET] DB unavailable, RAM-only bracket ID=%d\n", bracketID);
+		printf("[BRACKET] DB unavailable, RAM-only bracket ID=%d (tip=%u)\n", bracketID, participantType);
 	}
 
 	_BRACKET_INFO info;
@@ -171,10 +195,11 @@ int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string
 	info.maxClans = maxClans;
 	info.status = "REGISTRATION";
 	info.winnerClanID = 0;
+	info.participantType = participantType;
 	g_brackets.push_back(info);
 
-	printf("[BRACKET] Created: ID=%d Name='%s' MaxClans=%u GM=%s\n",
-		bracketID, name.c_str(), maxClans, createdByGM.c_str());
+	printf("[BRACKET] Created: ID=%d Name='%s' Max=%u tip=%s GM=%s\n",
+		bracketID, name.c_str(), maxClans, participantType == 1 ? "PARTY" : "CLAN", createdByGM.c_str());
 	return bracketID;
 }
 
@@ -207,6 +232,36 @@ bool RegisterClanToBracket(int32_t bracketID, uint16 clanID,
 	return true;
 }
 
+// PARTY kayit (party lideri party'sini bracket'a kaydeder)
+bool RegisterPartyToBracket(int32_t bracketID, uint16 partyID,
+                            const std::string& leaderName, uint8 memberCount)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
+	_BRACKET_INFO* b = FindBracket(bracketID);
+	if (b == nullptr) {
+		printf("[BRACKET-PARTY] Register: BracketID=%d yok\n", bracketID);
+		return false;
+	}
+	if (b->participantType != 1) {
+		printf("[BRACKET-PARTY] Register: BracketID=%d party bracket DEGIL\n", bracketID);
+		return false;
+	}
+	if (b->status != "REGISTRATION") {
+		printf("[BRACKET-PARTY] Register: BracketID=%d REGISTRATION degil (%s)\n", bracketID, b->status.c_str());
+		return false;
+	}
+	std::string result;
+	bool ok = g_DBAgent.PartyBracketRegister(bracketID, partyID, leaderName, memberCount, result);
+	if (!ok) {
+		printf("[BRACKET-PARTY] Register failed: party=%u lider=%s (result=%s)\n",
+			partyID, leaderName.c_str(), result.c_str());
+		return false;
+	}
+	printf("[BRACKET-PARTY] Registered: BracketID=%d party=%u lider=%s uye=%u\n",
+		bracketID, partyID, leaderName.c_str(), memberCount);
+	return true;
+}
+
 // Bracket'i baslat — Round 1 mac'lari olusur, ilk 6 mac otomatik baslar (zone cyclic)
 bool StartBracket(int32_t bracketID)
 {
@@ -222,9 +277,12 @@ bool StartBracket(int32_t bracketID)
 		return false;
 	}
 
-	// DB SP_BRACKET_GENERATE_MATCHES (Round 1 mac'lari olusur, seed shuffle, zone cyclic)
-	if (!g_DBAgent.BracketGenerateMatches(bracketID)) {
-		printf("[BRACKET] Start: GenerateMatches DB hata BracketID=%d\n", bracketID);
+	// DB GEN_FIXTURES (Round 1 mac'lari olusur) — clan veya party tablosu
+	bool genOk = (b->participantType == 1)
+		? g_DBAgent.PartyBracketGenerateMatches(bracketID)
+		: g_DBAgent.BracketGenerateMatches(bracketID);
+	if (!genOk) {
+		printf("[BRACKET] Start: GenerateMatches DB hata BracketID=%d tip=%u\n", bracketID, b->participantType);
 		return false;
 	}
 
@@ -253,8 +311,11 @@ bool CancelBracket(int32_t bracketID)
 		return false;
 	}
 
-	// DB SP_BRACKET_CANCEL
-	if (!g_DBAgent.BracketCancel(bracketID)) {
+	// DB CANCEL — clan veya party tablosu
+	bool cancelOk = (b->participantType == 1)
+		? g_DBAgent.PartyBracketCancel(bracketID)
+		: g_DBAgent.BracketCancel(bracketID);
+	if (!cancelOk) {
 		printf("[BRACKET] Cancel DB hata BracketID=%d (RAM yine de iptal)\n", bracketID);
 	}
 
@@ -314,11 +375,6 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 
 	std::lock_guard<std::recursive_mutex> lock(g_bracketLock);
 
-	// DB SP_BRACKET_MATCH_FINISH
-	if (!g_DBAgent.BracketMatchFinish(matchID, redScore, blueScore, winnerClanID)) {
-		printf("[BRACKET] OnMatchFinish DB hata matchID=%d\n", matchID);
-	}
-
 	_BRACKET_MATCH_INFO* m = FindMatch(matchID);
 	if (m == nullptr) {
 		printf("[BRACKET] OnMatchFinish: matchID=%d not in RAM\n", matchID);
@@ -335,6 +391,14 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 
 	_BRACKET_INFO* b = FindBracket(cachedBracketID);
 	if (b == nullptr) return;
+
+	// DB MATCH_FINISH — clan veya party tablosu (b bulunduktan sonra, tip belli)
+	bool mfOk = (b->participantType == 1)
+		? g_DBAgent.PartyBracketMatchFinish(matchID, winnerClanID)  // party: winnerPartyID
+		: g_DBAgent.BracketMatchFinish(matchID, redScore, blueScore, winnerClanID);
+	if (!mfOk) {
+		printf("[BRACKET] OnMatchFinish DB hata matchID=%d tip=%u\n", matchID, b->participantType);
+	}
 
 	// Tur tamamlanma kontrol — su anki turda hala PENDING/ACTIVE mac var mi
 	bool roundComplete = true;
@@ -356,7 +420,10 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 	printf("[BRACKET] Round %u tamamlandi (bracket %d), sonraki tur olusturuluyor\n",
 		b->currentRound, b->bracketID);
 
-	if (!g_DBAgent.BracketNextRoundGenerate(b->bracketID, b->currentRound)) {
+	bool nextOk = (b->participantType == 1)
+		? g_DBAgent.PartyBracketNextRoundGenerate(b->bracketID, b->currentRound)
+		: g_DBAgent.BracketNextRoundGenerate(b->bracketID, b->currentRound);
+	if (!nextOk) {
 		printf("[BRACKET] NextRoundGenerate DB hata bracketID=%d\n", b->bracketID);
 		return;
 	}

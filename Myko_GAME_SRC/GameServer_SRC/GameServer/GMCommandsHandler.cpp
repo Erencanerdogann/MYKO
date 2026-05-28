@@ -3263,7 +3263,7 @@ COMMAND_HANDLER(CUser::HandleTournamentCloseUserCommand)
 // MATRIX MSG:5914 SP'leri + BracketTournament.cpp engine
 // =====================================================================
 
-extern int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM);
+extern int32_t CreateBracket(const std::string& name, uint8 maxClans, const std::string& createdByGM, uint8 participantType = 0);
 extern bool    RegisterClanToBracket(int32_t bracketID, uint16 clanID,
                                      const std::string& clanName, const std::string& leaderName);
 extern bool    StartBracket(int32_t bracketID);
