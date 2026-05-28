@@ -694,6 +694,61 @@ static _CMD_RESULT ExecTournamentReward(const std::string& params, const std::st
 	return r;
 }
 
+// S115 — GM web ZAMANLANMIS EVENT (KAYIT->BAHIS->MAC asamali)
+// Params: RedLider|BlueLider|Zone|regDk|betDk|macDk
+static _CMD_RESULT ExecEventCreate(const std::string& params, const std::string& requestedBy)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 3) { r.status = "FAILED"; r.result = "Params: RedLider|BlueLider|Zone|[regDk]|[betDk]|[macDk]"; return r; }
+	std::string redLeader = p[0], blueLeader = p[1];
+	uint8 zoneID = (uint8)SafeAtoi(p[2], 1, 255);
+	uint32 regSec   = (p.size() >= 4) ? (uint32)SafeAtoi(p[3], 1, 120) * 60 : 0;
+	uint32 betSec   = (p.size() >= 5) ? (uint32)SafeAtoi(p[4], 1, 120) * 60 : 0;
+	uint32 matchSec = (p.size() >= 6) ? (uint32)SafeAtoi(p[5], 1, 120) * 60 : 0;
+
+	CUser* pRL = g_pMain->GetUserPtr(redLeader, NameType::TYPE_CHARACTER);
+	CUser* pBL = g_pMain->GetUserPtr(blueLeader, NameType::TYPE_CHARACTER);
+	if (pRL == nullptr || !pRL->isInGame()) { r.status = "FAILED"; r.result = "Red lider offline/yok: " + redLeader; return r; }
+	if (pBL == nullptr || !pBL->isInGame()) { r.status = "FAILED"; r.result = "Blue lider offline/yok: " + blueLeader; return r; }
+	if (!pRL->isInParty()) { r.status = "FAILED"; r.result = redLeader + " party'de degil"; return r; }
+	if (!pBL->isInParty()) { r.status = "FAILED"; r.result = blueLeader + " party'de degil"; return r; }
+	uint16 redPartyID = (uint16)pRL->GetPartyID(), bluePartyID = (uint16)pBL->GetPartyID();
+	if (redPartyID == bluePartyID) { r.status = "FAILED"; r.result = "Ikisi de ayni party'de"; return r; }
+
+	std::string redName = pRL->GetName() + " Party", blueName = pBL->GetName() + " Party";
+	extern int32_t CreatePartyVsEvent(uint8, uint16, uint16, const std::string&, const std::string&,
+	                                  uint32, uint32, uint32, uint32, const std::string&);
+	int32_t eid = CreatePartyVsEvent(zoneID, redPartyID, bluePartyID, redName, blueName,
+	                                 regSec, betSec, 0, matchSec, requestedBy);
+	if (eid <= 0) { r.status = "FAILED"; r.result = "Event olusturulamadi (zone dolu/event var)"; return r; }
+	char buf[160] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Event basladi: id=%d %s vs %s @ Zone %u (KAYIT->BAHIS->MAC)",
+		eid, redLeader.c_str(), blueLeader.c_str(), zoneID);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+// S115 — GM web HIZLI DUYURU (server-wide notice, tekrar destegi)
+// Params: mesaj|tekrar|aralikSn   (tekrar/aralik opsiyonel; aralik su an anlik, tekrar 1-5)
+static _CMD_RESULT ExecNotice(const std::string& params, const std::string& requestedBy)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty() || p[0].empty()) { r.status = "FAILED"; r.result = "Params: mesaj|[tekrar]|[aralikSn]"; return r; }
+	std::string msg = p[0];
+	int tekrar = (p.size() >= 2) ? (int)SafeAtoi(p[1], 1, 5) : 1;
+	// Aralik: poller 2sn'de bir kostugu icin gercek gecikme veremeyiz; tekrar anlik gonderilir.
+	// (Gercek aralikli tekrar gerekiyorsa ileride scheduler'a tasinir.)
+	for (int i = 0; i < tekrar; i++)
+		g_pMain->SendNotice(msg.c_str());
+	LOG(LogCategory::LOG_GM, "[GM NOTICE] gm=%s tekrar=%d msg=%s", requestedBy.c_str(), tekrar, msg.c_str());
+	char buf[120] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Duyuru gonderildi (%d kez)", tekrar);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
 // =====================================================================
 // POLLER — her 2 saniyede bir GameEventMainTimer'dan cagrilir
 // =====================================================================
@@ -745,6 +800,9 @@ void TournamentCommandPollerTimer()
 		else if (cmd.commandType == "TOURNAMENT_REWARD")  r = ExecTournamentReward(cmd.params, cmd.requestedBy);
 		// S115 — GM web party vs party duello
 		else if (cmd.commandType == "PARTY_VS")           r = ExecPartyVs(cmd.params, cmd.requestedBy);
+		// S115 — GM web zamanlanmis event (KAYIT->BAHIS->MAC) + hizli duyuru
+		else if (cmd.commandType == "EVENT_CREATE")       r = ExecEventCreate(cmd.params, cmd.requestedBy);
+		else if (cmd.commandType == "NOTICE")             r = ExecNotice(cmd.params, cmd.requestedBy);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";
