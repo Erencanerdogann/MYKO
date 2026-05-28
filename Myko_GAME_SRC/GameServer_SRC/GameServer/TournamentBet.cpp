@@ -290,6 +290,21 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 		uint64 commission = totalPool * g_betCommissionPct / 100;  // SINK
 		uint64 distributable = totalPool - commission;
 
+		// FLOOR ARTIGI (remainder) — integer bolme floor yapar, kalan Noah'lar
+		// havada kalmasin (kazanandan kesilmis gibi olmasin). Once toplam floor
+		// payout hesapla, fark = distributable - toplam -> ilk kazanana ekle.
+		// Boylece dagitilacak'in TAMAMI kazananlara gider (KO standart: kazanc kesilmez).
+		uint64 sumFloorPayout = 0;
+		for (auto& bet : bets) {
+			if (bet.betClanID == winnerClanID) {
+				uint64 pay = (uint64)bet.betAmount * distributable / winnerPool;
+				if (pay > COIN_MAX) pay = COIN_MAX;
+				sumFloorPayout += pay;
+			}
+		}
+		uint64 remainder = (distributable > sumFloorPayout) ? (distributable - sumFloorPayout) : 0;
+		bool remainderGiven = false;  // ilk kazanana 1 kez ekle
+
 		// Stat track
 		struct _PAYOUT_STAT { std::string name; int64_t delta; };
 		std::vector<_PAYOUT_STAT> winners;
@@ -310,6 +325,11 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 			if (bet.betClanID == winnerClanID) {
 				// Pay orani: (kendi bahsi / kazanan havuz) * dagitilacak
 				uint64 payout = (uint64)bet.betAmount * distributable / winnerPool;
+				// Floor artigini ilk kazanana ekle (kazanc kesilmesin — KO standart)
+				if (!remainderGiven && remainder > 0) {
+					payout += remainder;
+					remainderGiven = true;
+				}
 				// COIN_MAX cap — GoldGain uint32 (max 4.2 milyar), oyuncu cuzdani COIN_MAX (2.1 milyar)
 				if (payout > COIN_MAX) payout = COIN_MAX;
 				totalPaidOut += payout;
