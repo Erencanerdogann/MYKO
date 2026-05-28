@@ -242,10 +242,9 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 	// Havuzlari topla (uint64 — overflow guard: 5M * 1000 kisi = 5 milyar > uint32)
 	{
 		uint64 winnerPool = 0, loserPool = 0;
-		uint16 loserClanID = 0;
 		for (auto& bet : bets) {
 			if (bet.betClanID == winnerClanID) winnerPool += bet.betAmount;
-			else { loserPool += bet.betAmount; loserClanID = bet.betClanID; }
+			else loserPool += bet.betAmount;
 		}
 
 		// Tek tarafa bahis (rakipsiz) → tum iade (oran hesaplanamaz)
@@ -282,6 +281,8 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 			if (bet.betClanID == winnerClanID) {
 				// Pay orani: (kendi bahsi / kazanan havuz) * dagitilacak
 				uint64 payout = (uint64)bet.betAmount * distributable / winnerPool;
+				// COIN_MAX cap — GoldGain uint32 (max 4.2 milyar), oyuncu cuzdani COIN_MAX (2.1 milyar)
+				if (payout > COIN_MAX) payout = COIN_MAX;
 				totalPaidOut += payout;
 				int64_t kar = (int64_t)payout - (int64_t)bet.betAmount;
 				winners.push_back({bet.betterCharName, kar});
