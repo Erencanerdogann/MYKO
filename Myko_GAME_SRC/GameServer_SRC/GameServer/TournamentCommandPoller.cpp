@@ -49,6 +49,13 @@ extern void GetBetConfig(uint32& minAmt, uint32& maxAmt, time_t& win, uint8& com
 extern void ForceCloseBetWindow(uint8 zoneID);  // manuel kapatma
 extern void ForceOpenBetWindow(uint8 zoneID);   // manuel acma
 
+// Lig (League) kontrol (LeagueTournament.cpp)
+extern int32_t CreateLeague(const std::string& name, uint8 maxClans, const std::string& createdByGM);
+extern bool RegisterClanToLeague(int32_t leagueID, uint16 clanID,
+                                 const std::string& clanName, const std::string& leaderName);
+extern bool StartLeague(int32_t leagueID);
+extern bool CancelLeague(int32_t leagueID);
+
 // =====================================================================
 // HELPER — pipe-separated string split
 // =====================================================================
@@ -475,6 +482,71 @@ static _CMD_RESULT ExecBetSetWindow(const std::string& params)
 }
 
 // =====================================================================
+// LIG GM WEB KONTROL (S115)
+// =====================================================================
+static _CMD_RESULT ExecLeagueCreate(const std::string& params, const std::string& gmNick)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 2) { r.status = "FAILED"; r.result = "Params: Name|MaxClans"; return r; }
+	std::string name = p[0];
+	uint8 maxClans = (uint8)SafeAtoi(p[1], 3, 8);
+
+	int32_t lid = CreateLeague(name, maxClans, gmNick);
+	if (lid <= 0) { r.status = "FAILED"; r.result = "CreateLeague DB hata (maxClans 3-8?)"; return r; }
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Lig olusturuldu: LeagueID=%d Name=%s MaxClans=%u",
+		lid, name.c_str(), maxClans);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecLeagueReg(const std::string& params, const std::string& gmNick)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 2) { r.status = "FAILED"; r.result = "Params: LeagueID|ClanName"; return r; }
+	int32_t lid = SafeAtoi(p[0], 0, 0x7FFFFFFF);
+	std::string clanName = p[1];
+
+	CKnights* pClan = FindClanByName(clanName);
+	if (pClan == nullptr) { r.status = "FAILED"; r.result = "Klan yok: " + clanName; return r; }
+
+	bool ok = RegisterClanToLeague(lid, pClan->GetID(), clanName, gmNick);
+	if (!ok) { r.status = "FAILED"; r.result = "LeagueRegister fail (lig yok/kayit kapali/dolu/zaten)"; return r; }
+	char buf[160] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Lig %d'e %s klani kayit oldu", lid, clanName.c_str());
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecLeagueStart(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: LeagueID"; return r; }
+	int32_t lid = SafeAtoi(p[0], 0, 0x7FFFFFFF);
+	if (!StartLeague(lid)) { r.status = "FAILED"; r.result = "StartLeague hata (kayit yetersiz?)"; return r; }
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Lig %d basladi (fikstur olustu, maclar otomatik baslar)", lid);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecLeagueCancel(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: LeagueID"; return r; }
+	int32_t lid = SafeAtoi(p[0], 0, 0x7FFFFFFF);
+	if (!CancelLeague(lid)) { r.status = "FAILED"; r.result = "CancelLeague hata"; return r; }
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Lig %d iptal edildi", lid);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+// =====================================================================
 // POLLER — her 2 saniyede bir GameEventMainTimer'dan cagrilir
 // =====================================================================
 static time_t g_lastCmdPoll = 0;
@@ -514,6 +586,11 @@ void TournamentCommandPollerTimer()
 		else if (cmd.commandType == "BET_SET_COMMISSION") r = ExecBetSetCommission(cmd.params);
 		else if (cmd.commandType == "BET_SET_LIMITS")     r = ExecBetSetLimits(cmd.params);
 		else if (cmd.commandType == "BET_SET_WINDOW")     r = ExecBetSetWindow(cmd.params);
+		// S115 lig — GM web lig kontrol
+		else if (cmd.commandType == "LEAGUE_CREATE")      r = ExecLeagueCreate(cmd.params, cmd.requestedBy);
+		else if (cmd.commandType == "LEAGUE_REG")         r = ExecLeagueReg(cmd.params, cmd.requestedBy);
+		else if (cmd.commandType == "LEAGUE_START")       r = ExecLeagueStart(cmd.params);
+		else if (cmd.commandType == "LEAGUE_CANCEL")      r = ExecLeagueCancel(cmd.params);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";
