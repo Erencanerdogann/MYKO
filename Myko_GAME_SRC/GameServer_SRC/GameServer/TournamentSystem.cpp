@@ -657,6 +657,20 @@ static void TickOneTournamentZone(CGameServerDlg* pMain, uint8 zoneID)
 	_TOURNAMENT_DATA* info = pMain->m_ClanVsDataList.GetData(zoneID);
 	if (info == nullptr) return;
 
+	// S115 ORPHAN GUARD (event BETTING data): EventScheduler RAM'den kaybolursa (restart/iptal)
+	// betting verisi (started=false+finished=false+bettingPhase) hicbir faza girmez -> zone SONSUZ KILIT.
+	// aTournamentOutTimer betting deadline olarak kullanilir (EnterBettingPhase set eder).
+	// Deadline gectiyse + hala betting'de (EventScheduler RUNNING'e gecirmemis) -> guvenlik temizligi.
+	if (info->aBettingPhase && !info->aTournamentisStarted
+		&& info->aTournamentOutTimer != 0 && info->aTournamentOutTimer <= UNIXTIME)
+	{
+		extern void CancelTournamentBets(uint8 zoneID);
+		CancelTournamentBets(zoneID);  // bekleyen bahisleri iade
+		pMain->m_ClanVsDataList.DeleteData(zoneID);
+		printf("[EVENT] ORPHAN betting data temizlendi (zone=%u, EventScheduler kayip)\n", zoneID);
+		return;
+	}
+
 	// Faz 2: Aktif tournament suresi bitti
 	if (info->aTournamentisStarted && info->aTournamentTimer == 0)
 	{

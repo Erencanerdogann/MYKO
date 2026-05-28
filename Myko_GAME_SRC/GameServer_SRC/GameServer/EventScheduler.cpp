@@ -203,6 +203,10 @@ static void EnterBettingPhase(_SCHEDULED_EVENT& e)
 	pData->aTournamentisFinished  = false;
 	pData->aTournamentTimer       = e.matchSec;  // mac suresi (RUNNING'de kullanilir)
 	pData->aTournamentisAttackable = false;      // bahis asamasinda saldiri yok
+	// ORPHAN GUARD deadline: betSec + countdownSec + 120sn buffer. EventScheduler normalde
+	// bu sureden once RUNNING'e gecirir (bettingPhase=false yapar). Gecmezse (restart/kayip)
+	// tick bu deadline'da betting data'yi temizler -> zone sonsuz kilit kalmaz.
+	pData->aTournamentOutTimer    = UNIXTIME + (time_t)(e.betSec + e.countdownSec + 120);
 
 	if (e.kind == EventKind::PARTY_VS) {
 		pData->participantType        = 1;
@@ -252,6 +256,7 @@ static void EnterRunningPhase(_SCHEDULED_EVENT& e)
 	info->aTournamentisStarted = true;
 	info->aTournamentisAttackable = true;
 	info->aTournamentTimer     = e.matchSec;
+	info->aTournamentOutTimer  = 0;   // betting orphan deadline'i temizle (artik savas, Faz 2 yonetir)
 	info->aTournamentScoreBoard[0] = 0;
 	info->aTournamentScoreBoard[1] = 0;
 
