@@ -712,9 +712,32 @@ void CUser::SelectCharacter(Packet & pkt)
 
 		if (!ishome && (isPartyTournamentinZone() || isClanTournamentinZone())) {
 			auto* TournamentClanInfo = g_pMain->m_ClanVsDataList.GetData(GetZoneID());
-			if ((TournamentClanInfo == nullptr) || (TournamentClanInfo->aTournamentClanNum[0] != GetClanID()
-				&& TournamentClanInfo->aTournamentClanNum[1] != GetClanID())) {
+			if (TournamentClanInfo == nullptr) {
+				// Mac bitmis/yok -> Moradon
 				ishome = true; zoneid = ZONE_MORADON;
+			}
+			else if (TournamentClanInfo->participantType == 1) {
+				// PARTY maci — DC olan party'den dusmus olabilir (party ID kaybolur).
+				// ROSTER (karakter adi) ile teyit: ismim red/blue listesinde mi + mac devam ediyor mu?
+				std::string myName = GetName();
+				bool inRed  = (TournamentClanInfo->rosterRed.find(myName)  != TournamentClanInfo->rosterRed.end());
+				bool inBlue = (TournamentClanInfo->rosterBlue.find(myName) != TournamentClanInfo->rosterBlue.end());
+				if ((!inRed && !inBlue) || TournamentClanInfo->aTournamentTimer == 0) {
+					// Katilimci degil veya mac bitti -> Moradon
+					ishome = true; zoneid = ZONE_MORADON;
+				}
+				// inRed/inBlue ise zone'da KALIR (DC reconnect -> maca geri doner)
+			}
+			else {
+				// CLAN maci — klan ID ile teyit (mevcut), ek olarak roster fallback
+				std::string myName = GetName();
+				bool inRoster = (TournamentClanInfo->rosterRed.find(myName)  != TournamentClanInfo->rosterRed.end())
+				             || (TournamentClanInfo->rosterBlue.find(myName) != TournamentClanInfo->rosterBlue.end());
+				bool clanMatch = (TournamentClanInfo->aTournamentClanNum[0] == GetClanID()
+				               || TournamentClanInfo->aTournamentClanNum[1] == GetClanID());
+				if ((!clanMatch && !inRoster) || TournamentClanInfo->aTournamentTimer == 0) {
+					ishome = true; zoneid = ZONE_MORADON;
+				}
 			}
 		}
 

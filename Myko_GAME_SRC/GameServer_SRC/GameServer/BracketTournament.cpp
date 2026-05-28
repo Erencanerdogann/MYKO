@@ -557,6 +557,13 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 	if (isParty) {
 		pData->aTournamentPartyNum[0] = m.redClanID;
 		pData->aTournamentPartyNum[1] = m.blueClanID;
+		// DC RECONNECT roster (party uye isimleri)
+		_PARTY_GROUP* pRP = g_pMain->GetPartyPtr(m.redClanID);
+		_PARTY_GROUP* pBP = g_pMain->GetPartyPtr(m.blueClanID);
+		for (int i = 0; i < MAX_PARTY_USERS; i++) {
+			if (pRP) { CUser* u = g_pMain->GetUserPtr(pRP->uid[i]); if (u) pData->rosterRed.insert(u->GetName()); }
+			if (pBP) { CUser* u = g_pMain->GetUserPtr(pBP->uid[i]); if (u) pData->rosterBlue.insert(u->GetName()); }
+		}
 	}
 	pData->aTournamentScoreBoard[0]  = 0;
 	pData->aTournamentScoreBoard[1]  = 0;

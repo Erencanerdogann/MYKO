@@ -157,6 +157,14 @@ bool StartPartyVsMatch(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
 	pData->aTournamentisStarted      = true;
 	pData->aTournamentisFinished     = false;
 
+	// DC RECONNECT — roster: katilimci karakter adlari (DC olan geri girince isimle warp)
+	for (int i = 0; i < MAX_PARTY_USERS; i++) {
+		CUser* pR = g_pMain->GetUserPtr(pRedParty->uid[i]);
+		if (pR != nullptr) pData->rosterRed.insert(pR->GetName());
+		CUser* pB = g_pMain->GetUserPtr(pBlueParty->uid[i]);
+		if (pB != nullptr) pData->rosterBlue.insert(pB->GetName());
+	}
+
 	if (!g_pMain->m_ClanVsDataList.PutData(zoneID, pData)) {
 		delete pData;
 		printf("[PARTY VS] Start: PutData fail (Zone=%u)\n", zoneID);
@@ -761,10 +769,16 @@ void CGameServerDlg::UpdateClanTournamentScoreBoard(CUser* pUser)
 		uint16 killerParty = (uint16)pUser->GetPartyID();
 		uint16 redParty    = TournamentInfo->aTournamentPartyNum[0];
 		uint16 blueParty   = TournamentInfo->aTournamentPartyNum[1];
-		if (killerParty == 0xFFFF)  // party'de degil (GetPartyID -1 = 0xFFFF)
-			return;
 		if (killerParty == redParty)       { isRedSide = true;  isParticipant = true; }
 		else if (killerParty == blueParty) { isRedSide = false; isParticipant = true; }
+		else {
+			// DC sonrasi party'den dusmus olabilir (party ID kaybolur) — ROSTER (isim) ile teyit
+			std::string nm = pUser->GetName();
+			if (TournamentInfo->rosterRed.find(nm) != TournamentInfo->rosterRed.end())
+				{ isRedSide = true;  isParticipant = true; }
+			else if (TournamentInfo->rosterBlue.find(nm) != TournamentInfo->rosterBlue.end())
+				{ isRedSide = false; isParticipant = true; }
+		}
 	}
 	else
 	{

@@ -3517,6 +3517,12 @@ struct _TOURNAMENT_DATA
 	uint8  participantType;                    // 0=clan(default) 1=party
 	uint16 aTournamentPartyNum[2];             // party ID'ler (participantType=1 ise gecerli)
 
+	// S115 — DC RECONNECT: mac basinda katilimci KARAKTER ADLARI kaydedilir.
+	// DC olan geri girince ismi hangi taraftaysa o zone'a warp (party ID degisse de isim sabit).
+	// rosterRed = red taraf isimleri, rosterBlue = blue taraf isimleri.
+	std::set<std::string> rosterRed;
+	std::set<std::string> rosterBlue;
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3544,6 +3550,8 @@ struct _TOURNAMENT_DATA
 		participantType = 0;
 		aTournamentPartyNum[0] = 0;
 		aTournamentPartyNum[1] = 0;
+		rosterRed.clear();
+		rosterBlue.clear();
 	}
 };
 
