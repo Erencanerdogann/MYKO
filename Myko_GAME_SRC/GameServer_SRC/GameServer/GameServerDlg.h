@@ -1395,6 +1395,10 @@ public:
 	COMMAND_HANDLER(HandleLeagueCancelCommand);        // S115 lig — /leaguecancel
 	COMMAND_HANDLER(HandleTournamentRewardCommand);    // S115 — GM manuel odul /tournamentreward
 	COMMAND_HANDLER(HandlePartyVsCommand);             // S115 — party vs party /partyvs
+	COMMAND_HANDLER(HandleEventCreateCommand);         // S115 — zamanlanmis event /eventcreate
+	COMMAND_HANDLER(HandleEventConfigCommand);         // S115 — event sure ayar /eventconfig
+	COMMAND_HANDLER(HandleEventListCommand);           // S115 — aktif event'ler /eventlist
+	COMMAND_HANDLER(HandleEventCancelCommand);         // S115 — event iptal /eventcancel
 
 	// S115 — Bracket Tournament GM komutlari (MATRIX MSG:5914 + CHIP Bracket Engine)
 	COMMAND_HANDLER(HandleBracketCreateCommand);

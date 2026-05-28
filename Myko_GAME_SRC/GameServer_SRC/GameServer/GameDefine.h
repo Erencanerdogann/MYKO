@@ -3523,6 +3523,11 @@ struct _TOURNAMENT_DATA
 	std::set<std::string> rosterRed;
 	std::set<std::string> rosterBlue;
 
+	// S115 — EVENT SCHEDULER: BETTING asamasi (mac henuz baslamadi, savas yok ama BAHIS acik).
+	// COUNTDOWN sonunda aTournamentisStarted=true olur, aBettingPhase=false (bahis kapanir, savas baslar).
+	// +bet kontrolu: (started || bettingPhase) ise bahis kabul. Tick started=false + betting'de savasi baslatmaz.
+	bool aBettingPhase;
+
 	_TOURNAMENT_DATA()
 	{
 		Initialize();
@@ -3552,6 +3557,7 @@ struct _TOURNAMENT_DATA
 		aTournamentPartyNum[1] = 0;
 		rosterRed.clear();
 		rosterBlue.clear();
+		aBettingPhase = false;
 	}
 };
 

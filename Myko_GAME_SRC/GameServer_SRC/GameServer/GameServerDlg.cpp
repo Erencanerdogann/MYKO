@@ -1388,6 +1388,11 @@ void CGameServerDlg::GameEventMainTimer()
 		extern void LeagueAutoStartTimer();
 		LeagueAutoStartTimer();
 	}
+	{
+		// S115 event scheduler — zamanlanmis turnuva (KAYIT->BAHIS->MAC asamali)
+		extern void EventSchedulerTimer();
+		EventSchedulerTimer();
+	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();
 	ChaosStoneRespawnTimer();

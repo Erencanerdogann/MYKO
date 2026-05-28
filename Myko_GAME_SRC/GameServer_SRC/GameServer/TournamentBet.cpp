@@ -58,6 +58,17 @@ void GetBetConfig(uint32& minAmt, uint32& maxAmt, time_t& win, uint8& comm) {
 }
 
 // Tournament basladiginde bet kayit alani aç + server-wide duyuru
+// Event scheduler — belirli sureli bahis penceresi (betSec GM ayarli)
+void OpenTournamentBetsForDuration(uint8 zoneID, time_t durationSec)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_betLock);
+	g_activeBets[zoneID].clear();
+	g_betCloseTime[zoneID] = UNIXTIME + durationSec;
+	g_betCloseAnnounced.erase(zoneID);
+	g_betLastStatusBroadcast[zoneID] = UNIXTIME;
+	// Duyuru EventScheduler'da yapiliyor (BAHIS ACILDI), burada tekrar etme
+}
+
 void OpenTournamentBets(uint8 zoneID)
 {
 	std::lock_guard<std::recursive_mutex> lock(g_betLock);
@@ -208,7 +219,7 @@ void ForceCloseBetWindow(uint8 zoneID)
 void ForceOpenBetWindow(uint8 zoneID)
 {
 	_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zoneID);
-	if (info == nullptr || !info->aTournamentisStarted) return;
+	if (info == nullptr || (!info->aTournamentisStarted && !info->aBettingPhase)) return;
 	OpenTournamentBets(zoneID);  // pencere + duyuru
 }
 
@@ -529,7 +540,8 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	for (uint8 zid : candidateZones)
 	{
 		_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zid);
-		if (info == nullptr || !info->aTournamentisStarted) continue;
+		// Bahis: mac basladi (started) VEYA event BETTING asamasi (henuz savas yok ama bahis acik)
+		if (info == nullptr || (!info->aTournamentisStarted && !info->aBettingPhase)) continue;
 
 		// PARTY maci: red/blue taraf ile bahis (betClanID = party ID, aTournamentClanNum'da)
 		if (info->participantType == 1)
