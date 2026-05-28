@@ -375,6 +375,10 @@ static void DistributePartyRewards(uint16 winnerPartyID, uint16 loserPartyID, bo
 		Packet p;
 		ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m);
 		pLeader->Send(&p);
+		// KALICI LOG (party odul denetim kaniti)
+		LOG(LogCategory::LOG_GENERAL,
+			"[PARTY REWARD] party=%u lider=%s sonuc=%s gold=%u np=%u",
+			partyID, pLeader->GetName().c_str(), label, gold, np);
 	};
 
 	if (isDraw) {
@@ -434,8 +438,10 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 		ChatPacket::Construct(&ppkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &pmsg);
 		g_pMain->Send_All(&ppkt);
 
-		printf("[PARTY VS] FINISH Zone=%u Red=%u Blue=%u Winner=%u\n",
-			info->aTournamentZoneID, redScoreP, blueScoreP, winnerPartyID);
+		LOG(LogCategory::LOG_GENERAL,
+			"[PARTY VS FINISH] zone=%u redParty=%u blueParty=%u skor=%u-%u winner=%u %s",
+			info->aTournamentZoneID, redPartyID, bluePartyID, redScoreP, blueScoreP,
+			winnerPartyID, isDraw ? "BERABERE" : "");
 		return;  // clan kodu calismasin
 	}
 
