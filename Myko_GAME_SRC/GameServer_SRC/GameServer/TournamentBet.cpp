@@ -70,10 +70,11 @@ void OpenTournamentBets(uint8 zoneID)
 		CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
 		CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
 		if (pRed != nullptr && pBlue != nullptr) {
-			char buf[300] = {0};
+			char buf[320] = {0};
 			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"[BET ACILDI] Zone %u — %s vs %s | 2 dakika bahis kabul ediliyor (+bet KLAN MIKTAR, min 10K max 5M)",
-				zoneID, pRed->GetName().c_str(), pBlue->GetName().c_str());
+				"[BET ACILDI] Zone %u — %s vs %s | %llds bahis (+bet KLAN MIKTAR, min %u max %u, komisyon %%%u)",
+				zoneID, pRed->GetName().c_str(), pBlue->GetName().c_str(),
+				(long long)g_betWindowSec, g_betMinAmount, g_betMaxPerUser, g_betCommissionPct);
 			std::string msg = buf;
 			g_pMain->SendNotice(msg.c_str());
 		}
@@ -169,7 +170,9 @@ static void RefundAllBets(uint8 zoneID, std::vector<_TOURNAMENT_BET>& bets, cons
 	for (auto& bet : bets) {
 		if (bet.resolved) continue;
 		bet.resolved = true;
+		// Socket ID yeniden kullanim guard: isim teyit
 		CUser* pUser = g_pMain->GetUserPtr(bet.betterUserID);
+		if (pUser != nullptr && pUser->GetName() != bet.betterCharName) pUser = nullptr;
 		if (pUser != nullptr && pUser->isInGame()) {
 			pUser->GoldGain(bet.betAmount);  // iade (komisyon kesilmez)
 			char buf[200] = {0};
@@ -294,7 +297,12 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 			if (bet.resolved) continue;
 			bet.resolved = true;
 
+			// BUG FIX (socket ID yeniden kullanim): mac 10dk surer, bu surede oyuncu
+			// cikip ayni socket'e baska biri girebilir. Odeme oncesi ISIM TEYIT et.
 			CUser* pUser = g_pMain->GetUserPtr(bet.betterUserID);
+			if (pUser != nullptr && pUser->GetName() != bet.betterCharName) {
+				pUser = nullptr;  // socket baskasinda — bu oturuma odeme yapma (offline say)
+			}
 
 			if (bet.betClanID == winnerClanID) {
 				// Pay orani: (kendi bahsi / kazanan havuz) * dagitilacak
@@ -445,7 +453,7 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	if (closeIt != g_betCloseTime.end() && UNIXTIME > closeIt->second)
 	{
 		g_pMain->SendHelpDescription(this,
-			"Bu tournament icin bahisler kapali (2dk gecti).");
+			"Bu tournament icin bahisler kapali (pencere suresi doldu).");
 		return true;
 	}
 
@@ -511,20 +519,29 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	                              targetClanID, targetClanName, (int32_t)amount);
 
 	// PARIMUTUEL — su anki havuza gore tahmini oran/kazanc
-	uint64 winnerPool = 0, totalPool = 0;  // bu bahis dahil
+	uint64 myPool = 0, otherPool = 0;  // bu bahis dahil
 	for (auto& b : g_activeBets[targetZoneID]) {
-		totalPool += b.betAmount;
-		if (b.betClanID == targetClanID) winnerPool += b.betAmount;
+		if (b.betClanID == targetClanID) myPool += b.betAmount;
+		else otherPool += b.betAmount;
 	}
-	uint64 distributable = totalPool - (totalPool * g_betCommissionPct / 100);
-	double estOdds = (winnerPool > 0) ? ((double)distributable / (double)winnerPool) : 0.0;
-	uint64 estPayout = (winnerPool > 0) ? ((uint64)amount * distributable / winnerPool) : 0;
 
-	char buf[300] = { 0 };
-	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-		"[BET] %s'a %u Noah koydun! Su anki oran: %.2fx (tahmini kazanc ~%llu Noah). "
-		"NOT: oran bahis aktikca degisir, kesin kazanc mac sonu belli.",
-		targetClanName.c_str(), amount, estOdds, (unsigned long long)estPayout);
+	char buf[320] = { 0 };
+	if (otherPool == 0) {
+		// Rakip taraf henuz bahis koymadi — oran hesaplanamaz (rakipsizse iade riski)
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[BET] %s'a %u Noah koydun! Rakip tarafa henuz bahis yok — oran rakip gelince olusur. "
+			"(Rakipsiz biterse bahis IADE edilir.)",
+			targetClanName.c_str(), amount);
+	} else {
+		uint64 totalPool = myPool + otherPool;
+		uint64 distributable = totalPool - (totalPool * g_betCommissionPct / 100);
+		double estOdds = (double)distributable / (double)myPool;
+		uint64 estPayout = (uint64)amount * distributable / myPool;
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[BET] %s'a %u Noah koydun! Su anki oran: %.2fx (tahmini kazanc ~%llu Noah). "
+			"NOT: oran bahis aktikca degisir, kesin kazanc mac sonu belli.",
+			targetClanName.c_str(), amount, estOdds, (unsigned long long)estPayout);
+	}
 	std::string msg = buf;
 	Packet pkt;
 	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
@@ -585,11 +602,23 @@ COMMAND_HANDLER(CUser::HandleBetStatusCommand)
 
 		char buf[400] = {0};
 
-		// Satir 1: Genel
-		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[BET %u] %s: %u Noah (%zu bahis) | %s: %u Noah",
-			zid, pRed->GetName().c_str(), redPool, kv.second.size(),
-			pBlue->GetName().c_str(), bluePool);
+		// PARIMUTUEL oran hesabi (rakipsizse oran yok)
+		uint64 totalPool = (uint64)redPool + bluePool;
+		uint64 distributable = totalPool - (totalPool * g_betCommissionPct / 100);
+		double redOdds  = (redPool  > 0 && bluePool > 0) ? ((double)distributable / (double)redPool)  : 0.0;
+		double blueOdds = (bluePool > 0 && redPool  > 0) ? ((double)distributable / (double)bluePool) : 0.0;
+
+		// Satir 1: Genel + oran
+		if (redPool > 0 && bluePool > 0) {
+			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+				"[BET %u] %s: %u Noah (oran %.2fx) | %s: %u Noah (oran %.2fx) | Komisyon %%%u",
+				zid, pRed->GetName().c_str(), redPool, redOdds,
+				pBlue->GetName().c_str(), bluePool, blueOdds, g_betCommissionPct);
+		} else {
+			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+				"[BET %u] %s: %u Noah | %s: %u Noah | (oran rakip gelince olusur)",
+				zid, pRed->GetName().c_str(), redPool, pBlue->GetName().c_str(), bluePool);
+		}
 		std::string m1 = buf;
 		{ Packet p; ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m1); Send(&p); }
 
