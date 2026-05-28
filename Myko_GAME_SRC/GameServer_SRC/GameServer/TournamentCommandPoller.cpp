@@ -586,6 +586,46 @@ static _CMD_RESULT ExecDuelStart(const std::string& params)
 	return r;
 }
 
+// S115 — GM web PARTY VS PARTY duello baslat
+// Params: RedLiderKarakter|BlueLiderKarakter|Zone|Dakika
+//   GM iki party liderinin KARAKTER adini verir -> party ID'leri bulunur -> StartPartyVsMatch
+static _CMD_RESULT ExecPartyVs(const std::string& params, const std::string& requestedBy)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 4) {
+		r.status = "FAILED"; r.result = "Params: RedLider|BlueLider|Zone(96-99/77/78)|Dakika(1-60)";
+		return r;
+	}
+	std::string redLeader  = p[0];
+	std::string blueLeader = p[1];
+	uint8  zoneID   = (uint8)SafeAtoi(p[2], 1, 255);
+	uint16 duration = (uint16)SafeAtoi(p[3], 1, 60);
+
+	CUser* pRL = g_pMain->GetUserPtr(redLeader, NameType::TYPE_CHARACTER);
+	CUser* pBL = g_pMain->GetUserPtr(blueLeader, NameType::TYPE_CHARACTER);
+	if (pRL == nullptr || !pRL->isInGame()) { r.status = "FAILED"; r.result = "Red lider offline/yok: " + redLeader; return r; }
+	if (pBL == nullptr || !pBL->isInGame()) { r.status = "FAILED"; r.result = "Blue lider offline/yok: " + blueLeader; return r; }
+	if (!pRL->isInParty()) { r.status = "FAILED"; r.result = redLeader + " party'de degil"; return r; }
+	if (!pBL->isInParty()) { r.status = "FAILED"; r.result = blueLeader + " party'de degil"; return r; }
+
+	uint16 redPartyID  = (uint16)pRL->GetPartyID();
+	uint16 bluePartyID = (uint16)pBL->GetPartyID();
+	if (redPartyID == bluePartyID) { r.status = "FAILED"; r.result = "Ikisi de ayni party'de"; return r; }
+
+	extern bool StartPartyVsMatch(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
+	                              uint16 durationMin, const std::string& startedBy);
+	if (!StartPartyVsMatch(zoneID, redPartyID, bluePartyID, duration, requestedBy)) {
+		r.status = "FAILED"; r.result = "Baslatilamadi (zone dolu veya party yok)";
+		return r;
+	}
+	char buf[200] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+		"Party VS basladi: %s vs %s @ Zone %u %u dk", redLeader.c_str(), blueLeader.c_str(), zoneID, duration);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
 // S115 — GM web manuel odul (kazanana elle odul ver)
 // Params: rewardType|targetType|targetName|amount|[itemID]|[itemCount]
 //   rewardType: noah|np|item    targetType: klan|lider|oyuncu
@@ -703,6 +743,8 @@ void TournamentCommandPollerTimer()
 		else if (cmd.commandType == "DUEL_START")         r = ExecDuelStart(cmd.params);
 		// S115 — GM web manuel odul (kazanana elle odul)
 		else if (cmd.commandType == "TOURNAMENT_REWARD")  r = ExecTournamentReward(cmd.params, cmd.requestedBy);
+		// S115 — GM web party vs party duello
+		else if (cmd.commandType == "PARTY_VS")           r = ExecPartyVs(cmd.params, cmd.requestedBy);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";

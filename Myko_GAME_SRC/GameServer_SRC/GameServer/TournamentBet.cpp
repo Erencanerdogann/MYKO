@@ -519,13 +519,31 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	uint16 targetClanID = 0;
 	_TOURNAMENT_DATA* targetInfo = nullptr;
 
+	// Party maci icin "red"/"blue" taraf secimi destegi (party adi yok, lider adi karisik)
+	std::string lowerName = targetClanName;
+	for (auto& c : lowerName) c = (char)tolower((unsigned char)c);
+	bool wantRed  = (lowerName == "red"  || lowerName == "kirmizi");
+	bool wantBlue = (lowerName == "blue" || lowerName == "mavi");
+
 	uint8 candidateZones[] = { 77, 78, 96, 97, 98, 99 };
 	for (uint8 zid : candidateZones)
 	{
 		_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zid);
 		if (info == nullptr || !info->aTournamentisStarted) continue;
 
-		// Klan adi karsi var mi bu tournament'ta?
+		// PARTY maci: red/blue taraf ile bahis (betClanID = party ID, aTournamentClanNum'da)
+		if (info->participantType == 1)
+		{
+			if (wantRed) {
+				targetZoneID = zid; targetInfo = info; targetClanID = info->aTournamentClanNum[0]; break;
+			}
+			if (wantBlue) {
+				targetZoneID = zid; targetInfo = info; targetClanID = info->aTournamentClanNum[1]; break;
+			}
+			continue;  // party macinda klan adi eslesmez, red/blue bekle
+		}
+
+		// CLAN maci: klan adi karsi var mi bu tournament'ta?
 		CKnights* pRedClan  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
 		CKnights* pBlueClan = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
 
@@ -540,7 +558,7 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	if (targetInfo == nullptr || targetClanID == 0)
 	{
 		g_pMain->SendHelpDescription(this,
-			"Bu klan icin aktif tournament yok, klan adini kontrol et. | No active tournament for this clan.");
+			"Aktif tournament yok / isim yanlis. Party macinda: +bet red MIKTAR veya +bet blue MIKTAR. | No active match / wrong name. Party: +bet red/blue AMOUNT.");
 		return true;
 	}
 
@@ -598,7 +616,8 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 		}
 		// 2) Kullanici kendi klani savasiyorsa, RAKIP klana bahis koyamaz
 		//    (kendi klanina bahis serbest — patron karari)
-		if (myClanID > 0 && myClanID != targetClanID) {
+		//    PARTY macinda atla: aTournamentClanNum party ID tutar, clan ID ile kiyas yanlis tetikler
+		if (targetInfo->participantType == 0 && myClanID > 0 && myClanID != targetClanID) {
 			if (myClanID == targetInfo->aTournamentClanNum[0] ||
 			    myClanID == targetInfo->aTournamentClanNum[1]) {
 				g_pMain->SendHelpDescription(this,
