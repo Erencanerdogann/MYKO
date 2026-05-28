@@ -183,6 +183,24 @@ static void RefundAllBets(uint8 zoneID, std::vector<_TOURNAMENT_BET>& bets, cons
 	}
 }
 
+// GM/Web — bahis penceresini manuel KAPAT (mac devam eder, yeni bahis alinmaz)
+// closeTime'i simdiye ceker, CheckBetWindowClose duyuruyu yapar
+void ForceCloseBetWindow(uint8 zoneID)
+{
+	std::lock_guard<std::recursive_mutex> lock(g_betLock);
+	auto it = g_betCloseTime.find(zoneID);
+	if (it == g_betCloseTime.end()) return;
+	it->second = UNIXTIME;  // simdi kapat → CheckBetWindowClose "[BET KAPANDI]" duyurusu yapar
+}
+
+// GM/Web — bahis penceresini manuel AC (tournament aktifse, pencere yeniden acilir)
+void ForceOpenBetWindow(uint8 zoneID)
+{
+	_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zoneID);
+	if (info == nullptr || !info->aTournamentisStarted) return;
+	OpenTournamentBets(zoneID);  // pencere + duyuru
+}
+
 // GM /betcancel — aktif bahisleri iptal + tam iade (komisyon kesilmez)
 void CancelTournamentBets(uint8 zoneID)
 {

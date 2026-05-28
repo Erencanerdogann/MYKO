@@ -39,6 +39,16 @@ extern bool AddOneVsOneBracketToRAM(int32_t bid, const std::string& name,
                                      uint8 maxPlayers, const std::string& createdBy);
 extern bool StartOneVsOneBracketRAM(int32_t bid);
 
+// Bahis config + kontrol (TournamentBet.cpp)
+extern void OpenTournamentBets(uint8 zoneID);
+extern void CancelTournamentBets(uint8 zoneID);
+extern void SetBetLimits(uint32 minAmt, uint32 maxAmt);
+extern void SetBetWindow(time_t sec);
+extern void SetBetCommission(uint8 pct);
+extern void GetBetConfig(uint32& minAmt, uint32& maxAmt, time_t& win, uint8& comm);
+extern void ForceCloseBetWindow(uint8 zoneID);  // manuel kapatma
+extern void ForceOpenBetWindow(uint8 zoneID);   // manuel acma
+
 // =====================================================================
 // HELPER — pipe-separated string split
 // =====================================================================
@@ -376,6 +386,95 @@ static _CMD_RESULT ExecOneVsOneCancel(const std::string& params)
 }
 
 // =====================================================================
+// BAHIS GM WEB KONTROL — open/close/cancel + config (S115 ekonomi)
+// =====================================================================
+
+static _CMD_RESULT ExecBetOpen(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: Zone"; return r; }
+	uint8 zoneID = (uint8)SafeAtoi(p[0], 1, 255);
+
+	_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zoneID);
+	if (info == nullptr || !info->aTournamentisStarted) {
+		r.status = "FAILED"; r.result = "Zone'da aktif tournament yok (once tournament basla)";
+		return r;
+	}
+	ForceOpenBetWindow(zoneID);
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bahis penceresi Zone %u acildi", zoneID);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecBetClose(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: Zone"; return r; }
+	uint8 zoneID = (uint8)SafeAtoi(p[0], 1, 255);
+	ForceCloseBetWindow(zoneID);
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bahis penceresi Zone %u kapatildi", zoneID);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecBetCancel(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: Zone"; return r; }
+	uint8 zoneID = (uint8)SafeAtoi(p[0], 1, 255);
+	CancelTournamentBets(zoneID);
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bahisler Zone %u iptal + iade edildi", zoneID);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecBetSetCommission(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: Pct (0-30)"; return r; }
+	uint8 pct = (uint8)SafeAtoi(p[0], 0, 30);
+	SetBetCommission(pct);
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bahis komisyonu %%%u ayarlandi (sink/para eritme)", pct);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecBetSetLimits(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.size() < 2) { r.status = "FAILED"; r.result = "Params: Min|Max"; return r; }
+	uint32 mn = (uint32)SafeAtoi(p[0], 1000, 0x7FFFFFFF);
+	uint32 mx = (uint32)SafeAtoi(p[1], mn, 0x7FFFFFFF);
+	SetBetLimits(mn, mx);
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bahis limit min=%u max=%u ayarlandi", mn, mx);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+static _CMD_RESULT ExecBetSetWindow(const std::string& params)
+{
+	_CMD_RESULT r;
+	auto p = SplitPipe(params);
+	if (p.empty()) { r.status = "FAILED"; r.result = "Params: Sec (30-600)"; return r; }
+	time_t sec = (time_t)SafeAtoi(p[0], 30, 600);
+	SetBetWindow(sec);
+	char buf[128] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "Bahis penceresi %llds ayarlandi", (long long)sec);
+	r.status = "EXECUTED"; r.result = buf;
+	return r;
+}
+
+// =====================================================================
 // POLLER — her 2 saniyede bir GameEventMainTimer'dan cagrilir
 // =====================================================================
 static time_t g_lastCmdPoll = 0;
@@ -408,6 +507,13 @@ void TournamentCommandPollerTimer()
 		else if (cmd.commandType == "ONE_V_ONE_CREATE")   r = ExecOneVsOneCreate(cmd.params, cmd.requestedBy);
 		else if (cmd.commandType == "ONE_V_ONE_START")    r = ExecOneVsOneStart(cmd.params);
 		else if (cmd.commandType == "ONE_V_ONE_CANCEL")   r = ExecOneVsOneCancel(cmd.params);
+		// S115 ekonomi — GM web bahis kontrol
+		else if (cmd.commandType == "BET_OPEN")           r = ExecBetOpen(cmd.params);
+		else if (cmd.commandType == "BET_CLOSE")          r = ExecBetClose(cmd.params);
+		else if (cmd.commandType == "BET_CANCEL")         r = ExecBetCancel(cmd.params);
+		else if (cmd.commandType == "BET_SET_COMMISSION") r = ExecBetSetCommission(cmd.params);
+		else if (cmd.commandType == "BET_SET_LIMITS")     r = ExecBetSetLimits(cmd.params);
+		else if (cmd.commandType == "BET_SET_WINDOW")     r = ExecBetSetWindow(cmd.params);
 
 		// Result trunc (NVARCHAR 500 limit)
 		if (r.result.length() > 490) r.result = r.result.substr(0, 490) + "...";
