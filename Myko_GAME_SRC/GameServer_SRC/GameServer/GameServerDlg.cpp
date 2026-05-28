@@ -1376,6 +1376,11 @@ void CGameServerDlg::GameEventMainTimer()
 		extern void TournamentCommandPollerTimer();
 		TournamentCommandPollerTimer();
 	}
+	{
+		// S115 sabah RUSH — Bahis penceresi kapanma + periyodik status duyuru
+		extern void CheckBetWindowClose();
+		CheckBetWindowClose();
+	}
 	DungeonDefenceTimer();
 	DrakiTowerRoomCloseTimer();
 	ChaosStoneRespawnTimer();

@@ -1384,6 +1384,7 @@ public:
 	COMMAND_HANDLER(HandleTournamentStart);
 	COMMAND_HANDLER(HandleTournamentClose);
 	COMMAND_HANDLER(HandleTournamentRegListCommand);   // S115 TUR 11 — Reg listesi
+	COMMAND_HANDLER(HandleBetStatusConsole);           // S115 RUSH — /betstatus aktif bahis durumu
 
 	// S115 — Bracket Tournament GM komutlari (MATRIX MSG:5914 + CHIP Bracket Engine)
 	COMMAND_HANDLER(HandleBracketCreateCommand);
