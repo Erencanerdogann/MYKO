@@ -251,7 +251,7 @@ public:
 	                             const std::string& leaderName, uint8 memberCount, std::string& outResult);
 	bool    PartyBracketGenerateMatches(int32_t bracketID);
 	bool    PartyBracketMatchFinish(int32_t matchID, uint16 winnerPartyID);
-	bool    PartyBracketNextRoundGenerate(int32_t bracketID, uint8 currentRound);
+	// NOT: PartyBracketNextRoundGenerate KALDIRILDI — SP_PARTY_BRACKET_NEXT_ROUND yok, sonraki tur MATCH_FINISH icinde (MATRIX mig124)
 	bool    PartyBracketCancel(int32_t bracketID);
 	bool    PartyBracketLoadActive(std::vector<_BRACKET_INFO_ROW>& outRows);
 	bool    PartyBracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_ROW>& outRows);

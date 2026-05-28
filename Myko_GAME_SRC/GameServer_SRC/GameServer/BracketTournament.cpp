@@ -420,12 +420,14 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 	printf("[BRACKET] Round %u tamamlandi (bracket %d), sonraki tur olusturuluyor\n",
 		b->currentRound, b->bracketID);
 
-	bool nextOk = (b->participantType == 1)
-		? g_DBAgent.PartyBracketNextRoundGenerate(b->bracketID, b->currentRound)
-		: g_DBAgent.BracketNextRoundGenerate(b->bracketID, b->currentRound);
-	if (!nextOk) {
-		printf("[BRACKET] NextRoundGenerate DB hata bracketID=%d\n", b->bracketID);
-		return;
+	// CLAN: ayri NEXT_ROUND SP cagrilir. PARTY: SP_PARTY_BRACKET_NEXT_ROUND YOK —
+	// sonraki tur mantigi SP_PARTY_BRACKET_MATCH_FINISH ICINE gomulu (MATRIX mig124),
+	// mac bitince tur tamamlandiysa otomatik sonraki turu uretir. Party'de NEXT_ROUND cagirma.
+	if (b->participantType != 1) {
+		if (!g_DBAgent.BracketNextRoundGenerate(b->bracketID, b->currentRound)) {
+			printf("[BRACKET] NextRoundGenerate DB hata bracketID=%d\n", b->bracketID);
+			return;
+		}
 	}
 
 	b->currentRound++;

@@ -6382,18 +6382,8 @@ bool CDBAgent::PartyBracketMatchFinish(int32_t matchID, uint16 winnerPartyID)
 	return true;
 }
 
-bool CDBAgent::PartyBracketNextRoundGenerate(int32_t bracketID, uint8 currentRound)
-{
-	int32 pBracketID = bracketID;
-	int32 pRound = (int32)currentRound;
-	unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
-	if (dbCommand.get() == nullptr) return false;
-	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
-	dbCommand->AddParameter(SQL_PARAM_INPUT, &pRound);
-	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_PARTY_BRACKET_NEXT_ROUND(?, ?)}"))) return false;
-	while (dbCommand->MoveNext()) {}
-	return true;
-}
+// NOT: SP_PARTY_BRACKET_NEXT_ROUND YOK (MATRIX mig124) — sonraki tur SP_PARTY_BRACKET_MATCH_FINISH
+// icine gomulu. PartyBracketNextRoundGenerate fonksiyonu KALDIRILDI (cagrilmiyor).
 
 bool CDBAgent::PartyBracketCancel(int32_t bracketID)
 {
