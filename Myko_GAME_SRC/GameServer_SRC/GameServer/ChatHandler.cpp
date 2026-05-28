@@ -171,6 +171,7 @@ void CUser::InitChatCommands()
 		{ "bet",				&CUser::HandleTournamentBetCommand,				"Tournament'a bahis koy. Ornek: +bet ILKCLAN 100000 (Klan ad, Noah miktari)" },
 		{ "betstatus",			&CUser::HandleBetStatusCommand,					"Aktif bahis durumu (RED/BLUE havuz, en yuksek bahis, kalan sure)" },
 		{ "leaguereg",			&CUser::HandleLeagueRegCommand,					"Lige klan kayit (klan lideri). Ornek: +leaguereg 1" },
+		{ "leaguestandings",	&CUser::HandleLeagueStandingsCommand,			"Lig puan tablosu. Ornek: +leaguestandings 1" },
 		{ "tournamentreg",		&CUser::HandleTournamentRegCommand,				"Klani turnuvaya kayit et (klan lideri). Ornek: +tournamentreg veya +tournamentreg cancel" },
 		{ "bracketreg",			&CUser::HandleBracketRegisterCommand,			"Bracket'a klan kayit (klan lideri). Ornek: +bracketreg 1" },
 		{ "bracket8v8add",		&CUser::HandleBracket8v8AddCommand,				"8v8 uye ekle (klan lideri). Ornek: +bracket8v8add 1 Nick [Party#]" },

@@ -150,6 +150,13 @@ public:
 		uint16  winnerClanID;
 	};
 	bool    LeagueLoadMatches(int32_t leagueID, std::vector<_LEAGUE_MATCH_ROW>& outRows);
+	// Puan tablosu (oyuncu +leaguestandings + SP_LEAGUE_STANDINGS)
+	struct _LEAGUE_STANDING_ROW {
+		std::string clanName;
+		uint8 played, win, draw, loss;
+		int32_t goalsFor, goalsAgainst, goalDiff, points;
+	};
+	bool    LeagueStandings(int32_t leagueID, std::vector<_LEAGUE_STANDING_ROW>& outRows);
 
 	// S115 TUR 11 — Tournament Registration DB (MATRIX MSG:5907)
 	int32_t TournamentRegInsert(uint16 clanID, const std::string& clanName,

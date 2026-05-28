@@ -6766,3 +6766,32 @@ bool CDBAgent::LeagueLoadMatches(int32_t leagueID, std::vector<_LEAGUE_MATCH_ROW
 	}
 	return true;
 }
+
+// S115 — Lig puan tablosu (SP_LEAGUE_STANDINGS)
+bool CDBAgent::LeagueStandings(int32_t leagueID, std::vector<_LEAGUE_STANDING_ROW>& outRows)
+{
+	int32 pLID = leagueID;
+	std::unique_ptr<OdbcCommand> dbCommand(GetGameDB()->CreateCommand());
+	if (dbCommand.get() == nullptr) return false;
+	dbCommand->AddParameter(SQL_PARAM_INPUT, &pLID);
+	if (!dbCommand->Execute(_T("{CALL KO_LOG.dbo.SP_LEAGUE_STANDINGS(?)}"))) return false;
+	while (dbCommand->MoveNext()) {
+		_LEAGUE_STANDING_ROW row;
+		char cname[64] = {0};
+		uint8 pl = 0, w = 0, d = 0, ls = 0;
+		int32 gf = 0, ga = 0, gd = 0, pts = 0;
+		dbCommand->FetchString(1, cname, sizeof(cname));
+		dbCommand->FetchByte(2, pl);
+		dbCommand->FetchByte(3, w);
+		dbCommand->FetchByte(4, d);
+		dbCommand->FetchByte(5, ls);
+		dbCommand->FetchInt32(6, gf);
+		dbCommand->FetchInt32(7, ga);
+		dbCommand->FetchInt32(8, gd);
+		dbCommand->FetchInt32(9, pts);
+		row.clanName = cname; row.played = pl; row.win = w; row.draw = d; row.loss = ls;
+		row.goalsFor = gf; row.goalsAgainst = ga; row.goalDiff = gd; row.points = pts;
+		outRows.push_back(row);
+	}
+	return true;
+}

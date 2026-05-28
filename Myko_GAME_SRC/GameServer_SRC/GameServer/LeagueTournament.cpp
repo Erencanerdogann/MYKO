@@ -347,21 +347,9 @@ void OnLeagueMatchFinish(int32_t matchID, uint16 winnerClanID, uint16 redScore, 
 	_LEAGUE_INFO* l = FindLeague(cachedLeagueID);
 	if (l == nullptr) return;
 
-	// Tur tamamlanma kontrol — su anki turda PENDING/ACTIVE var mi
-	bool roundComplete = true;
-	for (auto& mm : l->matches) {
-		if (mm.round == l->currentRound && mm.status != "FINISHED") {
-			roundComplete = false;
-			break;
-		}
-	}
-	if (roundComplete) {
-		l->currentRound++;
-		printf("[LEAGUE] Round tamamlandi, sonraki tur=%u (leagueID=%d)\n",
-			l->currentRound, l->leagueID);
-	}
-
 	// Tum maclar bitti mi → lig sonu + sampiyon
+	// (League round-robin: maclar bagimsiz, round sirasi onemli degil — sadece
+	//  TUM maclar FINISHED olunca lig biter)
 	bool allFinished = true;
 	for (auto& mm : l->matches) {
 		if (mm.status != "FINISHED") { allFinished = false; break; }
@@ -369,23 +357,17 @@ void OnLeagueMatchFinish(int32_t matchID, uint16 winnerClanID, uint16 redScore, 
 
 	if (allFinished && l->status == "ACTIVE") {
 		l->status = "FINISHED";
-		// SP_LEAGUE_MATCH_FINISH son macta WinnerClanID set etti (en cok puan)
-		// RAM'e cekmek icin LoadActive yerine sadece bu lig — basit: DB'den oku
-		std::vector<CDBAgent::_LEAGUE_INFO_ROW> rows;
-		if (g_DBAgent.LeagueLoadActive(rows)) {
-			// LoadActive sadece ACTIVE/REGISTRATION doner, FINISHED gelmez —
-			// bu yuzden sampiyon adini SP_LEAGUE_MATCH_FINISH'in set ettigi DB'den
-			// ayri sorgu gerekebilir. Basitlik: STANDINGS console + duyuru.
-		}
-
-		char buf[256] = {0};
+		// Sampiyon: SP_LEAGUE_MATCH_FINISH son macta DB'de WinnerClanID/Name set etti
+		// (en cok puan, esitlik averaj). Duyuru icin DB'den cek — basit SELECT.
+		// RAM winnerClanName guncel olmayabilir, duyuruda lig adi + standings yonlendir.
+		char buf[280] = {0};
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[LIG BITTI / LEAGUE ENDED] %s tamamlandi! Puan tablosu: +leaguestandings %d | Standings via NPC/site.",
-			l->name.c_str(), l->leagueID);
+			"[LIG BITTI / LEAGUE ENDED] %s tamamlandi! Puan tablosu: +leaguestandings %d | Final standings: +leaguestandings %d",
+			l->name.c_str(), l->leagueID, l->leagueID);
 		std::string msg = buf;
 		g_pMain->SendNotice(msg.c_str());
 
-		printf("[LEAGUE] FINISHED: leagueID=%d (sampiyon DB STANDINGS'te)\n", l->leagueID);
+		printf("[LEAGUE] FINISHED: leagueID=%d (sampiyon DB STANDINGS'te, en cok puan)\n", l->leagueID);
 	}
 }
 
@@ -396,33 +378,43 @@ void LeagueAutoStartTimer()
 {
 	std::lock_guard<std::recursive_mutex> lock(g_leagueLock);
 
+	// Klan-yok beraberlik maclari loop disinda islenir (iterator guard + allFinished tetigi)
+	std::vector<int32_t> byeMatchIDs;
+
 	for (size_t li = 0; li < g_leagues.size(); li++) {
 		_LEAGUE_INFO& l = g_leagues[li];
 		if (l.status != "ACTIVE") continue;
 
+		// League round-robin: maclar BAGIMSIZ (eleme degil). Round sirasi zorunlu degil —
+		// zone musaitse herhangi PENDING mac baslar. Bu restart-safe (currentRound DB
+		// persist sorununu onler) + paralel zone kullanimi (6 zone) verimli.
 		for (size_t mi = 0; mi < l.matches.size(); mi++) {
 			_LEAGUE_MATCH_INFO& m = l.matches[mi];
-			if (m.round != l.currentRound) continue;
 			if (m.status != "PENDING") continue;
 
-			// Zone bos mu?
+			// Zone bos mu? (ayni zone'da baska tournament/lig maci varsa bekle)
 			if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
 
 			// Klan var mi?
 			CKnights* pRed  = g_pMain->GetClanPtr(m.redClanID);
 			CKnights* pBlue = g_pMain->GetClanPtr(m.blueClanID);
 			if (pRed == nullptr || pBlue == nullptr) {
-				// Klan silinmis — bu maci beraberlik say (0-0), puan tablosu ilerlesin
+				// Klan silinmis — bu maci beraberlik say (0-0), loop sonrasi isle (iterator guard)
 				printf("[LEAGUE] Klan yok, mac beraberlik: matchID=%d\n", m.matchID);
-				m.status = "FINISHED";
-				m.finished = true;
-				m.winnerClanID = 0;
-				g_DBAgent.LeagueMatchFinish(m.matchID, 0, 0, 0);
+				byeMatchIDs.push_back(m.matchID);
 				continue;
 			}
 
 			StartLeagueMatchTournament(m, l.name);
 		}
+	}
+
+	// Klan-yok maclar: OnLeagueMatchFinish ile isle (DB puan + RAM FINISHED + allFinished
+	// tetigi — son mac bye ise lig FINISHED olur, asili kalmaz). SP Status=FINISHED guard
+	// cift islem onler. OnLeagueMatchFinish kendi g_leagueLock'unu alir (recursive ok).
+	for (int32_t mid : byeMatchIDs) {
+		extern void OnLeagueMatchFinish(int32_t matchID, uint16 winnerClanID, uint16 redScore, uint16 blueScore);
+		OnLeagueMatchFinish(mid, 0, 0, 0);
 	}
 }
 
@@ -505,5 +497,46 @@ COMMAND_HANDLER(CUser::HandleLeagueRegCommand)
 	Packet pkt;
 	ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
 	Send(&pkt);
+	return true;
+}
+
+// +leaguestandings LeagueID — oyuncu puan tablosunu chat'te gor (TR/EN)
+COMMAND_HANDLER(CUser::HandleLeagueStandingsCommand)
+{
+	if (vargs.empty()) {
+		g_pMain->SendHelpDescription(this, "+leaguestandings LeagueID. Ornek: +leaguestandings 1");
+		return true;
+	}
+	int32_t lid = SafeAtoi(vargs.front(), 0, 0x7FFFFFFF);
+
+	std::vector<CDBAgent::_LEAGUE_STANDING_ROW> rows;
+	if (!g_DBAgent.LeagueStandings(lid, rows)) {
+		g_pMain->SendHelpDescription(this, "Lig bulunamadi veya DB hata. | League not found or DB error.");
+		return true;
+	}
+	if (rows.empty()) {
+		g_pMain->SendHelpDescription(this, "Bu ligde kayit yok. | No clans in this league.");
+		return true;
+	}
+
+	// Header
+	char buf[200] = {0};
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+		"=== LIG %d PUAN TABLOSU / STANDINGS (O-G-B-M Avr Puan) ===", lid);
+	std::string header = buf;
+	{ Packet p; ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &header); Send(&p); }
+
+	// Satirlar (sirali, SP zaten Points DESC)
+	int rank = 1;
+	for (auto& r : rows) {
+		const char* medal = (rank == 1) ? "[1]" : (rank == 2) ? "[2]" : (rank == 3) ? "[3]" : "   ";
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"%s %d. %s: %u-%u-%u-%u Avr%+d PUAN %d",
+			medal, rank, r.clanName.c_str(),
+			r.played, r.win, r.draw, r.loss, r.goalDiff, r.points);
+		std::string line = buf;
+		Packet p; ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &line); Send(&p);
+		rank++;
+	}
 	return true;
 }
