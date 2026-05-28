@@ -80,17 +80,23 @@ void OpenTournamentBets(uint8 zoneID)
 	// S115 sabah RUSH — Server-wide duyuru "BET ACILDI"
 	_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zoneID);
 	if (info != nullptr) {
-		CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
-		CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
-		if (pRed != nullptr && pBlue != nullptr) {
-			char buf[360] = {0};
-			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"[BAHIS ACILDI / BETTING OPEN] Zone %u — %s vs %s | %llds | +bet KLAN MIKTAR (min %u max %u, komisyon/fee %%%u)",
-				zoneID, pRed->GetName().c_str(), pBlue->GetName().c_str(),
-				(long long)g_betWindowSec, g_betMinAmount, g_betMaxPerUser, g_betCommissionPct);
-			std::string msg = buf;
-			g_pMain->SendNotice(msg.c_str());
+		// Takim isimleri + bahis komutu ipucu: party tipinde RED/BLUE + "+bet red/blue", clan'da klan adi + "+bet KLAN"
+		std::string redLabel, blueLabel; const char* betHint;
+		if (info->participantType == 1) {
+			redLabel = "RED Party"; blueLabel = "BLUE Party"; betHint = "+bet red/blue MIKTAR";
+		} else {
+			CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
+			CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
+			if (pRed == nullptr || pBlue == nullptr) return;  // klan yok, duyuru atla
+			redLabel = pRed->GetName(); blueLabel = pBlue->GetName(); betHint = "+bet KLAN MIKTAR";
 		}
+		char buf[360] = {0};
+		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
+			"[BAHIS ACILDI / BETTING OPEN] Zone %u — %s vs %s | %llds | %s (min %u max %u, komisyon/fee %%%u)",
+			zoneID, redLabel.c_str(), blueLabel.c_str(),
+			(long long)g_betWindowSec, betHint, g_betMinAmount, g_betMaxPerUser, g_betCommissionPct);
+		std::string msg = buf;
+		g_pMain->SendNotice(msg.c_str());
 	}
 }
 
@@ -111,13 +117,21 @@ void CheckBetWindowClose()
 
 			_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zid);
 			if (info == nullptr) continue;
-			CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
-			CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
-			if (pRed == nullptr || pBlue == nullptr) continue;
+
+			// Takim isimleri: party tipinde RED/BLUE Party, clan tipinde klan adi
+			std::string redLabel, blueLabel;
+			if (info->participantType == 1) {
+				redLabel = "RED Party"; blueLabel = "BLUE Party";
+			} else {
+				CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
+				CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
+				if (pRed == nullptr || pBlue == nullptr) continue;
+				redLabel = pRed->GetName(); blueLabel = pBlue->GetName();
+			}
 
 			// RED ve BLUE havuz topla + en yuksek bahis
 			uint32 redPool = 0, bluePool = 0;
-			std::string topBetter, topClan;
+			std::string topBetter, topSide;
 			uint32 topAmount = 0;
 			for (auto& b : g_activeBets[zid]) {
 				if (b.betClanID == info->aTournamentClanNum[0]) redPool += b.betAmount;
@@ -125,8 +139,9 @@ void CheckBetWindowClose()
 				if (b.betAmount > topAmount) {
 					topAmount = b.betAmount;
 					topBetter = b.betterCharName;
-					CKnights* pBC = g_pMain->GetClanPtr(b.betClanID);
-					if (pBC) topClan = pBC->GetName();
+					// taraf adi: party'de RED/BLUE, clan'da klan adi
+					if (b.betClanID == info->aTournamentClanNum[0]) topSide = redLabel;
+					else if (b.betClanID == info->aTournamentClanNum[1]) topSide = blueLabel;
 				}
 			}
 
@@ -134,8 +149,8 @@ void CheckBetWindowClose()
 			if (topAmount > 0) {
 				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
 					"[BAHIS KAPANDI / BETTING CLOSED] Zone %u — Mac basliyor! %s: %u | %s: %u | En yuksek/Top: %s -> %s (%u)",
-					zid, pRed->GetName().c_str(), redPool, pBlue->GetName().c_str(), bluePool,
-					topBetter.c_str(), topClan.c_str(), topAmount);
+					zid, redLabel.c_str(), redPool, blueLabel.c_str(), bluePool,
+					topBetter.c_str(), topSide.c_str(), topAmount);
 			} else {
 				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
 					"[BAHIS KAPANDI / BETTING CLOSED] Zone %u — Mac basliyor! Bahis yok / No bets.", zid);
@@ -153,9 +168,16 @@ void CheckBetWindowClose()
 
 				_TOURNAMENT_DATA* info = g_pMain->m_ClanVsDataList.GetData(zid);
 				if (info == nullptr) continue;
-				CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
-				CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
-				if (pRed == nullptr || pBlue == nullptr) continue;
+
+				std::string redLabel, blueLabel;
+				if (info->participantType == 1) {
+					redLabel = "RED Party"; blueLabel = "BLUE Party";
+				} else {
+					CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
+					CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
+					if (pRed == nullptr || pBlue == nullptr) continue;
+					redLabel = pRed->GetName(); blueLabel = pBlue->GetName();
+				}
 
 				uint32 redPool = 0, bluePool = 0;
 				size_t totalBets = g_activeBets[zid].size();
@@ -168,8 +190,8 @@ void CheckBetWindowClose()
 				char buf[300] = {0};
 				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
 					"[BAHIS / BET] Zone %u — %s: %u (%zu) | %s: %u | Kapanma/Closes: %lld sn",
-					zid, pRed->GetName().c_str(), redPool, totalBets,
-					pBlue->GetName().c_str(), bluePool, (long long)remaining);
+					zid, redLabel.c_str(), redPool, totalBets,
+					blueLabel.c_str(), bluePool, (long long)remaining);
 				std::string msg = buf;
 				g_pMain->SendNotice(msg.c_str());
 			}
@@ -821,10 +843,17 @@ COMMAND_HANDLER(CGameServerDlg::HandleBetStatusConsole)
 			printf("  Zone %u — TOURNAMENT_DATA YOK (orphan bet?)\n", zid);
 			continue;
 		}
-		CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
-		CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
-		const char* redName  = pRed ? pRed->GetName().c_str()  : "?";
-		const char* blueName = pBlue ? pBlue->GetName().c_str() : "?";
+		std::string redNameStr, blueNameStr;
+		if (info->participantType == 1) {
+			redNameStr = "RED Party"; blueNameStr = "BLUE Party";
+		} else {
+			CKnights* pRed  = g_pMain->GetClanPtr(info->aTournamentClanNum[0]);
+			CKnights* pBlue = g_pMain->GetClanPtr(info->aTournamentClanNum[1]);
+			redNameStr  = pRed  ? pRed->GetName()  : "?";
+			blueNameStr = pBlue ? pBlue->GetName() : "?";
+		}
+		const char* redName  = redNameStr.c_str();
+		const char* blueName = blueNameStr.c_str();
 
 		uint32 redPool = 0, bluePool = 0;
 		for (auto& b : kv.second) {
