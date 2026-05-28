@@ -39,12 +39,13 @@ struct _LEAGUE_MATCH_INFO {
 struct _LEAGUE_INFO {
 	int32_t leagueID;
 	std::string name;
-	uint8   maxClans;
+	uint8   maxClans;         // party tipinde "max party"
 	uint8   currentRound;
 	uint8   totalRounds;
 	std::string status;       // REGISTRATION/ACTIVE/FINISHED/CANCELLED
 	uint16  winnerClanID;
 	std::string winnerClanName;
+	uint8   participantType;  // S115 — 0=CLAN(default) 1=PARTY
 	std::vector<_LEAGUE_MATCH_INFO> matches;
 };
 
@@ -264,30 +265,57 @@ void GetLeagueStatus(int32_t leagueID)
 // =====================================================================
 // HELPER — lig maci icin _TOURNAMENT_DATA olustur (Bracket benzeri)
 // =====================================================================
-static bool StartLeagueMatchTournament(_LEAGUE_MATCH_INFO& m, const std::string& leagueName)
+static bool StartLeagueMatchTournament(_LEAGUE_MATCH_INFO& m, const std::string& leagueName,
+                                       uint8 participantType = 0)
 {
-	CKnights* pRed  = g_pMain->GetClanPtr(m.redClanID);
-	CKnights* pBlue = g_pMain->GetClanPtr(m.blueClanID);
-	if (pRed == nullptr || pBlue == nullptr) {
-		printf("[LEAGUE] StartMatch: klan yok (matchID=%d red=%u blue=%u)\n",
-			m.matchID, m.redClanID, m.blueClanID);
-		return false;
+	bool isParty = (participantType == 1);
+
+	std::string redName, blueName;
+	if (isParty) {
+		_PARTY_GROUP* pRedParty  = g_pMain->GetPartyPtr(m.redClanID);   // alan party ID tutar
+		_PARTY_GROUP* pBlueParty = g_pMain->GetPartyPtr(m.blueClanID);
+		if (pRedParty == nullptr || pBlueParty == nullptr) {
+			printf("[LEAGUE-PARTY] StartMatch: party yok (matchID=%d red=%u blue=%u)\n",
+				m.matchID, m.redClanID, m.blueClanID);
+			return false;
+		}
+		CUser* pRL = g_pMain->GetUserPtr(pRedParty->uid[0]);
+		CUser* pBL = g_pMain->GetUserPtr(pBlueParty->uid[0]);
+		redName  = (pRL != nullptr) ? pRL->GetName() + " Party" : "RedParty";
+		blueName = (pBL != nullptr) ? pBL->GetName() + " Party" : "BlueParty";
+	} else {
+		CKnights* pRed  = g_pMain->GetClanPtr(m.redClanID);
+		CKnights* pBlue = g_pMain->GetClanPtr(m.blueClanID);
+		if (pRed == nullptr || pBlue == nullptr) {
+			printf("[LEAGUE] StartMatch: klan yok (matchID=%d red=%u blue=%u)\n",
+				m.matchID, m.redClanID, m.blueClanID);
+			return false;
+		}
+		redName  = pRed->GetName();
+		blueName = pBlue->GetName();
 	}
 
 	_TOURNAMENT_DATA* pData = new _TOURNAMENT_DATA();
 	pData->aTournamentZoneID         = m.zoneID;
-	pData->aTournamentClanNum[0]     = pRed->GetID();
-	pData->aTournamentClanNum[1]     = pBlue->GetID();
+	pData->participantType           = participantType;
+	pData->aTournamentClanNum[0]     = m.redClanID;
+	pData->aTournamentClanNum[1]     = m.blueClanID;
+	if (isParty) {
+		pData->aTournamentPartyNum[0] = m.redClanID;
+		pData->aTournamentPartyNum[1] = m.blueClanID;
+	}
 	pData->aTournamentTimer          = (uint32)LEAGUE_MATCH_DURATION_MIN * 60;
 	pData->aTournamentisAttackable   = true;
 	pData->aTournamentisStarted      = true;
 	pData->aTournamentisFinished     = false;
 	pData->leagueMatchID             = m.matchID;  // KRITIK — OnLeagueMatchFinish tetigi
 
-	std::string startedBy = "league_auto";
-	pData->dbTournamentID = g_DBAgent.TournamentLogStart(
-		m.zoneID, pRed->GetID(), pBlue->GetID(),
-		pRed->GetName(), pBlue->GetName(), LEAGUE_MATCH_DURATION_MIN, startedBy);
+	if (!isParty) {
+		std::string startedBy = "league_auto";
+		pData->dbTournamentID = g_DBAgent.TournamentLogStart(
+			m.zoneID, m.redClanID, m.blueClanID,
+			redName, blueName, LEAGUE_MATCH_DURATION_MIN, startedBy);
+	}
 
 	if (!g_pMain->m_ClanVsDataList.PutData(m.zoneID, pData)) {
 		delete pData;
@@ -298,9 +326,14 @@ static bool StartLeagueMatchTournament(_LEAGUE_MATCH_INFO& m, const std::string&
 	extern void OpenTournamentBets(uint8 zoneID);
 	OpenTournamentBets(m.zoneID);
 
-	// Klan uyelerini otomatik zone'a cagir
-	extern void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID);
-	SummonClanMembersToZone(m.zoneID, pRed->GetID(), pBlue->GetID());
+	// Uyeleri otomatik zone'a cagir (clan veya party)
+	if (isParty) {
+		extern int SummonPartyToZone(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID);
+		SummonPartyToZone(m.zoneID, m.redClanID, m.blueClanID);
+	} else {
+		extern void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID);
+		SummonClanMembersToZone(m.zoneID, m.redClanID, m.blueClanID);
+	}
 
 	const char* zoneName =
 		(m.zoneID == 77) ? "Ardream"   : (m.zoneID == 78) ? "Ronark"    :
@@ -310,7 +343,7 @@ static bool StartLeagueMatchTournament(_LEAGUE_MATCH_INFO& m, const std::string&
 	char buf[300] = {0};
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
 		"[LIG / LEAGUE %s] Round %u: %s vs %s @ %s (%u dk/min)",
-		leagueName.c_str(), m.round, pRed->GetName().c_str(), pBlue->GetName().c_str(),
+		leagueName.c_str(), m.round, redName.c_str(), blueName.c_str(),
 		zoneName, LEAGUE_MATCH_DURATION_MIN);
 	std::string msg = buf;
 	g_pMain->SendNotice(msg.c_str());
@@ -318,8 +351,9 @@ static bool StartLeagueMatchTournament(_LEAGUE_MATCH_INFO& m, const std::string&
 	m.status = "ACTIVE";
 	m.startTime = UNIXTIME;
 
-	printf("[LEAGUE] AUTO-START: matchID=%d R%u Zone%u %s vs %s\n",
-		m.matchID, m.round, m.zoneID, pRed->GetName().c_str(), pBlue->GetName().c_str());
+	printf("[LEAGUE] AUTO-START: matchID=%d R%u Zone%u tip=%s %s vs %s\n",
+		m.matchID, m.round, m.zoneID, isParty ? "PARTY" : "CLAN",
+		redName.c_str(), blueName.c_str());
 	return true;
 }
 
@@ -331,9 +365,19 @@ void OnLeagueMatchFinish(int32_t matchID, uint16 winnerClanID, uint16 redScore, 
 	if (matchID <= 0) return;
 	std::lock_guard<std::recursive_mutex> lock(g_leagueLock);
 
-	// DB puan guncelle (SP_LEAGUE_MATCH_FINISH puan tablosunu da gunceller)
-	if (!g_DBAgent.LeagueMatchFinish(matchID, redScore, blueScore, winnerClanID)) {
-		printf("[LEAGUE] MatchFinish DB hata matchID=%d\n", matchID);
+	// Lig tipini bul (party ligde clan SP'sine party ID gondermemek icin)
+	_LEAGUE_MATCH_INFO* mTip = FindLeagueMatch(matchID);
+	bool isPartyLeague = false;
+	if (mTip != nullptr) {
+		_LEAGUE_INFO* lTip = FindLeague(mTip->leagueID);
+		if (lTip != nullptr) isPartyLeague = (lTip->participantType == 1);
+	}
+
+	// DB puan guncelle — SADECE clan ligde (party puani RAM'de, MATRIX party SP gelince DB)
+	if (!isPartyLeague) {
+		if (!g_DBAgent.LeagueMatchFinish(matchID, redScore, blueScore, winnerClanID)) {
+			printf("[LEAGUE] MatchFinish DB hata matchID=%d\n", matchID);
+		}
 	}
 
 	_LEAGUE_MATCH_INFO* m = FindLeagueMatch(matchID);
@@ -399,17 +443,24 @@ void LeagueAutoStartTimer()
 			// Zone bos mu? (ayni zone'da baska tournament/lig maci varsa bekle)
 			if (g_pMain->m_ClanVsDataList.GetData(m.zoneID) != nullptr) continue;
 
-			// Klan var mi?
-			CKnights* pRed  = g_pMain->GetClanPtr(m.redClanID);
-			CKnights* pBlue = g_pMain->GetClanPtr(m.blueClanID);
-			if (pRed == nullptr || pBlue == nullptr) {
-				// Klan silinmis — bu maci beraberlik say (0-0), loop sonrasi isle (iterator guard)
-				printf("[LEAGUE] Klan yok, mac beraberlik: matchID=%d\n", m.matchID);
+			// Katilimci var mi? (clan veya party — tipe gore kontrol)
+			bool exists;
+			if (l.participantType == 1) {
+				exists = (g_pMain->GetPartyPtr(m.redClanID) != nullptr
+				       && g_pMain->GetPartyPtr(m.blueClanID) != nullptr);
+			} else {
+				exists = (g_pMain->GetClanPtr(m.redClanID) != nullptr
+				       && g_pMain->GetClanPtr(m.blueClanID) != nullptr);
+			}
+			if (!exists) {
+				// Katilimci yok (klan silinmis / party dagilmis) — beraberlik say (iterator guard)
+				printf("[LEAGUE] Katilimci yok, mac beraberlik: matchID=%d tip=%u\n",
+					m.matchID, l.participantType);
 				byeMatchIDs.push_back(m.matchID);
 				continue;
 			}
 
-			StartLeagueMatchTournament(m, l.name);
+			StartLeagueMatchTournament(m, l.name, l.participantType);
 		}
 	}
 

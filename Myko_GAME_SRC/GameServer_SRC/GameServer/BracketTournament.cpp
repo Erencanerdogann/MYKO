@@ -24,8 +24,8 @@ struct _BRACKET_MATCH_INFO {
 	int32_t bracketID;
 	uint8   round;
 	uint8   matchOrder;
-	uint16  redClanID;
-	uint16  blueClanID;
+	uint16  redClanID;        // participantType=0 ise clan ID, =1 ise PARTY ID
+	uint16  blueClanID;       // (alan adi clan kaldi ama party tipinde party ID tutar)
 	uint8   zoneID;
 	std::string status;   // PENDING/ACTIVE/FINISHED/WALKOVER
 	bool    finished;
@@ -38,10 +38,11 @@ struct _BRACKET_INFO {
 	int32_t bracketID;
 	std::string name;
 	uint8   currentRound;
-	uint8   maxClans;
+	uint8   maxClans;         // party tipinde "max party" anlamina gelir
 	std::string status;       // REGISTRATION/ACTIVE/FINISHED/CANCELLED
 	uint16  winnerClanID;
 	std::string winnerClanName;
+	uint8   participantType;  // S115 — 0=CLAN(default) 1=PARTY
 	std::vector<_BRACKET_MATCH_INFO> matches;
 };
 
@@ -49,7 +50,8 @@ static std::vector<_BRACKET_INFO> g_brackets;
 static std::recursive_mutex g_bracketLock;
 
 // Forward declarations
-void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::string& position);
+void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::string& position,
+                              uint8 participantType = 0);
 
 // =====================================================================
 // HELPER — bracket bul (RAM cache)
@@ -401,14 +403,14 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 			}
 		}
 
-		DistributeBracketRewards(b->bracketID, championClanID, "CHAMPION");
+		DistributeBracketRewards(b->bracketID, championClanID, "CHAMPION", b->participantType);
 
 		if (finalMatch != nullptr) {
 			uint16 finalLoserClanID = (finalMatch->redClanID == championClanID)
 				? finalMatch->blueClanID
 				: finalMatch->redClanID;
 			if (finalLoserClanID > 0 && finalLoserClanID != championClanID) {
-				DistributeBracketRewards(b->bracketID, finalLoserClanID, "RUNNER_UP");
+				DistributeBracketRewards(b->bracketID, finalLoserClanID, "RUNNER_UP", b->participantType);
 			}
 		}
 	}
@@ -417,8 +419,46 @@ void OnBracketMatchFinish(int32_t matchID, uint16 winnerClanID,
 // =====================================================================
 // HELPER — Bracket reward dagitim (S115 BUG #3 FIX)
 // =====================================================================
-void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::string& position)
+void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::string& position,
+                              uint8 participantType)
 {
+	// S115 — PARTY bracket: party ID'nin LIDERINE toplu odul (clan tablosu yok, sabit base)
+	if (participantType == 1) {
+		uint16 partyID = clanID;  // party tipinde clanID alani party ID tutar
+		_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(partyID);
+		if (pParty == nullptr) {
+			printf("[BRACKET-PARTY] Reward: party yok partyID=%u\n", partyID);
+			return;
+		}
+		CUser* pLeader = nullptr;
+		for (int i = 0; i < MAX_PARTY_USERS; i++) {
+			CUser* pU = g_pMain->GetUserPtr(pParty->uid[i]);
+			if (pU != nullptr && pU->isInGame() && pU->isPartyLeader()) { pLeader = pU; break; }
+		}
+		if (pLeader == nullptr) {
+			pLeader = g_pMain->GetUserPtr(pParty->uid[0]);
+			if (pLeader == nullptr || !pLeader->isInGame()) return;
+		}
+		// Champion 10M+2000NP, Runner-up 3M+500NP, diger 1M+200NP (party sabit, DB'siz)
+		uint32 pGold = (position == "CHAMPION") ? 10000000 : (position == "RUNNER_UP") ? 3000000 : 1000000;
+		uint32 pNP   = (position == "CHAMPION") ? 2000     : (position == "RUNNER_UP") ? 500     : 200;
+		pLeader->GoldGain(pGold);
+		pLeader->SendLoyaltyChange("bracket_party", (int32)pNP, false, false, false);
+		char pbuf[220] = {0};
+		_snprintf_s(pbuf, sizeof(pbuf), _TRUNCATE,
+			"[BRACKET PARTY] %s! Toplu odul lidere: +%u Noah +%u NP (party ile bolustur).",
+			(position == "CHAMPION") ? "SAMPIYON/CHAMPION" : (position == "RUNNER_UP") ? "2. (Runner-up)" : "Katilim",
+			pGold, pNP);
+		std::string pm = pbuf;
+		Packet pp;
+		ChatPacket::Construct(&pp, (uint8)ChatType::WAR_SYSTEM_CHAT, &pm);
+		pLeader->Send(&pp);
+		LOG(LogCategory::LOG_GENERAL,
+			"[BRACKET PARTY REWARD] bracket=%d party=%u pos=%s gold=%u np=%u -> lider %s",
+			bracketID, partyID, position.c_str(), pGold, pNP, pLeader->GetName().c_str());
+		return;
+	}
+
 	int32_t gold = 0, np = 0, itemID = 0, premiumHours = 0;
 	int16_t itemCount = 0;
 
@@ -477,23 +517,47 @@ void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::strin
 // =====================================================================
 static const uint16 BRACKET_MATCH_DURATION_MIN = 10;  // her bracket maci 10 dakika
 
-static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::string& bracketName)
+static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::string& bracketName,
+                                        uint8 participantType = 0)
 {
-	// Klanlari bul
-	CKnights* pRedClan  = g_pMain->GetClanPtr(m.redClanID);
-	CKnights* pBlueClan = g_pMain->GetClanPtr(m.blueClanID);
+	bool isParty = (participantType == 1);
 
-	if (pRedClan == nullptr || pBlueClan == nullptr) {
-		printf("[BRACKET] StartMatch: klan bulunamadi (matchID=%d red=%u blue=%u)\n",
-			m.matchID, m.redClanID, m.blueClanID);
-		return false;
+	// Katilimci isimleri (duyuru icin) — clan: klan adi, party: lider adi + " Party"
+	std::string redName, blueName;
+	if (isParty) {
+		_PARTY_GROUP* pRedParty  = g_pMain->GetPartyPtr(m.redClanID);   // alan party ID tutar
+		_PARTY_GROUP* pBlueParty = g_pMain->GetPartyPtr(m.blueClanID);
+		if (pRedParty == nullptr || pBlueParty == nullptr) {
+			printf("[BRACKET-PARTY] StartMatch: party yok (matchID=%d red=%u blue=%u)\n",
+				m.matchID, m.redClanID, m.blueClanID);
+			return false;
+		}
+		CUser* pRL = g_pMain->GetUserPtr(pRedParty->uid[0]);
+		CUser* pBL = g_pMain->GetUserPtr(pBlueParty->uid[0]);
+		redName  = (pRL != nullptr) ? pRL->GetName() + " Party" : "RedParty";
+		blueName = (pBL != nullptr) ? pBL->GetName() + " Party" : "BlueParty";
+	} else {
+		CKnights* pRedClan  = g_pMain->GetClanPtr(m.redClanID);
+		CKnights* pBlueClan = g_pMain->GetClanPtr(m.blueClanID);
+		if (pRedClan == nullptr || pBlueClan == nullptr) {
+			printf("[BRACKET] StartMatch: klan bulunamadi (matchID=%d red=%u blue=%u)\n",
+				m.matchID, m.redClanID, m.blueClanID);
+			return false;
+		}
+		redName  = pRedClan->GetName();
+		blueName = pBlueClan->GetName();
 	}
 
 	// _TOURNAMENT_DATA olustur — HandleTournamentStart ile birebir ayni (sade)
 	_TOURNAMENT_DATA* pData = new _TOURNAMENT_DATA();
 	pData->aTournamentZoneID         = m.zoneID;
-	pData->aTournamentClanNum[0]     = pRedClan->GetID();
-	pData->aTournamentClanNum[1]     = pBlueClan->GetID();
+	pData->participantType           = participantType;
+	pData->aTournamentClanNum[0]     = m.redClanID;   // clan veya party ID
+	pData->aTournamentClanNum[1]     = m.blueClanID;
+	if (isParty) {
+		pData->aTournamentPartyNum[0] = m.redClanID;
+		pData->aTournamentPartyNum[1] = m.blueClanID;
+	}
 	pData->aTournamentScoreBoard[0]  = 0;
 	pData->aTournamentScoreBoard[1]  = 0;
 	pData->aTournamentTimer          = (uint32)BRACKET_MATCH_DURATION_MIN * 60;
@@ -506,13 +570,13 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 	// KRITIK — bracketMatchID set, OnBracketMatchFinish bu sayede tetiklenir
 	pData->bracketMatchID = m.matchID;
 
-	// DB log
-	std::string startedBy = "bracket_auto";
-	pData->dbTournamentID = g_DBAgent.TournamentLogStart(
-		m.zoneID,
-		pRedClan->GetID(),  pBlueClan->GetID(),
-		pRedClan->GetName(), pBlueClan->GetName(),
-		BRACKET_MATCH_DURATION_MIN, startedBy);
+	// DB log (sadece clan — party DB MATRIX brief'te, party'de log atla)
+	if (!isParty) {
+		std::string startedBy = "bracket_auto";
+		pData->dbTournamentID = g_DBAgent.TournamentLogStart(
+			m.zoneID, m.redClanID, m.blueClanID,
+			redName, blueName, BRACKET_MATCH_DURATION_MIN, startedBy);
+	}
 
 	// Thread-safe insert
 	if (!g_pMain->m_ClanVsDataList.PutData(m.zoneID, pData)) {
@@ -526,9 +590,14 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 	extern void OpenTournamentBets(uint8 zoneID);
 	OpenTournamentBets(m.zoneID);
 
-	// Klan uyelerini otomatik zone'a cagir (manuel /tournamentstart ile ayni)
-	extern void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID);
-	SummonClanMembersToZone(m.zoneID, pRedClan->GetID(), pBlueClan->GetID());
+	// Uyeleri otomatik zone'a cagir (clan veya party)
+	if (isParty) {
+		extern int SummonPartyToZone(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID);
+		SummonPartyToZone(m.zoneID, m.redClanID, m.blueClanID);
+	} else {
+		extern void SummonClanMembersToZone(uint8 zoneID, uint16 redClanID, uint16 blueClanID);
+		SummonClanMembersToZone(m.zoneID, m.redClanID, m.blueClanID);
+	}
 
 	// Server-wide duyuru
 	const char* zoneName =
@@ -543,7 +612,7 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
 		"[BRACKET %s] Round %u: %s vs %s @ %s (%u dk) — sampiyonluk yolunda!",
 		bracketName.c_str(), m.round,
-		pRedClan->GetName().c_str(), pBlueClan->GetName().c_str(),
+		redName.c_str(), blueName.c_str(),
 		zoneName, BRACKET_MATCH_DURATION_MIN);
 	std::string msg = buf;
 	g_pMain->SendNotice(msg.c_str());
@@ -552,11 +621,10 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 	m.status    = "ACTIVE";
 	m.startTime = UNIXTIME;
 
-	printf("[BRACKET] AUTO-START: matchID=%d Round=%u Zone=%u Red=%s(%u) Blue=%s(%u) dbTID=%d\n",
-		m.matchID, m.round, m.zoneID,
-		pRedClan->GetName().c_str(), pRedClan->GetID(),
-		pBlueClan->GetName().c_str(), pBlueClan->GetID(),
-		pData->dbTournamentID);
+	printf("[BRACKET] AUTO-START: matchID=%d Round=%u Zone=%u tip=%s Red=%s(%u) Blue=%s(%u)\n",
+		m.matchID, m.round, m.zoneID, isParty ? "PARTY" : "CLAN",
+		redName.c_str(), m.redClanID,
+		blueName.c_str(), m.blueClanID);
 
 	return true;
 }
@@ -668,7 +736,7 @@ void BracketAutoStartTimer()
 				}
 
 				// Bu mac'i otomatik baslat
-				StartBracketMatchTournament(m, b.name);
+				StartBracketMatchTournament(m, b.name, b.participantType);
 			}
 
 			// PASS 2 — 5dk sonra hala 0-0 ise no-show WALKOVER (ACTIVE maclar icin)
