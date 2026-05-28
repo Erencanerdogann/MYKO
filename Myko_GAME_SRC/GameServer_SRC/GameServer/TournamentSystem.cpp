@@ -101,11 +101,11 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 		(info->aTournamentZoneID == 98) ? "PartyVs-3" :
 		(info->aTournamentZoneID == 99) ? "PartyVs-4" : "?";
 
-	char buf[256] = { 0 };
+	char buf[300] = { 0 };
 	if (redScore > blueScore)
 	{
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[CLAN WAR] %s Zone biti! Kazanan: %s (%u-%u)",
+			"[TURNUVA BITTI / MATCH ENDED] %s — Kazanan/Winner: %s (%u-%u)",
 			zoneName,
 			pRedClan ? pRedClan->GetName().c_str() : "?",
 			redScore, blueScore);
@@ -117,7 +117,7 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	else if (blueScore > redScore)
 	{
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[CLAN WAR] %s Zone biti! Kazanan: %s (%u-%u)",
+			"[TURNUVA BITTI / MATCH ENDED] %s — Kazanan/Winner: %s (%u-%u)",
 			zoneName,
 			pBlueClan ? pBlueClan->GetName().c_str() : "?",
 			blueScore, redScore);
@@ -129,7 +129,7 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	else
 	{
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[CLAN WAR] %s Zone biti! Berabere (%u-%u)",
+			"[TURNUVA BITTI / MATCH ENDED] %s — Berabere/Draw (%u-%u)",
 			zoneName, redScore, blueScore);
 		// Berabere odul: iki klan'a katilim odulu (winnerID=0 -> ikisi de loser sayilir)
 		// DistributeTournamentRewards (winnerClanID=0, loserClanID=Red, ...) -> Red uyeleri loser olarak alir

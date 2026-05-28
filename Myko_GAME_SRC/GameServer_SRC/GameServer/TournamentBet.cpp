@@ -573,7 +573,7 @@ COMMAND_HANDLER(CUser::HandleTournamentBetCommand)
 	// Para cek
 	if (!GoldLose(amount, true))
 	{
-		g_pMain->SendHelpDescription(this, "Para cekilemedi, tekrar dene.");
+		g_pMain->SendHelpDescription(this, "Para cekilemedi, tekrar dene. | Payment failed, try again.");
 		return true;
 	}
 
@@ -706,7 +706,7 @@ COMMAND_HANDLER(CUser::HandleBetStatusCommand)
 		// Satir 3: Kullanicinin kendi bahisi
 		if (myTotal > 0) {
 			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"  Senin bahisin: %u Noah (%s)", myTotal, myClanName.c_str());
+				"  Senin bahisin / Your bet: %u Noah (%s) — iptal: +bet cancel", myTotal, myClanName.c_str());
 			std::string m3 = buf;
 			Packet p; ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m3); Send(&p);
 		}
@@ -714,9 +714,9 @@ COMMAND_HANDLER(CUser::HandleBetStatusCommand)
 		// Satir 4: Kapanma sure
 		if (remaining > 0) {
 			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"  Kapanmasina: %lld sn", (long long)remaining);
+				"  Kapanmasina / Closes in: %lld sn", (long long)remaining);
 		} else {
-			_snprintf_s(buf, sizeof(buf), _TRUNCATE, "  BAHIS KAPALI (mac devam ediyor)");
+			_snprintf_s(buf, sizeof(buf), _TRUNCATE, "  BAHIS KAPALI / BETTING CLOSED (mac devam / match ongoing)");
 		}
 		std::string m4 = buf;
 		Packet p; ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m4); Send(&p);

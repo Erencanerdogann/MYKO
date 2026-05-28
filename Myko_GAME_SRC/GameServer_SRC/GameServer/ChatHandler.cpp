@@ -1506,9 +1506,9 @@ COMMAND_HANDLER(CGameServerDlg::HandleTournamentStart)
 		(zoneID == 98) ? "PartyVs-3" :
 		(zoneID == 99) ? "PartyVs-4" : "?";
 
-	char buf[256] = { 0 };
+	char buf[320] = { 0 };
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-		"[CLAN WAR] %s (Red) vs %s (Blue) - %s Zone - %u minutes! Get ready!",
+		"[TURNUVA BASLADI / MATCH STARTED] %s (Red) vs %s (Blue) - %s Zone - %u dk/min! Hazir olun / Get ready!",
 		pRedClan->GetName().c_str(), pBlueClan->GetName().c_str(),
 		zoneName, (unsigned)duration);
 

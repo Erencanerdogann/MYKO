@@ -161,10 +161,10 @@ static _CMD_RESULT ExecTournamentStart(const std::string& params)
 		zoneID, duration, pData->dbTournamentID);
 	r.status = "EXECUTED"; r.result = buf;
 
-	// Server-wide duyuru
-	char ann[200] = {0};
+	// Server-wide duyuru (oyuncu gorur — TR/EN)
+	char ann[260] = {0};
 	_snprintf_s(ann, sizeof(ann), _TRUNCATE,
-		"[GM Tournament] %s vs %s @ Zone %u basladi (%u dk)!",
+		"[TURNUVA BASLADI / MATCH STARTED] %s vs %s @ Zone %u (%u dk/min)!",
 		pRed->GetName().c_str(), pBlue->GetName().c_str(), zoneID, duration);
 	std::string msg = ann;
 	g_pMain->SendNotice(msg.c_str());
