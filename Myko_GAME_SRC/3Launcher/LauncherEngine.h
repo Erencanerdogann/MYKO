@@ -18,8 +18,10 @@
 // v2.8: B FIX — CheckForUpdate Constructor'dan Start() icine tasindi (5sn delay)
 //       + C plani — Self-heal basit Dialog (1 buton ONAR) connect() fail tetikli
 //       Patron lokal test PASS, sunucu deploy 2026-05-27
+// v2.9: MD5-kor guncelleme bugu fix — versiyon esit + icerik (MD5) farkliysa yine indir.
+//       (MalaysiaKO2 debug 2.8 vs sunucu release 2.8 ayni versiyon farkli MD5 -> cekmiyordu)
 #define LAUNCHER_BUILD_VERSION_MAJOR 2
-#define LAUNCHER_BUILD_VERSION_MINOR 8
+#define LAUNCHER_BUILD_VERSION_MINOR 9
 
 class Launcher
 {

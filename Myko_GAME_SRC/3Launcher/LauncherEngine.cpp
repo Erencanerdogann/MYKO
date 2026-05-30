@@ -995,10 +995,36 @@ bool Launcher::CheckForUpdate()
     // 2) Local versiyonla karsilastir
     int remoteVal = remoteMaj * 1000 + remoteMin;
     int localVal = LAUNCHER_BUILD_VERSION_MAJOR * 1000 + LAUNCHER_BUILD_VERSION_MINOR;
-    if (remoteVal <= localVal) return false; // Guncel veya daha eski - sessizce gec
 
-    // Boyut sanity (50 MB hard limit)
+    // Boyut sanity (50 MB hard limit) — once kontrol (MD5 dali da kullanir)
     if (remoteSize == 0 || remoteSize > 50 * 1024 * 1024) return false;
+
+    // S115 FIX (MD5-kor guncelleme bugu): versiyon kontrolu TEK BASINA yetmez.
+    // Ayni versiyon etiketi (orn 2.8) ama FARKLI icerik (debug build vs release) durumunda
+    // eski kod "guncelim" deyip yeni patch'i CEKMIYORDU. Kanit: MalaysiaKO2 debug 2.8 (4.5MB)
+    // vs sunucu release 2.8 (2.5MB) -> ayni versiyon, farkli MD5, guncelleme atlandi.
+    // COZUM: remote versiyon ESKI degilse (>=local), kendi exe MD5'ini remote MD5 ile karsilastir.
+    //        MD5 farkliysa (icerik degismis) yine indir. Sadece remote ESKI ise (remoteVal<localVal) gec.
+    if (remoteVal < localVal)
+        return false; // Remote gercekten ESKI — gec (downgrade yok)
+
+    if (remoteVal == localVal)
+    {
+        // Versiyon esit — icerik (MD5) ayni mi kontrol et. Ayni ise guncelim, gec.
+        char selfPath[MAX_PATH] = { 0 };
+        if (GetModuleFileNameA(NULL, selfPath, MAX_PATH) == 0)
+            return false; // kendi yolu alinamadi — guvenli taraf, gec
+        MD5 md5self;
+        std::string selfMd5 = md5self.FileMD5Check(selfPath);
+        if (!selfMd5.empty() &&
+            !remoteMd5.empty() &&
+            _stricmp(selfMd5.c_str(), remoteMd5.c_str()) == 0)
+        {
+            return false; // MD5 ESIT — gercekten guncel, gec
+        }
+        // MD5 farkli (veya hesaplanamadi + remote MD5 var) -> icerik degismis, INDIR
+    }
+    // remoteVal > localVal -> yeni versiyon, dogrudan indir
 
     // 3) Yeni exe indir + MD5 dogrula
     std::string tempPath;
