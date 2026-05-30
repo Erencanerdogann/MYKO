@@ -12,6 +12,7 @@
 #define IDB_LOADING_ERROR               108
 #define IDB_LOADING_COMPACT             109
 #define IDB_LOADING_REPAIR              110
+#define IDB_LOADING_BANNED              111
 
 // S115 FAZ 5c — Self-Heal Diagnostik Dialog (ESKI — karmaşik, kullanılmıyor)
 #define IDD_DIAGNOSTIC                  200

@@ -82,6 +82,7 @@ IDB_LOADING_SAFE	RCDATA					        "loading_safe.gif"
 IDB_LOADING_ERROR	RCDATA					        "loading_error.gif"
 IDB_LOADING_COMPACT	RCDATA					        "loading_compact.gif"
 IDB_LOADING_REPAIR	RCDATA					        "loading_repair.gif"
+IDB_LOADING_BANNED	RCDATA					        "loading_banned.gif"
 IDR_TBL_HASHES		RCDATA					        "tbl_hashes.txt"
 
 /////////////////////////////////////////////////////////////////////////////

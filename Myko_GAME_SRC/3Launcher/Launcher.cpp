@@ -626,10 +626,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             DispatchMessage(&msg);
         }
         else {
-            // S114 K3: HWID ban check — server'dan 0x84 result=1 geldiyse ERROR GIF goster + kapan
+            // S114 K3: HWID/IP ban check — server'dan 0x84 result=1 geldiyse BANNED GIF goster + kapan
+            // S115: ayri "IP BANNED" GIF (eskiden genel ERROR GIF idi). Ban sorgusu (HWID+IP) bunu tetikler.
             if (Engine && Engine->m_hwidBanned) {
                 Engine->m_hwidBanned = false;  // tekrar girmesin
-                thyke_t->SetupBanner(IDB_LOADING_ERROR, 3000, false);
+                thyke_t->SetupBanner(IDB_LOADING_BANNED, 3000, false);
                 ExitProcess(0);
             }
             // S114: 30 sn'de bir cheat scan
@@ -899,7 +900,8 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool ask
     // S114: Caller'in istegine gore GIF + davranis konfigure
     g_currentGifResId = gifResId;
     g_currentGifLooped = true;
-    if (gifResId == IDB_LOADING_ERROR)      g_gifEndAction = 2;
+    if (gifResId == IDB_LOADING_ERROR ||
+        gifResId == IDB_LOADING_BANNED)     g_gifEndAction = 2;  // BANNED de ERROR gibi: GIF sonu exit
     else if (gifResId == IDB_LOADING_SAFE)  g_gifEndAction = 1;
     else                                    g_gifEndAction = 0;
     // S114 K3: askConfirm true ise Y/N modu, klavye bekler
