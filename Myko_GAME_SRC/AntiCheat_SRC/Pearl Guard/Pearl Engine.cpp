@@ -1655,9 +1655,20 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	bool dusmanMi = nation != nationm;
 #if (HOOK_SOURCE_VERSION == 1098)
 
+	// PARTY SARI ISIM — PartyFind (yillarca calisan) + m_bInParty AND (kalinti fix).
+	// SISTEMSEL (2026-05-31): PartyFind KO client memory okur, party DAGILINCA o memory GEC
+	// temizlenir -> sari TAKILI kalirdi (baskan/disband kalinti). m_bInParty paket-temelli, ANINDA
+	// dogru (PARTY_DELETE'te false). AND -> party dagilinca m_bInParty=false -> sari ANINDA kalkar.
+	// KO memory'ye YAZMA yok, yeni state yok -> dusuk risk. Disband fix server DELETE'i duzeltti.
+	bool isPartyMember = Engine->m_bInParty
+		&& Engine->uiPartyBBS != NULL
+		&& Engine->uiPartyBBS->PartyFind(id);
+
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
-		if (Level < 30)
+		if (isPartyMember)
+			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+		else if (Level < 30)
 			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0);
 		else
 			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 100, 210, 255), 0);
@@ -1665,10 +1676,17 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	else
 	{
 		if (Level < 30)
-			SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0);
+		{
+			if (isPartyMember)
+				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+			else
+				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 180), 0);
+		}
 		else
 		{
-			if (dusmanMi)
+			if (isPartyMember)
+				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+			else if (dusmanMi)
 				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 255, 128, 128), 0);
 			else
 				SetNameString(obj, GetName(obj), D3DCOLOR_ARGB(255, 128, 128, 255), 0);
@@ -1678,10 +1696,17 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	if (*(uint8*)(*(DWORD*)KO_PTR_CHR + KO_WH) == 0)
 	{
 		if (Level < 30)
-			SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 180), 0);
+		{
+			if (isPartyMember)
+				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+			else
+				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 180), 0);
+		}
 		else
 		{
-			if (dusmanMi)
+			if (isPartyMember)
+				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 255, 0), 0); //party sari
+			else if (dusmanMi)
 				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 255, 128, 128), 0);
 			else
 				SetNameString(obj, GetName(obj) + " (" + to_string(*(uint8*)(obj + KO_OFF_LEVEL)) + ")", D3DCOLOR_ARGB(255, 128, 128, 255), 0);
