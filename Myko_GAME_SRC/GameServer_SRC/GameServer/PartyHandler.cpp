@@ -20,6 +20,19 @@ void CUser::PartySystemProcess(Packet& pkt)
 {
 	uint8 opcode;
 	pkt >> opcode;
+
+	// DEBUG party akis izleme: client'tan gelen HER party paketi (kim, hangi opcode, party durumu).
+	const char* opName =
+		opcode == PARTY_CREATE ? "CREATE" : opcode == PARTY_INSERT ? "INVITE" :
+		opcode == PARTY_PERMIT ? "PERMIT" : opcode == PARTY_PROMOTE ? "PROMOTE" :
+		opcode == PARTY_REMOVE ? "REMOVE" : opcode == PARTY_DELETE ? "DELETE" :
+		opcode == PARTY_TARGET_NUMBER ? "TARGETNUM" : opcode == PARTY_ALERT ? "ALERT" :
+		opcode == PARTY_COMMAND_PROMATE ? "CMDPROMOTE" : "OTHER";
+	LOG(LogCategory::LOG_GENERAL,
+		"[PARTY RECV] from=%s sid=%d op=%s(0x%02X) inParty=%d leader=%d partyIdx=%d partyID=%d",
+		GetName().c_str(), (int)GetSocketID(), opName, (int)opcode,
+		(int)m_bInParty, (int)m_bPartyLeader, (int)m_sPartyIndex, (int)GetPartyID());
+
 	switch (opcode)
 	{
 	case PARTY_CREATE:
@@ -597,6 +610,17 @@ void CUser::PartyisDelete()
 	Packet result(WIZ_PARTY, uint8(PARTY_DELETE));
 	g_pMain->Send_PartyMember(pParty->wIndex, &result);
 
+	// DEBUG: lider party'yi dagitti — DELETE kime gonderildi (party'deki tum uid'ler)
+	{
+		std::string members;
+		for (int i = 0; i < MAX_PARTY_USERS; i++) {
+			if (pParty->uid[i] >= 0) { members += std::to_string(pParty->uid[i]); members += ","; }
+		}
+		LOG(LogCategory::LOG_GENERAL,
+			"[PARTY isDELETE] leaderSid=%d partyIdx=%d DELETE_sent_to_uids=[%s]",
+			(int)GetSocketID(), (int)pParty->wIndex, members.c_str());
+	}
+
 	m_bPartyLeader = false;
 	StateChangeServerDirect(6, 0); // remove 'P' symbol from party leader
 	g_pMain->DeleteParty(pParty->wIndex);
@@ -780,6 +804,11 @@ void CUser::PartyNemberRemove(uint16 UserID, _PARTY_GROUP* pmyparty)
 	Packet result(WIZ_PARTY, uint8(PARTY_REMOVE));
 	result << targetSocketID;
 	g_pMain->Send_PartyMember(m_sPartyIndex, &result);
+
+	// DEBUG: normal cikis (party suruyor, count>=2) — REMOVE party'deki herkese gitti (cikan dahil)
+	LOG(LogCategory::LOG_GENERAL,
+		"[PARTY REMOVE-normal] callerSid=%d leaver=%d partyIdx=%d (REMOVE Send_PartyMember=tum uid cikan dahil)",
+		(int)GetSocketID(), (int)targetSocketID, (int)m_sPartyIndex);
 
 	if (memberPos >= 0) {
 		pParty->uid[memberPos] = -1;
