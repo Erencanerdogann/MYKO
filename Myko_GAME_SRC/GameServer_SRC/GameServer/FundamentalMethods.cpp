@@ -1067,6 +1067,16 @@ void CGameServerDlg::Send_PartyMember(int party, Packet *result)
 		if (pUser == nullptr || !pUser->isInGame())
 			continue;
 
+		// DEBUG (stale uid dogrulama): uid[] SOCKET ID tutar, socket ID recycle edilir.
+		// Donen kullanicinin m_sPartyIndex'i bu party (wIndex) ile ESLESMIYORSA -> STALE uid:
+		// uid[i] baska/recycle edilmis karaktere isaret ediyor -> paket YANLIS karaktere gider.
+		if (pUser->GetPartyID() != (int16)party)
+		{
+			LOG(LogCategory::LOG_GENERAL,
+				"[PARTY STALE-UID] partyIdx=%d slot=%d uid=%d -> pUser=%s onunPartyIdx=%d (UYUSMAZ-recycle/stale)",
+				party, i, (int)pParty->uid[i], pUser->GetName().c_str(), (int)pUser->GetPartyID());
+		}
+
 		pUser->Send(result);
 	}
 }
