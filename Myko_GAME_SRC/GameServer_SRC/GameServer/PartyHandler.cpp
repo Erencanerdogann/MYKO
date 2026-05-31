@@ -492,6 +492,14 @@ void CUser::AgreeToJoinTheParty()
 		<< GetLoyaltySymbolRank();
 	g_pMain->Send_PartyMember(GetPartyID(), &result);
 
+	// DEBUG (anton sari isim): yeni katilan oyuncunun party'ye yayinlanan kimligi.
+	// SocketID = client'in party listesine ekleyecegi ID. RegionID/zone-obje ID ile
+	// eslesmiyorsa sari isim cizilmez. byIndex = party slotu.
+	LOG(LogCategory::LOG_GENERAL,
+		"[PARTY INSERT] name=%s socketID=%d byIndex=%d partyIdx=%d partyType=%d level=%d",
+		GetName().c_str(), (int)GetSocketID(), (int)byIndex, (int)m_sPartyIndex,
+		(int)m_sUserPartyType, (int)GetLevel());
+
 	CUser* pUserr = nullptr;  //17.12.2020 Partyde HP Degeri Yazi Olarak Gosterme
 	for (int i = 0; i < MAX_PARTY_USERS; i++)
 	{
