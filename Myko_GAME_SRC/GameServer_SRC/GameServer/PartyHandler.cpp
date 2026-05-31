@@ -740,6 +740,17 @@ void CUser::PartyNemberRemove(uint16 UserID, _PARTY_GROUP* pmyparty)
 		removeResult << targetSocketID;
 		Packet delResult(WIZ_PARTY, uint8(PARTY_DELETE));
 
+		// FIX (son uye disband bug): cikan kisiye de PARTY_DELETE gonder.
+		// Eskiden asagidaki dongu cikani (targetSocketID) atliyordu -> cikanin client'i
+		// "party'deyim" sanip takiliyordu (party penceresi/HP bar/buton desync).
+		// Ortadaki cikista Send_PartyMember cikana da yolladigi icin sorun yoktu.
+		int sentLeaver = 0;
+		CUser* pLeaver = g_pMain->GetUserPtr(targetSocketID);
+		if (pLeaver != nullptr && pLeaver->isInGame()) {
+			pLeaver->Send(&delResult);
+			sentLeaver = 1;
+		}
+
 		for (int i = 0; i < MAX_PARTY_USERS; i++) {
 			if (pParty->uid[i] < 0 || pParty->uid[i] == targetSocketID)
 				continue;
@@ -749,6 +760,10 @@ void CUser::PartyNemberRemove(uint16 UserID, _PARTY_GROUP* pmyparty)
 			pMember->Send(&removeResult);
 			pMember->Send(&delResult);
 		}
+
+		LOG(LogCategory::LOG_GENERAL,
+			"[PARTY DISBAND] leaver=%d remaining_leader=%d sentToLeaver=%d partyIdx=%d",
+			(int)targetSocketID, (int)pParty->uid[0], sentLeaver, (int)pParty->wIndex);
 
 		g_pMain->DeleteParty(pParty->wIndex);
 		return;
