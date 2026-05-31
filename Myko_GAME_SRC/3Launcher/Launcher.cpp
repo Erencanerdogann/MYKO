@@ -385,10 +385,12 @@ int GetTextWidth(const char* szText, LPD3DXFONT pFont)
 }
 
 static int lisansTarih[] = { 01, 12, 2023 };
-// iki lisans �ekli de ayn� anda �al���r
-static std::string ipLisanslari[] = { xorstr("50.114.185.109"), xorstr("50.114.185.109"), xorstr("50.114.185.109") };    //
-// x den �ncesine bakar
-static std::string subnetLisanlar[] = { xorstr("50.114.185.109") };
+// iki lisans sekli de ayni anda calisir
+// S115: eski lisans IP'si (50.114.185.109 = onceki source sahibinin sunucusu, ilk commit'ten miras)
+//       MYKO sunuculariyla degistirildi. Lisans kontrolu zaten KAPALI (asagida IsLicensed cagrisi yorum).
+static std::string ipLisanslari[] = { xorstr("104.238.23.99"), xorstr("104.238.23.98") };    // ARES + TEST
+// x den oncesine bakar (subnet wildcard)
+static std::string subnetLisanlar[] = { xorstr("104.238.23.x") };
 
 bool IsLicensed(std::string ip)
 {

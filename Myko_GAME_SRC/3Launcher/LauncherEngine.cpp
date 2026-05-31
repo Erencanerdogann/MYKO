@@ -159,7 +159,7 @@ Launcher::Launcher()
     const size_t IPSize = 256;
     char* sIP = new char[IPSize];
     GetCurrentDirectoryA(MAX_PATH, WorkingPath);
-    GetPrivateProfileStringA(xorstr("Server"), xorstr("IP0"), xorstr("50.114.185.109"), sIP, IPSize, (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
+    GetPrivateProfileStringA(xorstr("Server"), xorstr("IP0"), xorstr("104.238.23.99"), sIP, IPSize, (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
     m_settingsVersion = GetPrivateProfileIntA(xorstr("Version"), xorstr("Files"), 1, (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
     m_settingsIP = sIP;
 
