@@ -20,8 +20,9 @@
 //       Patron lokal test PASS, sunucu deploy 2026-05-27
 // v2.9: MD5-kor guncelleme bugu fix — versiyon esit + icerik (MD5) farkliysa yine indir.
 //       (MalaysiaKO2 debug 2.8 vs sunucu release 2.8 ayni versiyon farkli MD5 -> cekmiyordu)
-#define LAUNCHER_BUILD_VERSION_MAJOR 2
-#define LAUNCHER_BUILD_VERSION_MINOR 9
+// v3.0: IP BANNED GIF — ayri ban ekrani (loading_banned.gif), 0x84 ban sorgusuna bagli.
+#define LAUNCHER_BUILD_VERSION_MAJOR 3
+#define LAUNCHER_BUILD_VERSION_MINOR 0
 
 class Launcher
 {
