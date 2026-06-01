@@ -1874,6 +1874,10 @@ bool InifinityArrow = false;
 // gameWindow = D3D hFocusWindow (UIManager.cpp:139, title-bagimsiz). NULL guard SART (login kilitlenmesin).
 extern HWND gameWindow; // UIManager.cpp:139 file-scope global (D3D hFocusWindow)
 
+// DEBUG log yolu: C:\ koku UAC korumali (Permission denied, S116 kanit). Client klasoru = yazilabilir.
+// KnightOnline.exe C:\MalaysiaKO\'dan calisiyor -> bu kesin yazilabilir.
+#define PG_DBG_LOG "C:\\MalaysiaKO\\pg_cursor_debug.txt"
+
 typedef BOOL    (WINAPI* tGetCursorPos)(LPPOINT);
 typedef SHORT   (WINAPI* tGetAsyncKeyState)(int);
 static tGetCursorPos     g_origGetCursorPos = NULL;
@@ -1897,16 +1901,17 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 		lpPoint->x = -32000;
 		lpPoint->y = -32000;
 	}
-	// DEBUG: hook atesleniyor mu + gameWindow + arka plan mi? Ilk 30 cagri C:\pg_cursor_debug.txt
+	// DEBUG: hook atesleniyor mu + gameWindow + arka plan mi? Ilk 30 cagri PG_DBG_LOG (client klasoru — C:\ koku yazma izni YOK!)
 	{
 		static int s_c = 0;
 		if (s_c < 30)
 		{
 			s_c++;
-			std::ofstream d; d.open("C:\\pg_cursor_debug.txt", std::ios::app);
+			std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
 			if (d.is_open())
 			{
 				d << "[GCP] call#" << s_c
+				  << " pid=" << (DWORD)GetCurrentProcessId()
 				  << " gameWindow=0x" << std::hex << (DWORD)gameWindow
 				  << " fg=0x" << (DWORD)::GetForegroundWindow()
 				  << std::dec << " arkaPlan=" << (arka ? 1 : 0) << "\n";
@@ -1925,11 +1930,38 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 void InitMultiClientInputHook()
 {
 	HMODULE hUser = GetModuleHandleA("user32.dll");
-	if (!hUser) return;
-	g_origGetCursorPos = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
-	if (g_origGetCursorPos)
-		g_origGetCursorPos = (tGetCursorPos)DetourFunction((PBYTE)g_origGetCursorPos, (PBYTE)Hook_GetCursorPos);
+	const char* step = "start";
+	void* addrBefore = NULL;
+	void* addrAfter  = NULL;
+	if (hUser)
+	{
+		g_origGetCursorPos = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
+		addrBefore = (void*)g_origGetCursorPos;
+		if (g_origGetCursorPos)
+		{
+			g_origGetCursorPos = (tGetCursorPos)DetourFunction((PBYTE)g_origGetCursorPos, (PBYTE)Hook_GetCursorPos);
+			addrAfter = (void*)g_origGetCursorPos;
+			step = "detour_done";
+		}
+		else step = "getproc_fail";
+	}
+	else step = "user32_fail";
 	// GetAsyncKeyState detour YOK — anti-tamper (KeepFunction) tetikler, client coker.
+
+	// INIT KANIT: hook GERCEKTEN kuruldu mu + log dosyasi yazilabiliyor mu (C:\ koku DEGIL!).
+	// Bu satir cikmiyorsa -> EngineMain InitMultiClientInputHook'a hic gelmedi VEYA klasor yazilamaz.
+	{
+		std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
+		if (d.is_open())
+		{
+			d << "[INIT] pid=" << (DWORD)GetCurrentProcessId()
+			  << " step=" << step
+			  << " origAddr=0x" << std::hex << (DWORD)addrBefore
+			  << " trampAddr=0x" << (DWORD)addrAfter
+			  << std::dec << "\n";
+			d.close();
+		}
+	}
 }
 // ============================================================================
 
