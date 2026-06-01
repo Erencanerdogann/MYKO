@@ -163,6 +163,16 @@ void SetNameString(DWORD userBase, std::string text, DWORD color, DWORD fontStyl
 	if (!fontBase)
 		return;
 
+	// CIFT-YAZIM TESTI (workflow kok: detour sirasi/asm font-state reset suphesi).
+	// Renk asm cagrisindan ONCE de yaz -> asm string'i yeniden olusturup rengi resetliyorsa
+	// once-yazim tutar. Discriminator: ekran duzelirse asm reset ediyor; duzelmezse KO orijinal
+	// cizim (player-loop) callback sonrasi eziyor -> RET-tipi hook gerekir.
+	if (color != 0)
+	{
+		*(DWORD*)(userBase + 0x738) = color;
+		*(DWORD*)(fontBase + 0x44) = color;
+	}
+
 	objTMPStringX = text;
 	__asm {
 		push fontStyle
