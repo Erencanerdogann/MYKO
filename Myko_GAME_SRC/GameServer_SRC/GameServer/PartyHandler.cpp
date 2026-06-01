@@ -901,6 +901,14 @@ void CUser::PartyTargetNumber(Packet& pkt)
 	// SADECE Moradon'da: hedef MOB DEGILSE (oyuncu / satici-NPC / quest-NPC) reddet -> sadece canavar 1'lenir.
 	// CZ/Delos/diger zone'lar ETKILENMEZ (orada PK hedefi icin oyuncuya 1 normal).
 	// Mob ayrim: GetNpcPtr(TargetID, zone)->isMonster(). Oyuncu ise GetNpcPtr null -> reddedilir.
+	// TANI (1leme NPC): TargetID/zone/GetNpcPtr/isMonster ne donuyor — NPC'de neden gecyor
+	{
+		CNpc* dbgN = g_pMain->GetNpcPtr((uint16)TargetID, GetZoneID());
+		LOG(LogCategory::LOG_GENERAL,
+			"[1LEME-TANI] zone=%d TargetID=%d npcPtr=%d isMonster=%d",
+			(int)GetZoneID(), (int)TargetID, (int)(dbgN != nullptr),
+			(int)(dbgN != nullptr ? dbgN->isMonster() : -1));
+	}
 	if (GetZoneID() >= ZONE_MORADON && GetZoneID() <= ZONE_MORADON5)
 	{
 		CNpc* pTargetNpc = g_pMain->GetNpcPtr((uint16)TargetID, GetZoneID());
