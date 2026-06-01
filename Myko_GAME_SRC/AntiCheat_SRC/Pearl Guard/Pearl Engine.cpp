@@ -8443,6 +8443,23 @@ void __fastcall ThreadControlAlive()
 	// gameStarted = in-game gostergesi (HandleGameStart 6567 + Real_Send 0x0D/0x0E/0x2E). In-game
 	// DEGILken timeout SAYMA + zaman damgalarini taze tut (in-game'e gecince birikmis bosluk ANINDA
 	// DC yapmasin). In-game olunca eski mantik aynen calisir -> GERCEK cheat (StayAlive durdurma) yakalanir.
+	// TANI LOG (BUG3 DC): her tick gameStarted + timestamp farki + ischeatactive set ani.
+	// C:\MalaysiaKO\ yazilabilir (C:\ koku DEGIL). DC neden oluyor KANITLA.
+	{
+		std::ofstream d; d.open("C:\\MalaysiaKO\\pg_dc_debug.txt", std::ios::app);
+		if (d.is_open())
+		{
+			d << "[TICK] pid=" << (DWORD)GetCurrentProcessId()
+			  << " gameStarted=" << (gameStarted?1:0)
+			  << " isAlive=" << (isAlive?1:0)
+			  << " allowAlive=" << (allowAlive?1:0)
+			  << " checkDt=" << (long)(clock() - CheckAliveTime)
+			  << " realDt=" << (long)(clock() - Real_SendTime)
+			  << " ischeat=" << (ischeatactive?1:0) << "\n";
+			d.close();
+		}
+	}
+
 	if (!gameStarted)
 	{
 		CheckAliveTime = clock();
@@ -8455,12 +8472,14 @@ void __fastcall ThreadControlAlive()
 		//printf("THETHYKE | EXCEPTION 2\n");
 		ischeatactive = true;
 		Engine->StayAlive();
+		{ std::ofstream d; d.open("C:\\MalaysiaKO\\pg_dc_debug.txt", std::ios::app); if(d.is_open()){ d << "[DC!] pid=" << (DWORD)GetCurrentProcessId() << " sebep=CheckAliveTime asti (in-game)\n"; d.close(); } }
 
 	}else if (Real_SendTime < clock() - 18000)
 	{
 		//printf("THETHYKE | EXCEPTION 3\n");
 		ischeatactive = true;
 		Engine->StayAlive();
+		{ std::ofstream d; d.open("C:\\MalaysiaKO\\pg_dc_debug.txt", std::ios::app); if(d.is_open()){ d << "[DC!] pid=" << (DWORD)GetCurrentProcessId() << " sebep=Real_SendTime asti (in-game)\n"; d.close(); } }
 
 	}
 }
