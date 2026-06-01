@@ -1674,9 +1674,14 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	// temizlenir -> sari TAKILI kalirdi (baskan/disband kalinti). m_bInParty paket-temelli, ANINDA
 	// dogru (PARTY_DELETE'te false). AND -> party dagilinca m_bInParty=false -> sari ANINDA kalkar.
 	// KO memory'ye YAZMA yok, yeni state yok -> dusuk risk. Disband fix server DELETE'i duzeltti.
+	// FIX BUG1 (2026-06-01, log kanitli titreme): PartyFind KO client memory linked-list okur,
+	// KARARSIZ — 3 kisilik party'de biri cikinca (PARTY_REMOVE) KO listeyi reorganize ederken
+	// birkac frame PartyFind=0 donduruyor -> kalan uyelerin sarisi sari<->beyaz TITRIYORDU.
+	// g_partyIds paket-temelli (PARTY_INSERT/REMOVE) ANINDA dogru: REMOVE sadece cikan id'yi siler,
+	// kalan id'ler sette durur. count() salt-okuma O(1), mutasyon yok (PT vakasi insert/erase'di=PATLAMISTI),
+	// KO memory'ye yazma yok. m_bInParty AND korunuyor -> disband fix bozulmaz.
 	bool isPartyMember = Engine->m_bInParty
-		&& Engine->uiPartyBBS != NULL
-		&& Engine->uiPartyBBS->PartyFind(id);
+		&& g_partyIds.count((uint16)id) > 0;
 
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
@@ -8431,6 +8436,19 @@ void __fastcall ThreadControlAlive()
 		return;
 
 	recvTick2 = clock();
+
+	// FIX BUG3 (2026-06-01, 3.client loading DC kanitli): loading sirasinda (in-game DEGIL) client
+	// 18sn paket gondermeyebilir (3 client ayni anda yuklenince CPU/disk yuku) -> Real_SendTime 18sn
+	// asar -> false positive ischeatactive -> StayAlive pakette gonderir -> server checkdecated1 DC.
+	// gameStarted = in-game gostergesi (HandleGameStart 6567 + Real_Send 0x0D/0x0E/0x2E). In-game
+	// DEGILken timeout SAYMA + zaman damgalarini taze tut (in-game'e gecince birikmis bosluk ANINDA
+	// DC yapmasin). In-game olunca eski mantik aynen calisir -> GERCEK cheat (StayAlive durdurma) yakalanir.
+	if (!gameStarted)
+	{
+		CheckAliveTime = clock();
+		Real_SendTime  = clock();
+		return;
+	}
 
 	if (CheckAliveTime < clock() - 18000)
 	{
