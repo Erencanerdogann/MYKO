@@ -6295,6 +6295,7 @@ bool __cdecl HandlePacket(Packet pkt)
 				pkt >> partyid >> ret >> userName >> maxhp >> hp >> level >> iclass >> maxmp >> mp >> nation >> UserPartyType;
 				g_partyIds.insert(partyid);
 				Engine->m_bInParty = true;
+				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] INSERT id=" << (int)partyid << " m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "\n"; d.close(); } }
 #if (HOOK_SOURCE_VERSION == 1098)
 				if (Engine->m_bInParty == true)
 				{
@@ -6320,12 +6321,14 @@ bool __cdecl HandlePacket(Packet pkt)
 				uint16 removedId;
 				pkt >> removedId;
 				g_partyIds.erase(removedId);
+				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] REMOVE id=" << (int)removedId << " m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- m_bInParty DOKUNULMUYOR (kalinti suphesi)\n"; d.close(); } }
 			}
 			else if (subcode == PARTY_DELETE)
 			{
 				g_partyIds.clear();
 				Engine->m_bInParty = false;
-#if (HOOK_SOURCE_VERSION == 1098)	
+				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] DELETE m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- m_bInParty=false ANINDA (bu senaryoda sari kalkmali)\n"; d.close(); } }
+#if (HOOK_SOURCE_VERSION == 1098)
 if (Engine->m_bInParty == false)
 				{
 					if (Engine->uiTaskbarMain != NULL)
