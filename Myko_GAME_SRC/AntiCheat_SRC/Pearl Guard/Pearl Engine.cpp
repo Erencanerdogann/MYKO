@@ -1637,6 +1637,11 @@ bool waitingForParty = false;
 // Pearl Guard kendi party ID listesi — KO client memory'ye bagimli degil
 std::unordered_set<uint16> g_partyIds;
 
+// DEBUG log yolu: C:\ koku UAC korumali (Permission denied, S116 kanit). Client klasoru = yazilabilir.
+// KnightOnline.exe C:\MalaysiaKO\'dan calisiyor -> bu kesin yazilabilir. (Object_Player_Callback'ten
+// ONCE tanimli olmali — makro kullanimi 1660 civari + 1894 GetCursorPos hook.)
+#define PG_DBG_LOG "C:\\MalaysiaKO\\pg_cursor_debug.txt"
+
 void __fastcall Object_Player_Callback(DWORD obj)
 {
 	if (!obj) return;
@@ -1660,9 +1665,31 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	// temizlenir -> sari TAKILI kalirdi (baskan/disband kalinti). m_bInParty paket-temelli, ANINDA
 	// dogru (PARTY_DELETE'te false). AND -> party dagilinca m_bInParty=false -> sari ANINDA kalkar.
 	// KO memory'ye YAZMA yok, yeni state yok -> dusuk risk. Disband fix server DELETE'i duzeltti.
-	bool isPartyMember = Engine->m_bInParty
-		&& Engine->uiPartyBBS != NULL
-		&& Engine->uiPartyBBS->PartyFind(id);
+	bool dbg_inParty   = Engine->m_bInParty;
+	bool dbg_pf        = (Engine->uiPartyBBS != NULL && Engine->uiPartyBBS->PartyFind(id));
+	bool isPartyMember = dbg_inParty && dbg_pf;
+
+	// CIZIM TESHIS: sari yazildigi an + PartyFind bagimsiz sonuc. m_bInParty=0 oldugu halde sari
+	// kaliyorsa: ya isPartyMember hala true (PartyFind?) ya callback bu obj icin cagrilmiyor (donmus).
+	// Throttle: her id icin ilk 3 kez (frame spam onle).
+	{
+		static std::unordered_map<int, int> s_dbgCnt;
+		bool kendim = (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR));
+		if (s_dbgCnt[id] < 3)
+		{
+			s_dbgCnt[id]++;
+			std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
+			if (d.is_open())
+			{
+				d << "[DRAW] id=" << id << " kendim=" << (kendim?1:0)
+				  << " m_bInParty=" << (dbg_inParty?1:0)
+				  << " PartyFind=" << (dbg_pf?1:0)
+				  << " -> sari=" << (isPartyMember?1:0)
+				  << " name=" << GetName(obj) << "\n";
+				d.close();
+			}
+		}
+	}
 
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
@@ -1873,10 +1900,6 @@ bool InifinityArrow = false;
 // arka client'a sahte/bos input dondur -> karakter hareket etmez. API adresi versiyon+packer bagimsiz.
 // gameWindow = D3D hFocusWindow (UIManager.cpp:139, title-bagimsiz). NULL guard SART (login kilitlenmesin).
 extern HWND gameWindow; // UIManager.cpp:139 file-scope global (D3D hFocusWindow)
-
-// DEBUG log yolu: C:\ koku UAC korumali (Permission denied, S116 kanit). Client klasoru = yazilabilir.
-// KnightOnline.exe C:\MalaysiaKO\'dan calisiyor -> bu kesin yazilabilir.
-#define PG_DBG_LOG "C:\\MalaysiaKO\\pg_cursor_debug.txt"
 
 typedef BOOL    (WINAPI* tGetCursorPos)(LPPOINT);
 typedef SHORT   (WINAPI* tGetAsyncKeyState)(int);
