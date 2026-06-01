@@ -668,8 +668,17 @@ void CUser::PartyLeaderPromote(uint16 GetLeaderID, _PARTY_GROUP* pmyparty)
 	std::swap(m_bNeedParty, pUser->m_bNeedParty);
 	std::swap(m_bPartyLeader, pUser->m_bPartyLeader);
 
+	// FIX BUG2 (2026-06-02, kanitli): "1 leme" (target number, PartyTargetNumber) yetkisi
+	// m_bPartyCommandLeader'a bagli (leader'dan AYRI rol). PartyLeaderPromote sadece m_bPartyLeader'i
+	// swap ediyordu -> eski liderde "1 leme" KALIR (m_bPartyCommandLeader=true), yeni liderde CIKMAZ
+	// (false). FIX: liderlik devredilince komut yetkisini de YENI lidere ATA. ATAMA kullaniyoruz
+	// (std::swap DEGIL): command-leader 3. bir uyede olabilir; swap o durumda calismaz, atama her
+	// durumda yetkiyi yeni lidere toplar.
+	m_bPartyCommandLeader = false;        // eski lider komut yetkisini birakir
+	pUser->m_bPartyCommandLeader = true;  // yeni lider komut yetkisini alir
+
 	// Remove our leadership state from the client
-	StateChangeServerDirect(6, 0); // remove 'P' symbol from old party leader	
+	StateChangeServerDirect(6, 0); // remove 'P' symbol from old party leader
 	StateChangeServerDirect(2, m_bNeedParty); // seeking a party
 
 	// Make them leader.
