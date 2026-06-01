@@ -229,8 +229,13 @@ void CLocalInput::Tick(void)
 	//	WORD i;
 	//	DWORD key;
 
-	/*HWND hWndActive = ::GetActiveWindow();
-	if (hWndActive != m_hWnd) return;*/
+	// MULTI-CLIENT INPUT SIZMASI FIX (2026-06-01):
+	// Eskiden guard YORUMDAYDI -> oyun ARKA PLANDA bile GetCursorPos (global) ile mouse okuyup
+	// karakteri hareket ettiriyordu (ayni PC 2 client / CMD onde iken arka oyun hareket).
+	// GetActiveWindow THREAD-yerel (her client kendini aktif sanir). GetForegroundWindow =
+	// sistemde GERCEKTEN onde olan TEK pencere. Oyun onde degilse input okumayi KESER.
+	if (::GetForegroundWindow() != m_hWnd)
+		return;
 
 	///////////////////////
 	//  KEYBOARD
@@ -309,7 +314,8 @@ void CLocalInput::Tick(void)
 	::GetCursorPos(&m_ptCurMouse);
 	::ScreenToClient(m_hWnd, &m_ptCurMouse);
 
-	if (PtInRect(&rcClient, m_ptCurMouse) == FALSE) //  || GetFocus() != m_hWnd)
+	// cift guvence: mouse client alani disinda VEYA pencere onde degilse isleme
+	if (PtInRect(&rcClient, m_ptCurMouse) == FALSE || ::GetForegroundWindow() != m_hWnd)
 	{
 	}
 	else
