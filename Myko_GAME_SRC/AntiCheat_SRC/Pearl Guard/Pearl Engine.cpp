@@ -1891,10 +1891,28 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 {
 	BOOL r = g_origGetCursorPos ? g_origGetCursorPos(lpPoint) : ::GetCursorPos(lpPoint);
 	// Arka plandaysa imleci ekran-disi sabit noktaya zorla -> client mouse-tikla/hareket uretemez.
-	if (lpPoint && InputArkaPlanda())
+	bool arka = (lpPoint && InputArkaPlanda());
+	if (arka)
 	{
 		lpPoint->x = -32000;
 		lpPoint->y = -32000;
+	}
+	// DEBUG: hook atesleniyor mu + gameWindow + arka plan mi? Ilk 30 cagri C:\pg_cursor_debug.txt
+	{
+		static int s_c = 0;
+		if (s_c < 30)
+		{
+			s_c++;
+			std::ofstream d; d.open("C:\\pg_cursor_debug.txt", std::ios::app);
+			if (d.is_open())
+			{
+				d << "[GCP] call#" << s_c
+				  << " gameWindow=0x" << std::hex << (DWORD)gameWindow
+				  << " fg=0x" << (DWORD)::GetForegroundWindow()
+				  << std::dec << " arkaPlan=" << (arka ? 1 : 0) << "\n";
+				d.close();
+			}
+		}
 	}
 	return r;
 }
