@@ -1863,6 +1863,66 @@ void __declspec(naked) hkRankImage()
 }
 bool InifinityArrow = false;
 
+// ============================================================================
+// MULTI-CLIENT INPUT SIZMASI FIX (2026-06-01) — IAT/Detour GetCursorPos + GetAsyncKeyState
+// Sorun: ayni PC 2 client, mouse ile arka/baska pencereye tikla -> arka karakter hareket eder
+// (oyuncular farm+PK kasiyor). Client mouse'u POLLING ile okuyor (GetCursorPos + GetAsyncKeyState
+// import'ta, GetMessage YOK). Client GetForegroundWindow IMPORT ETMIYOR -> kendi foreground gate'i yok.
+// ProcessLocalInput call-hook OLU (packer 5-byte E8 patch'i geri aliyor, runtime kanitli).
+// COZUM: bu 2 API'yi MS Detours ile detour et (EngineMain'de, packer-sonrasi). Pencere onde DEGILSE
+// arka client'a sahte/bos input dondur -> karakter hareket etmez. API adresi versiyon+packer bagimsiz.
+// gameWindow = D3D hFocusWindow (UIManager.cpp:139, title-bagimsiz). NULL guard SART (login kilitlenmesin).
+extern HWND gameWindow; // UIManager.cpp:139 file-scope global (D3D hFocusWindow)
+
+typedef BOOL    (WINAPI* tGetCursorPos)(LPPOINT);
+typedef SHORT   (WINAPI* tGetAsyncKeyState)(int);
+static tGetCursorPos     g_origGetCursorPos = NULL;
+static tGetAsyncKeyState g_origGetAsyncKeyState = NULL;
+
+// arka plan mi? (oyun penceresi sistemde ONDE degil). gameWindow NULL ise GUVENLI taraf: arka plan DEGIL say.
+static inline bool InputArkaPlanda()
+{
+	if (gameWindow == NULL)
+		return false; // henuz hazir degil -> input'a dokunma (login/char-secim kilitlenmesin)
+	return ::GetForegroundWindow() != gameWindow;
+}
+
+BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
+{
+	BOOL r = g_origGetCursorPos ? g_origGetCursorPos(lpPoint) : ::GetCursorPos(lpPoint);
+	// Arka plandaysa imleci ekran-disi sabit noktaya zorla -> client mouse-tikla/hareket uretemez.
+	if (lpPoint && InputArkaPlanda())
+	{
+		lpPoint->x = -32000;
+		lpPoint->y = -32000;
+	}
+	return r;
+}
+
+SHORT WINAPI Hook_GetAsyncKeyState(int vKey)
+{
+	// Arka plandaysa SADECE mouse + hareket tuslarini bastir (harf/chat tuslarina DOKUNMA).
+	if (InputArkaPlanda())
+	{
+		if (vKey == VK_LBUTTON || vKey == VK_RBUTTON || vKey == VK_MBUTTON)
+			return 0;
+	}
+	return g_origGetAsyncKeyState ? g_origGetAsyncKeyState(vKey) : ::GetAsyncKeyState(vKey);
+}
+
+void InitMultiClientInputHook()
+{
+	HMODULE hUser = GetModuleHandleA("user32.dll");
+	if (!hUser) return;
+	g_origGetCursorPos     = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
+	g_origGetAsyncKeyState = (tGetAsyncKeyState)GetProcAddress(hUser, "GetAsyncKeyState");
+	if (g_origGetCursorPos)
+		g_origGetCursorPos = (tGetCursorPos)DetourFunction((PBYTE)g_origGetCursorPos, (PBYTE)Hook_GetCursorPos);
+	if (g_origGetAsyncKeyState)
+		g_origGetAsyncKeyState = (tGetAsyncKeyState)DetourFunction((PBYTE)g_origGetAsyncKeyState, (PBYTE)Hook_GetAsyncKeyState);
+}
+// ============================================================================
+
 static bool spellsloaded = false;
 void __fastcall myTick()
 {
@@ -3507,6 +3567,7 @@ DWORD WINAPI PearlEngine::EngineMain(PearlEngine * e)
 	DetourFunction((PBYTE)KO_AUTO_ATTACK, (PBYTE)hkAttack);
 	//rtOrg = (DWORD)DetourFunction((PBYTE)KO_UIF_SET_FONT_STRING, (PBYTE)hkSetFontString);		// string kal�nla�t�rma.
 	TICK_ORG = (DWORD)DetourFunction((PBYTE)KO_GAME_TICK, (PBYTE)hkTick);
+	InitMultiClientInputHook(); // multi-client mouse sizmasi: GetCursorPos+GetAsyncKeyState detour + foreground gate
 	KO_MAGIC_SKILL_ANIMATION_ORG = (DWORD)DetourFunction((PBYTE)0x009A55E0, (PBYTE)GetAnimationSkill);
 	(tUIOnKeyPress)DetourFunction((PBYTE)0x40F0F0, (PBYTE)hkUIOnKeyPress);
 	*(float*)0xDE2B98 = 1.0f / 999.0f;																	// -------------------- fps limiti kald�rma
