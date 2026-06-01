@@ -3715,6 +3715,35 @@ DWORD WINAPI PearlEngine::EngineMain(PearlEngine * e)
 	DetourFunction((PBYTE)KO_FNC_OBJECT_MOB_LOOP, (PBYTE)hkObjectMobLoop);
 	KO_FNC_OBJECT_PLAYER_LOOP_ORG = (DWORD)DetourFunction((PBYTE)KO_FNC_OBJECT_PLAYER_LOOP, (PBYTE)hkObjectPlayerLoop);
 
+	// RET KANIT (2026-06-01): PLAYER_LOOP_RET=0x591F3C YANLIS (entry'den ONCE). Dogru RET'i
+	// trampoline'den cikar. MS Detours trampoline ORG = [calinan instruction] + JMP(entry+calinan).
+	// Trampoline sonundaki E9 rel32'yi parse et -> gercek RET = entry + calinan_byte. Bu kanit
+	// olmadan RET-tipi hook = crash. (Mob: 0x57D3D1+5=0x57D3D6 calisti. Player'in dogru RET'i ne?)
+	{
+		std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
+		if (d.is_open())
+		{
+			PBYTE tr = (PBYTE)KO_FNC_OBJECT_PLAYER_LOOP_ORG;
+			d << "[RET] entry=0x" << std::hex << (DWORD)KO_FNC_OBJECT_PLAYER_LOOP
+			  << " tramp(ORG)=0x" << (DWORD)KO_FNC_OBJECT_PLAYER_LOOP_ORG << "\n";
+			// trampoline ilk 24 byte dok
+			d << "[RET] tramp bytes:";
+			for (int i = 0; i < 24; i++) d << " " << (int)tr[i];
+			d << "\n";
+			// trampoline icinde ilk E9 (JMP rel32) bul -> hedef = adr+5+rel32 = gercek RET
+			for (int i = 0; i < 20; i++) {
+				if (tr[i] == 0xE9) {
+					int rel = *(int*)(tr + i + 1);
+					DWORD hedef = (DWORD)(tr + i + 5) + rel;
+					d << "[RET] E9@offset" << std::dec << i << " -> GERCEK_RET=0x" << std::hex << hedef
+					  << " (entry+" << std::dec << (hedef - KO_FNC_OBJECT_PLAYER_LOOP) << " byte)\n";
+					break;
+				}
+			}
+			d.close();
+		}
+	}
+
 	DetourFunction((PBYTE)fncScanZ, (PBYTE)hkZ);
 	DetourFunction((PBYTE)fncScanB, (PBYTE)hkB);
 	DetourFunction((PBYTE)KO_FNC_GENIE_SCAN, (PBYTE)hkGenieSelect);
