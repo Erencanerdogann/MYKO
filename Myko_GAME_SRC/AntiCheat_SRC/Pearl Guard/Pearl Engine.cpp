@@ -1899,27 +1899,19 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 	return r;
 }
 
-SHORT WINAPI Hook_GetAsyncKeyState(int vKey)
-{
-	// Arka plandaysa SADECE mouse + hareket tuslarini bastir (harf/chat tuslarina DOKUNMA).
-	if (InputArkaPlanda())
-	{
-		if (vKey == VK_LBUTTON || vKey == VK_RBUTTON || vKey == VK_MBUTTON)
-			return 0;
-	}
-	return g_origGetAsyncKeyState ? g_origGetAsyncKeyState(vKey) : ::GetAsyncKeyState(vKey);
-}
+// NOT: GetAsyncKeyState detour KALDIRILDI (2026-06-01) — KeepFunction anti-tamper listesinde
+// (Pearl Engine.cpp:7904) -> detour CRC32 hash'i bozuyor -> Check() false -> SIGSEGV -> client
+// acilista CRASH (siyah ekran). SADECE GetCursorPos detour'u (KeepFunction'da YOK = guvenli).
+// Mouse-tikla-yuru imlec POZISYONUNA bagli -> GetCursorPos sahte nokta dondurmek yeterli olabilir.
 
 void InitMultiClientInputHook()
 {
 	HMODULE hUser = GetModuleHandleA("user32.dll");
 	if (!hUser) return;
-	g_origGetCursorPos     = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
-	g_origGetAsyncKeyState = (tGetAsyncKeyState)GetProcAddress(hUser, "GetAsyncKeyState");
+	g_origGetCursorPos = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
 	if (g_origGetCursorPos)
 		g_origGetCursorPos = (tGetCursorPos)DetourFunction((PBYTE)g_origGetCursorPos, (PBYTE)Hook_GetCursorPos);
-	if (g_origGetAsyncKeyState)
-		g_origGetAsyncKeyState = (tGetAsyncKeyState)DetourFunction((PBYTE)g_origGetAsyncKeyState, (PBYTE)Hook_GetAsyncKeyState);
+	// GetAsyncKeyState detour YOK — anti-tamper (KeepFunction) tetikler, client coker.
 }
 // ============================================================================
 
