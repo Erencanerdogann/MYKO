@@ -896,14 +896,17 @@ void CUser::PartyTargetNumber(Packet& pkt)
 	pkt >> TargetID >> EffectID >> Succes;
 	if (!isInGame() || isDead() || !isInParty() || !isPartyCommandLeader()) return;
 
-	// FIX (2026-06-02): Moradon (kasaba 21-25) icinde "1 leme" SADECE mob/NPC'ye konabilir.
-	// Eskiden hedef kontrolu yoktu -> command-leader party-disi normal oyuncuya da 1 koyabiliyordu (bug).
-	// SADECE Moradon zone'larinda + hedef bir OYUNCU ise reddet. CZ/Delos/diger zone'lar ETKILENMEZ
-	// (orada PK hedefi icin oyuncuya 1 konmasi normal). GetUserPtr(TargetID) oyuncu ise non-null, mob ise null.
+	// FIX (2026-06-02): Moradon (kasaba 21-25) icinde "1 leme" SADECE MOB'a (canavar) konabilir.
+	// Eskiden hedef kontrolu yoktu -> command-leader party-disi oyuncuya VE NPC'ye de 1 koyabiliyordu (bug).
+	// SADECE Moradon'da: hedef MOB DEGILSE (oyuncu / satici-NPC / quest-NPC) reddet -> sadece canavar 1'lenir.
+	// CZ/Delos/diger zone'lar ETKILENMEZ (orada PK hedefi icin oyuncuya 1 normal).
+	// Mob ayrim: GetNpcPtr(TargetID, zone)->isMonster(). Oyuncu ise GetNpcPtr null -> reddedilir.
 	if (GetZoneID() >= ZONE_MORADON && GetZoneID() <= ZONE_MORADON5)
 	{
-		if (g_pMain->GetUserPtr((uint16)TargetID) != nullptr)
-			return; // Moradon'da oyuncuya 1 leme yok (sadece mob)
+		CNpc* pTargetNpc = g_pMain->GetNpcPtr((uint16)TargetID, GetZoneID());
+		bool bIsMob = (pTargetNpc != nullptr && pTargetNpc->isMonster());
+		if (!bIsMob)
+			return; // Moradon'da sadece mob 1'lenir (oyuncu/NPC reddedilir)
 	}
 
 	_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(GetPartyID());
