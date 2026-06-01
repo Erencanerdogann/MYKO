@@ -552,29 +552,6 @@ void __stdcall ProcessLocalInput_Hook(uint32_t dwMouseFlags)
 		MOV thisPtr, ECX
 	}
 
-	// DEBUG TESHIS (2026-06-01): bu hook GERCEKTEN atesleniyor mu? gameWindow + foreground ne?
-	// Ilk 25 cagride C:\pg_input_debug.txt'e append. Hook hic yazmazsa = adres yanlis ( olu hook).
-	{
-		static int s_dbgCount = 0;
-		if (s_dbgCount < 25)
-		{
-			s_dbgCount++;
-			std::ofstream dbg;
-			dbg.open("C:\\pg_input_debug.txt", std::ios::app);
-			if (dbg.is_open())
-			{
-				HWND fg = ::GetForegroundWindow();
-				dbg << "[PLI_HOOK] call#" << s_dbgCount
-					<< " dwMouseFlags=" << dwMouseFlags
-					<< " gameWindow=0x" << std::hex << (DWORD)gameWindow
-					<< " foreground=0x" << (DWORD)fg
-					<< " esit=" << std::dec << (fg == gameWindow ? 1 : 0)
-					<< "\n";
-				dbg.close();
-			}
-		}
-	}
-
 	CN3UIEdit* focusedEdit = CN3UIEdit::GetFocusedEdit();
 	if (focusedEdit != NULL)
 	{
