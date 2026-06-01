@@ -1392,24 +1392,58 @@ void SendLogoutBeforeExit()
 	}
 }
 
+// FIX (2026-06-02, Exit geri sayim 5-4-3-2-1): hkEndGame eskiden TerminateProcess ile ANINDA
+// olduruyordu (geri sayim yok). Patron eski "5-4-3-2-1-0 EXIT" YAZILI geri sayimi geri istiyor.
+// KOK: render=false yapilinca hkEndScene erken return ediyor (PearlGui.cpp:128) -> custom cizim olmaz.
+// COZUM: hkEndGame TerminateProcess YAPMAZ, sadece geri sayim BAYRAGINI baslatir + orijinale doner
+// (oyun render'a devam) -> hkEndScene her frame kalan saniyeyi WriteInfoMessage ile yazar -> 0'da
+// SendLogoutBeforeExit + TerminateProcess. RE gerekmez (EndScene zaten hook'lu PearlGui.cpp:330).
+bool  g_exitPending   = false;
+DWORD g_exitStartTick = 0;
+int   g_exitLastShown = -1; // ayni saniyeyi tekrar yazma (spam onle)
+const int EXIT_COUNTDOWN_SEC = 5;
+
+// hkEndScene'den her frame cagrilir: geri sayim yaz, bitince oldur. (naked olmayan fonksiyon)
+void ExitCountdownTick()
+{
+	if (!g_exitPending)
+		return;
+
+	DWORD elapsed = GetTickCount() - g_exitStartTick;
+	int kalan = EXIT_COUNTDOWN_SEC - (int)(elapsed / 1000);
+
+	if (kalan <= 0)
+	{
+		g_exitPending = false;
+		SendLogoutBeforeExit();                 // ghost-fix korunur (sayac bitince logout)
+		Shell_NotifyIcon(NIM_DELETE, &nid);
+		if (myMutex) ReleaseMutex(myMutex);
+		TerminateProcess(GetCurrentProcess(), 1);
+		return;
+	}
+
+	if (kalan != g_exitLastShown)               // saniye degisince tek sefer yaz
+	{
+		g_exitLastShown = kalan;
+		Engine->WriteInfoMessage((char*)string_format(xorstr("Cikis %d saniye..."), kalan).c_str(),
+			D3DCOLOR_ARGB(255, 255, 64, 64));
+	}
+}
+
 void __declspec(naked) hkEndGame()
 {
 	__asm {
 		pushad
 		pushfd
 	}
-	Shell_NotifyIcon(NIM_DELETE, &nid);
-	Engine->render = false;
-
-	// FIX (2026-06-02, logout 30sn ghost): TerminateProcess'ten ONCE server'a WIZ_LOGOUT yolla
-	// (ayri fonksiyon — naked hkEndGame Packet destructor'ini tutamaz, C3068). Detay fn'de.
-	SendLogoutBeforeExit();
-
-	if (myMutex)
+	// Geri sayim BASLAT (zaten basladiysa tekrar baslatma). TerminateProcess YAPMA -> oyun render'a
+	// devam etsin, hkEndScene sayaci cizsin. render=false YAPMA (EndScene erken return etmesin).
+	if (!g_exitPending)
 	{
-		ReleaseMutex(myMutex);
+		g_exitPending   = true;
+		g_exitStartTick = GetTickCount();
+		g_exitLastShown = -1;
 	}
-	TerminateProcess(GetCurrentProcess(), 1);
 	__asm {
 		popfd
 		popad
