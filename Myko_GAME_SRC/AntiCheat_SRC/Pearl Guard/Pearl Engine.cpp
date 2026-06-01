@@ -1377,6 +1377,21 @@ extern HANDLE myMutex;
 DWORD KO_FNC_OBJECT_PLAYER_LOOP_ORG;
 extern NOTIFYICONDATA nid;
 
+// FIX (2026-06-02, logout 30sn ghost): hkEndGame (Exit/AltF4) TerminateProcess ile client'i ANINDA
+// olduruyordu AMA server'a WIZ_LOGOUT yollamadan -> server paketi almayinca ReqUserLogOut (UserInOut
+// INOUT_OUT) calismiyor, sadece socket kopmasini ~30sn'de anlayinca dusuruyordu (ghost).
+// KANIT: server FerihaQueque.cpp:156 WIZ_LOGOUT -> ReqUserLogOut (payload OKUMAZ, opcode yeter).
+// Ayri fonksiyon: naked hkEndGame Packet destructor'ini tutamaz (C3068). Burada Packet guvenli.
+void SendLogoutBeforeExit()
+{
+	if (isAlive && gameStarted)
+	{
+		Packet logoutPkt(WIZ_LOGOUT);
+		LM_Send(&logoutPkt);
+		Sleep(120); // paket TCP'den ciksin (TerminateProcess yarida kesmesin)
+	}
+}
+
 void __declspec(naked) hkEndGame()
 {
 	__asm {
@@ -1385,6 +1400,11 @@ void __declspec(naked) hkEndGame()
 	}
 	Shell_NotifyIcon(NIM_DELETE, &nid);
 	Engine->render = false;
+
+	// FIX (2026-06-02, logout 30sn ghost): TerminateProcess'ten ONCE server'a WIZ_LOGOUT yolla
+	// (ayri fonksiyon — naked hkEndGame Packet destructor'ini tutamaz, C3068). Detay fn'de.
+	SendLogoutBeforeExit();
+
 	if (myMutex)
 	{
 		ReleaseMutex(myMutex);
