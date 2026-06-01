@@ -1669,22 +1669,24 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	bool dbg_pf        = (Engine->uiPartyBBS != NULL && Engine->uiPartyBBS->PartyFind(id));
 	bool isPartyMember = dbg_inParty && dbg_pf;
 
-	// CIZIM TESHIS: sari yazildigi an + PartyFind bagimsiz sonuc. m_bInParty=0 oldugu halde sari
-	// kaliyorsa: ya isPartyMember hala true (PartyFind?) ya callback bu obj icin cagrilmiyor (donmus).
-	// Throttle: her id icin ilk 3 kez (frame spam onle).
+	// CIZIM TESHIS (v2 DURUM-DEGISIMI BAZLI): her id icin isPartyMember DEGISTIGINDE logla
+	// (false->true party kuruldu, true->false dagildi). Throttle/kota YOK -> party dagildiktan
+	// SONRAKI kararini KESIN gorur (eski throttle party oncesi 3 frame'i yakalayip kotayi dolduruyordu).
 	{
-		static std::unordered_map<int, int> s_dbgCnt;
-		bool kendim = (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR));
-		if (s_dbgCnt[id] < 3)
+		static std::unordered_map<int, int> s_lastState; // -1=hic, 0=degil, 1=uye
+		int cur = isPartyMember ? 1 : 0;
+		auto it = s_lastState.find(id);
+		if (it == s_lastState.end() || it->second != cur)
 		{
-			s_dbgCnt[id]++;
+			s_lastState[id] = cur;
+			bool kendim = (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR));
 			std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
 			if (d.is_open())
 			{
-				d << "[DRAW] id=" << id << " kendim=" << (kendim?1:0)
+				d << "[DRAW-CHG] id=" << id << " kendim=" << (kendim?1:0)
 				  << " m_bInParty=" << (dbg_inParty?1:0)
 				  << " PartyFind=" << (dbg_pf?1:0)
-				  << " -> sari=" << (isPartyMember?1:0)
+				  << " -> sari=" << cur
 				  << " name=" << GetName(obj) << "\n";
 				d.close();
 			}
