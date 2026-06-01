@@ -6264,6 +6264,16 @@ bool __cdecl HandlePacket(Packet pkt)
 				//pkt >> ret >> userName >> maxhp >> hp >> level >> iclass >> maxmp >> mp >> nation;
 				pkt >> partyid >> ret >> userName >> maxhp >> hp >> level >> iclass >> maxmp >> mp >> nation >> UserPartyType;
 				g_partyIds.insert(partyid);
+				// FIX BUG-A (2026-06-02, kanitli): LIDER party kurarken server kendi SocketID'si icin
+				// PARTY_INSERT YOLLAMAZ (PartyHandler CreateParty: sadece davete PARTY_PERMIT). Katilan uye
+				// kendi id'sini alir, lider ALMAZ -> g_partyIds.count(kendi)=0 -> lider KENDI ismi sari
+				// yerine MAVI takilirdi (BUG1 g_partyIds gecisinin yan etkisi). Kendi id'yi de ekle ->
+				// cizim kendim dali g_partyIds.count(kendi)>0 -> sari. DELETE/REMOVE-empty clear/erase ile
+				// kendi id de temizlenir -> disband sari-kalkma bozulmaz.
+				{
+					int16 mySock = Engine->GetSocketID();
+					if (mySock > 0) g_partyIds.insert((uint16)mySock);
+				}
 				Engine->m_bInParty = true;
 #if (HOOK_SOURCE_VERSION == 1098)
 				if (Engine->m_bInParty == true)
