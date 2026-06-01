@@ -896,6 +896,16 @@ void CUser::PartyTargetNumber(Packet& pkt)
 	pkt >> TargetID >> EffectID >> Succes;
 	if (!isInGame() || isDead() || !isInParty() || !isPartyCommandLeader()) return;
 
+	// FIX (2026-06-02): Moradon (kasaba 21-25) icinde "1 leme" SADECE mob/NPC'ye konabilir.
+	// Eskiden hedef kontrolu yoktu -> command-leader party-disi normal oyuncuya da 1 koyabiliyordu (bug).
+	// SADECE Moradon zone'larinda + hedef bir OYUNCU ise reddet. CZ/Delos/diger zone'lar ETKILENMEZ
+	// (orada PK hedefi icin oyuncuya 1 konmasi normal). GetUserPtr(TargetID) oyuncu ise non-null, mob ise null.
+	if (GetZoneID() >= ZONE_MORADON && GetZoneID() <= ZONE_MORADON5)
+	{
+		if (g_pMain->GetUserPtr((uint16)TargetID) != nullptr)
+			return; // Moradon'da oyuncuya 1 leme yok (sadece mob)
+	}
+
 	_PARTY_GROUP* pParty = g_pMain->GetPartyPtr(GetPartyID());
 	if (pParty == nullptr)
 		return;
