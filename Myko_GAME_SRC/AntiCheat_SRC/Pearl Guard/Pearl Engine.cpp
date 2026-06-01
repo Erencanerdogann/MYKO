@@ -1652,6 +1652,20 @@ std::unordered_set<uint16> g_partyIds;
 // ONCE tanimli olmali — makro kullanimi 1660 civari + 1894 GetCursorPos hook.)
 #define PG_DBG_LOG "C:\\MalaysiaKO\\pg_cursor_debug.txt"
 
+// KENDI KARAKTER SARI ISIM FIX (2026-06-01, KOK KANIT: kendi ismim party dagilinca sari TAKILI,
+// zone degisince duzeliyor). Sebep: Object_Player_Callback DIGER oyuncular icin cagrilir (player-loop
+// hook); KENDI karakterim icin party dagildiktan sonra bir daha cagrilmaz -> en son sari yazildigi
+// halde DONAR. Cozum: party paketinde m_bInParty=false oldugu an kendi ismimi ANINDA dogru renge boya
+// (callback'i bekleme). Renk callback 1710-1713 ile AYNI: level<30 beyaz(255,255,180), >=30 mavi(100,210,255).
+void KendiIsminiNormaleBoya()
+{
+	DWORD me = *(DWORD*)KO_PTR_CHR;
+	if (!me) return;
+	uint8 lvl = *(uint8*)(me + KO_OFF_LEVEL);
+	DWORD renk = (lvl < 30) ? D3DCOLOR_ARGB(255, 255, 255, 180) : D3DCOLOR_ARGB(255, 100, 210, 255);
+	SetNameString(me, GetName(me), renk, 0);
+}
+
 void __fastcall Object_Player_Callback(DWORD obj)
 {
 	if (!obj) return;
@@ -6393,6 +6407,7 @@ bool __cdecl HandlePacket(Packet pkt)
 				if (g_partyIds.empty())
 				{
 					Engine->m_bInParty = false;
+					KendiIsminiNormaleBoya(); // KOK FIX: callback kendi char icin cagrilmaz -> sari donardi
 #if (HOOK_SOURCE_VERSION == 1098)
 					if (Engine->uiTaskbarMain != NULL)
 					{
@@ -6409,6 +6424,7 @@ bool __cdecl HandlePacket(Packet pkt)
 			{
 				g_partyIds.clear();
 				Engine->m_bInParty = false;
+				KendiIsminiNormaleBoya(); // KOK FIX: callback kendi char icin cagrilmaz -> sari donardi
 				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] DELETE m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- m_bInParty=false ANINDA (bu senaryoda sari kalkmali)\n"; d.close(); } }
 #if (HOOK_SOURCE_VERSION == 1098)
 if (Engine->m_bInParty == false)
