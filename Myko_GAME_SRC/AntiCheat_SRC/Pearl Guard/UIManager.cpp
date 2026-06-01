@@ -560,6 +560,24 @@ void __stdcall ProcessLocalInput_Hook(uint32_t dwMouseFlags)
 		return;
 	}
 
+	// MULTI-CLIENT KARAKTER HAREKETI GATE (2026-06-01):
+	// ProcessLocalInput_Hook = KO native input chokepoint (0x005503B0). Karakter YURUMESI buradan akar.
+	// Sorun: ayni PC 2 client -> arka plandaki pencereye/CMD'ye mouse tiklayinca arka karakter de
+	// hareket ediyordu (oyuncular farm+PK kasiyor). dwMouseFlags client'in karakter-suren mouse flag'i.
+	// gameWindow (UIManager.cpp:139, D3D cparams.hFocusWindow) = title-bagimsiz GUVENILIR pencere ref.
+	// Lazy-init MouseProc:143-147 ile birebir ayni kalip. NULL-guard SART (yoksa login input kilitlenir).
+	if (gameWindow == NULL && Engine->m_UiMgr != NULL
+		&& Engine->m_UiMgr->uiBase != NULL && Engine->m_UiMgr->uiBase->s_lpD3DDev != NULL)
+	{
+		D3DDEVICE_CREATION_PARAMETERS cp;
+		Engine->m_UiMgr->uiBase->s_lpD3DDev->GetCreationParameters(&cp);
+		gameWindow = cp.hFocusWindow;
+	}
+	// Oyun penceresi onde DEGILSE: native karakter-suren flag'i sifirla (yurume/donus/tiklama tetiklenmez).
+	// CALL orijinale DOKUNULMAZ -> kamera/UI tick/state machine bozulmaz, sadece hareket girdisi olmaz.
+	if (gameWindow != NULL && ::GetForegroundWindow() != gameWindow)
+		dwMouseFlags = 0x0;
+
 	if (dwMouseFlags != 0x0 && m_bDoneSomething)
 		dwMouseFlags = 0x0;
 
