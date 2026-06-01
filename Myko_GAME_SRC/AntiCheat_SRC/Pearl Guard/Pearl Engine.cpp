@@ -6321,7 +6321,25 @@ bool __cdecl HandlePacket(Packet pkt)
 				uint16 removedId;
 				pkt >> removedId;
 				g_partyIds.erase(removedId);
-				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] REMOVE id=" << (int)removedId << " m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- m_bInParty DOKUNULMUYOR (kalinti suphesi)\n"; d.close(); } }
+				// FIX (2026-06-01, log kanitli): REMOVE m_bInParty'ye dokunmuyordu. 2 kisilik party'de
+				// digeri cikinca g_partyIds BOSALIR (size=0) ama m_bInParty=1 KALIRDI -> sari isim AND
+				// korumasi devre disi -> sari TAKILI kalirdi. Server DELETE'i beklemiyoruz: party
+				// bosaldiysa (size=0) m_bInParty=false yap -> sari ANINDA kalkar. size>0 ise (cok kisilik
+				// party'den 1 cikti) DOKUNMA -> diger uyelerin party'si bozulmaz.
+				if (g_partyIds.empty())
+				{
+					Engine->m_bInParty = false;
+#if (HOOK_SOURCE_VERSION == 1098)
+					if (Engine->uiTaskbarMain != NULL)
+					{
+						Engine->SetVisible(Engine->uiTaskbarMain->m_btninvite, true);
+						Engine->SetState(Engine->uiTaskbarMain->m_btninvite, UI_STATE_BUTTON_NORMAL);
+						Engine->SetVisible(Engine->uiTaskbarMain->m_btndisband, false);
+						Engine->SetState(Engine->uiTaskbarMain->m_btndisband, UI_STATE_BUTTON_DOWN);
+					}
+#endif
+				}
+				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] REMOVE id=" << (int)removedId << " m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- FIX: bosaldiysa m_bInParty=false\n"; d.close(); } }
 			}
 			else if (subcode == PARTY_DELETE)
 			{
