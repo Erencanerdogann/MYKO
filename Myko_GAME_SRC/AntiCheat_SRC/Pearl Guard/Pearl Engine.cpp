@@ -163,16 +163,6 @@ void SetNameString(DWORD userBase, std::string text, DWORD color, DWORD fontStyl
 	if (!fontBase)
 		return;
 
-	// CIFT-YAZIM TESTI (workflow kok: detour sirasi/asm font-state reset suphesi).
-	// Renk asm cagrisindan ONCE de yaz -> asm string'i yeniden olusturup rengi resetliyorsa
-	// once-yazim tutar. Discriminator: ekran duzelirse asm reset ediyor; duzelmezse KO orijinal
-	// cizim (player-loop) callback sonrasi eziyor -> RET-tipi hook gerekir.
-	if (color != 0)
-	{
-		*(DWORD*)(userBase + 0x738) = color;
-		*(DWORD*)(fontBase + 0x44) = color;
-	}
-
 	objTMPStringX = text;
 	__asm {
 		push fontStyle
@@ -1647,11 +1637,6 @@ bool waitingForParty = false;
 // Pearl Guard kendi party ID listesi — KO client memory'ye bagimli degil
 std::unordered_set<uint16> g_partyIds;
 
-// DEBUG log yolu: C:\ koku UAC korumali (Permission denied, S116 kanit). Client klasoru = yazilabilir.
-// KnightOnline.exe C:\MalaysiaKO\'dan calisiyor -> bu kesin yazilabilir. (Object_Player_Callback'ten
-// ONCE tanimli olmali — makro kullanimi 1660 civari + 1894 GetCursorPos hook.)
-#define PG_DBG_LOG "C:\\MalaysiaKO\\pg_cursor_debug.txt"
-
 // KENDI KARAKTER SARI ISIM FIX (2026-06-01, KOK KANIT: kendi ismim party dagilinca sari TAKILI,
 // zone degisince duzeliyor). Sebep: Object_Player_Callback DIGER oyuncular icin cagrilir (player-loop
 // hook); KENDI karakterim icin party dagildiktan sonra bir daha cagrilmaz -> en son sari yazildigi
@@ -1689,33 +1674,9 @@ void __fastcall Object_Player_Callback(DWORD obj)
 	// temizlenir -> sari TAKILI kalirdi (baskan/disband kalinti). m_bInParty paket-temelli, ANINDA
 	// dogru (PARTY_DELETE'te false). AND -> party dagilinca m_bInParty=false -> sari ANINDA kalkar.
 	// KO memory'ye YAZMA yok, yeni state yok -> dusuk risk. Disband fix server DELETE'i duzeltti.
-	bool dbg_inParty   = Engine->m_bInParty;
-	bool dbg_pf        = (Engine->uiPartyBBS != NULL && Engine->uiPartyBBS->PartyFind(id));
-	bool isPartyMember = dbg_inParty && dbg_pf;
-
-	// CIZIM TESHIS (v2 DURUM-DEGISIMI BAZLI): her id icin isPartyMember DEGISTIGINDE logla
-	// (false->true party kuruldu, true->false dagildi). Throttle/kota YOK -> party dagildiktan
-	// SONRAKI kararini KESIN gorur (eski throttle party oncesi 3 frame'i yakalayip kotayi dolduruyordu).
-	{
-		static std::unordered_map<int, int> s_lastState; // -1=hic, 0=degil, 1=uye
-		int cur = isPartyMember ? 1 : 0;
-		auto it = s_lastState.find(id);
-		if (it == s_lastState.end() || it->second != cur)
-		{
-			s_lastState[id] = cur;
-			bool kendim = (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR));
-			std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
-			if (d.is_open())
-			{
-				d << "[DRAW-CHG] id=" << id << " kendim=" << (kendim?1:0)
-				  << " m_bInParty=" << (dbg_inParty?1:0)
-				  << " PartyFind=" << (dbg_pf?1:0)
-				  << " -> sari=" << cur
-				  << " name=" << GetName(obj) << "\n";
-				d.close();
-			}
-		}
-	}
+	bool isPartyMember = Engine->m_bInParty
+		&& Engine->uiPartyBBS != NULL
+		&& Engine->uiPartyBBS->PartyFind(id);
 
 	if (GetName(obj) == GetName(*(DWORD*)KO_PTR_CHR))
 	{
@@ -1950,24 +1911,6 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 		lpPoint->x = -32000;
 		lpPoint->y = -32000;
 	}
-	// DEBUG: hook atesleniyor mu + gameWindow + arka plan mi? Ilk 30 cagri PG_DBG_LOG (client klasoru — C:\ koku yazma izni YOK!)
-	{
-		static int s_c = 0;
-		if (s_c < 30)
-		{
-			s_c++;
-			std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
-			if (d.is_open())
-			{
-				d << "[GCP] call#" << s_c
-				  << " pid=" << (DWORD)GetCurrentProcessId()
-				  << " gameWindow=0x" << std::hex << (DWORD)gameWindow
-				  << " fg=0x" << (DWORD)::GetForegroundWindow()
-				  << std::dec << " arkaPlan=" << (arka ? 1 : 0) << "\n";
-				d.close();
-			}
-		}
-	}
 	return r;
 }
 
@@ -1979,38 +1922,11 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 void InitMultiClientInputHook()
 {
 	HMODULE hUser = GetModuleHandleA("user32.dll");
-	const char* step = "start";
-	void* addrBefore = NULL;
-	void* addrAfter  = NULL;
-	if (hUser)
-	{
-		g_origGetCursorPos = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
-		addrBefore = (void*)g_origGetCursorPos;
-		if (g_origGetCursorPos)
-		{
-			g_origGetCursorPos = (tGetCursorPos)DetourFunction((PBYTE)g_origGetCursorPos, (PBYTE)Hook_GetCursorPos);
-			addrAfter = (void*)g_origGetCursorPos;
-			step = "detour_done";
-		}
-		else step = "getproc_fail";
-	}
-	else step = "user32_fail";
+	if (!hUser) return;
+	g_origGetCursorPos = (tGetCursorPos)GetProcAddress(hUser, "GetCursorPos");
+	if (g_origGetCursorPos)
+		g_origGetCursorPos = (tGetCursorPos)DetourFunction((PBYTE)g_origGetCursorPos, (PBYTE)Hook_GetCursorPos);
 	// GetAsyncKeyState detour YOK — anti-tamper (KeepFunction) tetikler, client coker.
-
-	// INIT KANIT: hook GERCEKTEN kuruldu mu + log dosyasi yazilabiliyor mu (C:\ koku DEGIL!).
-	// Bu satir cikmiyorsa -> EngineMain InitMultiClientInputHook'a hic gelmedi VEYA klasor yazilamaz.
-	{
-		std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
-		if (d.is_open())
-		{
-			d << "[INIT] pid=" << (DWORD)GetCurrentProcessId()
-			  << " step=" << step
-			  << " origAddr=0x" << std::hex << (DWORD)addrBefore
-			  << " trampAddr=0x" << (DWORD)addrAfter
-			  << std::dec << "\n";
-			d.close();
-		}
-	}
 }
 // ============================================================================
 
@@ -3728,35 +3644,6 @@ DWORD WINAPI PearlEngine::EngineMain(PearlEngine * e)
 	// -------------------- Anti afk ve kafaya yaz� yazma
 	DetourFunction((PBYTE)KO_FNC_OBJECT_MOB_LOOP, (PBYTE)hkObjectMobLoop);
 	KO_FNC_OBJECT_PLAYER_LOOP_ORG = (DWORD)DetourFunction((PBYTE)KO_FNC_OBJECT_PLAYER_LOOP, (PBYTE)hkObjectPlayerLoop);
-
-	// RET KANIT (2026-06-01): PLAYER_LOOP_RET=0x591F3C YANLIS (entry'den ONCE). Dogru RET'i
-	// trampoline'den cikar. MS Detours trampoline ORG = [calinan instruction] + JMP(entry+calinan).
-	// Trampoline sonundaki E9 rel32'yi parse et -> gercek RET = entry + calinan_byte. Bu kanit
-	// olmadan RET-tipi hook = crash. (Mob: 0x57D3D1+5=0x57D3D6 calisti. Player'in dogru RET'i ne?)
-	{
-		std::ofstream d; d.open(PG_DBG_LOG, std::ios::app);
-		if (d.is_open())
-		{
-			PBYTE tr = (PBYTE)KO_FNC_OBJECT_PLAYER_LOOP_ORG;
-			d << "[RET] entry=0x" << std::hex << (DWORD)KO_FNC_OBJECT_PLAYER_LOOP
-			  << " tramp(ORG)=0x" << (DWORD)KO_FNC_OBJECT_PLAYER_LOOP_ORG << "\n";
-			// trampoline ilk 24 byte dok
-			d << "[RET] tramp bytes:";
-			for (int i = 0; i < 24; i++) d << " " << (int)tr[i];
-			d << "\n";
-			// trampoline icinde ilk E9 (JMP rel32) bul -> hedef = adr+5+rel32 = gercek RET
-			for (int i = 0; i < 20; i++) {
-				if (tr[i] == 0xE9) {
-					int rel = *(int*)(tr + i + 1);
-					DWORD hedef = (DWORD)(tr + i + 5) + rel;
-					d << "[RET] E9@offset" << std::dec << i << " -> GERCEK_RET=0x" << std::hex << hedef
-					  << " (entry+" << std::dec << (hedef - KO_FNC_OBJECT_PLAYER_LOOP) << " byte)\n";
-					break;
-				}
-			}
-			d.close();
-		}
-	}
 
 	DetourFunction((PBYTE)fncScanZ, (PBYTE)hkZ);
 	DetourFunction((PBYTE)fncScanB, (PBYTE)hkB);
@@ -6373,7 +6260,6 @@ bool __cdecl HandlePacket(Packet pkt)
 				pkt >> partyid >> ret >> userName >> maxhp >> hp >> level >> iclass >> maxmp >> mp >> nation >> UserPartyType;
 				g_partyIds.insert(partyid);
 				Engine->m_bInParty = true;
-				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] INSERT id=" << (int)partyid << " m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "\n"; d.close(); } }
 #if (HOOK_SOURCE_VERSION == 1098)
 				if (Engine->m_bInParty == true)
 				{
@@ -6418,14 +6304,12 @@ bool __cdecl HandlePacket(Packet pkt)
 					}
 #endif
 				}
-				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] REMOVE id=" << (int)removedId << " m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- FIX: bosaldiysa m_bInParty=false\n"; d.close(); } }
 			}
 			else if (subcode == PARTY_DELETE)
 			{
 				g_partyIds.clear();
 				Engine->m_bInParty = false;
 				KendiIsminiNormaleBoya(); // KOK FIX: callback kendi char icin cagrilmaz -> sari donardi
-				{ std::ofstream d; d.open(PG_DBG_LOG, std::ios::app); if (d.is_open()) { d << "[PARTY] DELETE m_bInParty=" << (int)Engine->m_bInParty << " g_partyIds.size=" << g_partyIds.size() << "  <-- m_bInParty=false ANINDA (bu senaryoda sari kalkmali)\n"; d.close(); } }
 #if (HOOK_SOURCE_VERSION == 1098)
 if (Engine->m_bInParty == false)
 				{
