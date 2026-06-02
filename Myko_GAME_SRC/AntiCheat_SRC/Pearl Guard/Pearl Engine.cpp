@@ -1016,15 +1016,30 @@ void __stdcall GetChildByID_Hook(const std::string& szString,DWORD nUnkown)
 typedef HINSTANCE(WINAPI* tShellExecuteA)(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 tShellExecuteA oShellExecuteA;
 
+// Exit geri sayim global state (tanim 1401 civari, burada forward-decl — ayni dosya global)
+extern bool  g_exitPending;
+extern DWORD g_exitStartTick;
+extern int   g_exitLastShown;
+
 HINSTANCE WINAPI hkShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
 {
-	string tmp = lpFile;
-	if (Engine->StringHelper->IsContains(tmp, "explore")) {
-		exit(0);
-		return (HINSTANCE)0x90;
+	// FIX (2026-06-02, Exit geri sayim + web engelle): KO exit'te ShellExecute ile nttgameweb aciyordu;
+	// eski kod "explore" gorunce exit(0) -> oyun ANINDA oluyordu (web acilmaya basliyordu + geri sayim
+	// cizilemiyordu). YENI: "explore" (web acma denemesi) yakalaninca exit(0) YAPMA -> web ACMA + oyunu
+	// OLDURME -> geri sayim BAYRAGINI baslat -> KO render loop yasar -> hkEndScene ExitCountdownTick
+	// her frame "Cikis %d saniye" yazar -> 0'da kendimiz logout+TerminateProcess. lpFile NULL guard.
+	string op  = lpOperation ? lpOperation : "";
+	string url = lpFile      ? lpFile      : "";
+	if (Engine->StringHelper->IsContains(op, "explore") ||
+		Engine->StringHelper->IsContains(url, "explore")) {
+		if (!g_exitPending) {
+			g_exitPending   = true;
+			g_exitStartTick = GetTickCount();
+			g_exitLastShown = -1;
+		}
+		return (HINSTANCE)0x21; // web ACMA, exit ETME -> oyun render'a devam, geri sayim cizilsin
 	}
-	else
-		return oShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+	return oShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
 }
 
 //Skill Range Start
