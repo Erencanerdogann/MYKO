@@ -12,17 +12,18 @@ public:
 	static void Start();
 	static void Stop();
 
+	// Audit log (dosya + DB _MK_GM_AUDIT). FAIL-SAFE: hata komut akisini durdurmaz (KURAL 1).
+	// public: HttpCmdQueueProcess (ana thread isleyici, class disi global) erisir.
+	static void WriteAudit(const std::string& tokenShort, const std::string& clientIP,
+		const std::string& cmd, const std::string& params, int httpCode,
+		const std::string& durum, bool yikici);
+
 private:
 	static void ListenerThread();
 	static void HandleRequest(SOCKET client);
 
 	static bool VerifyToken(const std::string& token);
 	static bool IsWhitelisted(const std::string& cmd);
-
-	// Audit log (dosya + DB _MK_GM_AUDIT). FAIL-SAFE: hata komut akisini durdurmaz (KURAL 1).
-	static void WriteAudit(const std::string& tokenShort, const std::string& clientIP,
-		const std::string& cmd, const std::string& params, int httpCode,
-		const std::string& durum, bool yikici);
 
 	static std::string ExtractHeader(const std::string& request, const std::string& headerName);
 	static std::string ExtractBody(const std::string& request);

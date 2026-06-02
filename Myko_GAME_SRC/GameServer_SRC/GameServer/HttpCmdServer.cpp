@@ -10,6 +10,9 @@
 #include <fstream>
 #include <sstream>
 #include <set>
+#include <queue>
+#include <mutex>
+#include <vector>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -17,6 +20,24 @@ std::atomic<bool> CHttpCmdServer::s_running(false);
 SOCKET CHttpCmdServer::s_listenSocket = INVALID_SOCKET;
 std::thread CHttpCmdServer::s_thread;
 std::string CHttpCmdServer::s_token;
+
+// ====================================================================================
+// THREAD-SAFE KOMUT KUYRUGU (S120 — race fix). HttpCmd thread komutu KUYRUGA atar,
+// ANA OYUN THREAD'i (GameEventMainTimer 100ms) isler. Turnuva poller'in AYNI deseni.
+// Boylece ProcessServerCommand ANA thread'de tek-el calisir -> race/crash YOK.
+// KURAL 1: GameServer'a gomulu, AI/dis-sistem gerekmez.
+// ====================================================================================
+struct _GM_CMD_QUEUE_ITEM {
+	std::string cmd;
+	std::string tokenShort;
+	std::string clientIP;
+	std::string cmdName;
+	bool yikici;
+};
+static std::queue<_GM_CMD_QUEUE_ITEM> s_cmdQueue;
+static std::mutex s_queueMutex;
+static const size_t GM_QUEUE_MAX = 500;       // flood guard: kuyruk dolarsa yeni komut reddedilir
+static const size_t GM_QUEUE_PER_TICK = 20;   // tick basina max islenen (ana thread'i kilitleme)
 
 static const std::set<std::string> s_whitelist = {
 	// Duyuru
@@ -295,23 +316,66 @@ void CHttpCmdServer::HandleRequest(SOCKET client)
 		return;
 	}
 
-	// ProcessServerCommand
-	try
+	// THREAD-SAFE: ProcessServerCommand'i DIREKT calistirma (race!). KUYRUGA at,
+	// ana oyun thread'i (GameEventMainTimer) islesin. (S120 race fix)
 	{
-		g_pMain->ProcessServerCommand(cmd);
-	}
-	catch (...)
-	{
-		printf("[HttpCmd] ProcessServerCommand istisna: %s\n", cmdName.c_str());
-		WriteAudit(tokenShort, clientIP, cmdName, cmd, 500, "FAIL", bYikici);
-		const char* resp = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
-		send(client, resp, (int)strlen(resp), 0);
-		return;
+		std::lock_guard<std::mutex> lock(s_queueMutex);
+		if (s_cmdQueue.size() >= GM_QUEUE_MAX)
+		{
+			// Flood guard — kuyruk dolu, komut reddedildi
+			WriteAudit(tokenShort, clientIP, cmdName, cmd, 503, "QUEUE_FULL", bYikici);
+			const char* resp = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
+			send(client, resp, (int)strlen(resp), 0);
+			return;
+		}
+		_GM_CMD_QUEUE_ITEM item;
+		item.cmd = cmd;
+		item.tokenShort = tokenShort;
+		item.clientIP = clientIP;
+		item.cmdName = cmdName;
+		item.yikici = bYikici;
+		s_cmdQueue.push(item);
 	}
 
-	WriteAudit(tokenShort, clientIP, cmdName, cmd, 200, "OK", bYikici);
+	// 202 Accepted — komut kuyruga alindi, ana thread islLEYecek (audit OK/FAIL orada yazilir).
+	// Not: 200 yerine 202 dogru semantik (henuz islenmedi). MATRIX/panel icin ikisi de basari.
 	const char* resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
 	send(client, resp, (int)strlen(resp), 0);
+}
+
+// ====================================================================================
+// HttpCmdQueueProcess — ANA OYUN THREAD'inden cagrilir (GameEventMainTimer 100ms).
+// Kuyruktaki komutlari ANA thread'de calistirir -> race YOK. Tick basina max 20 (flood).
+// extern: GameServerDlg.cpp GameEventMainTimer bunu cagirir.
+// ====================================================================================
+void HttpCmdQueueProcess()
+{
+	std::vector<_GM_CMD_QUEUE_ITEM> batch;
+	{
+		std::lock_guard<std::mutex> lock(s_queueMutex);
+		while (!s_cmdQueue.empty() && batch.size() < GM_QUEUE_PER_TICK)
+		{
+			batch.push_back(s_cmdQueue.front());
+			s_cmdQueue.pop();
+		}
+	}
+	if (batch.empty()) return;
+
+	for (auto& item : batch)
+	{
+		std::string c = item.cmd;  // ProcessServerCommand non-const ref alir
+		try
+		{
+			if (g_pMain != nullptr)
+				g_pMain->ProcessServerCommand(c);
+			CHttpCmdServer::WriteAudit(item.tokenShort, item.clientIP, item.cmdName, item.cmd, 200, "OK", item.yikici);
+		}
+		catch (...)
+		{
+			printf("[HttpCmd] ProcessServerCommand istisna: %s\n", item.cmdName.c_str());
+			CHttpCmdServer::WriteAudit(item.tokenShort, item.clientIP, item.cmdName, item.cmd, 500, "FAIL", item.yikici);
+		}
+	}
 }
 
 bool CHttpCmdServer::VerifyToken(const std::string& token)
