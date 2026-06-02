@@ -11,10 +11,13 @@ OdbcParameter::OdbcParameter(SQLSMALLINT parameterType, SQLSMALLINT dataType, SQ
 	case SQL_VARCHAR:
 	case SQL_BINARY:
 	case SQL_VARBINARY:
-		m_dataTypeLength = maxLength;
+		// ColumnSize 0 -> ODBC Driver 17 SQL_BINARY/CHAR icin HY104 "Invalid precision value".
+		// Bos buffer (maxLength=0, ornek: bos klan deposu) ColumnSize>=1 olmali; gercek veri
+		// uzunlugu m_pCBValue (cb) ile gider, bossa cb=0 -> bos veri yine dogru kaydedilir.
+		m_dataTypeLength = (maxLength > 0) ? maxLength : 1;
 		m_dataType = m_cDataType;
 		if (m_cDataType == SQL_BINARY || m_cDataType == SQL_CHAR)
-			m_pCBValue = m_dataTypeLength;
+			m_pCBValue = maxLength;   // gercek uzunluk (bos icin 0), ColumnSize'tan bagimsiz
 		break;
 
 	case SQL_C_STINYINT:
