@@ -19,9 +19,14 @@ void CUser::ItemSealProcess(Packet& pkt)
 	Packet result(WIZ_ITEM_UPGRADE, uint8(ItemUpgradeOpcodes::ITEM_SEAL));
 	result << opcode;
 
+	LOG(LogCategory::LOG_GENERAL, "SEALDBG: ENTER User=%s opcode=%u inGame=%d trade=%d merch=%d sellPrep=%d buyPrep=%d fish=%d mine=%d",
+		GetName().c_str(), opcode, (int)isInGame(), (int)isTrading(), (int)isMerchanting(),
+		(int)isSellingMerchantingPreparing(), (int)isBuyingMerchantingPreparing(), (int)isFishing(), (int)isMining());
+
 	if (!isInGame() || isTrading() || isMerchanting()
 		|| isSellingMerchantingPreparing() || isBuyingMerchantingPreparing()
 		|| isFishing() || isMining()) {
+		LOG(LogCategory::LOG_GENERAL, "SEALDBG: REJECT state-guard User=%s opcode=%u", GetName().c_str(), opcode);
 		result << uint8(SealErrorCodes::SealErrorFailed);
 		Send(&result);
 		return;
@@ -36,7 +41,10 @@ void CUser::ItemSealProcess(Packet& pkt)
 		string strPasswd; uint32 nItemID;  int16 unk0;
 		pkt >> unk0 >> nItemID >> bSrcPos >> strPasswd;
 
-		if (!nItemID)return;
+		LOG(LogCategory::LOG_GENERAL, "SEALDBG: LOCK parse User=%s unk0=%d nItemID=%u bSrcPos=%u passwdLen=%d gold=%u needGold=%d",
+			GetName().c_str(), (int)unk0, nItemID, bSrcPos, (int)strPasswd.length(), m_iGold, (int)hasCoins(ITEM_SEAL_PRICE));
+
+		if (!nItemID) { LOG(LogCategory::LOG_GENERAL, "SEALDBG: REJECT nItemID==0 (parse uyusmazligi) User=%s", GetName().c_str()); return; }
 
 		/*if (GetPremium() == 0) {
 			result << uint8(SealErrorCodes::SealErrorPremiumOnly);
@@ -45,12 +53,14 @@ void CUser::ItemSealProcess(Packet& pkt)
 		}*/
 
 		if (!CheckVipPassword(strPasswd)) {
+			LOG(LogCategory::LOG_GENERAL, "SEALDBG: REJECT CheckVipPassword FAIL User=%s passwdLen=%d", GetName().c_str(), (int)strPasswd.length());
 			result << uint8(SealErrorCodes::SealErrorInvalidCode);
 			Send(&result);
 			return;
 		}
 
 		if (!hasCoins(ITEM_SEAL_PRICE)) {
+			LOG(LogCategory::LOG_GENERAL, "SEALDBG: REJECT NeedCoins User=%s gold=%u need=%d", GetName().c_str(), m_iGold, ITEM_SEAL_PRICE);
 			result << uint8(SealErrorCodes::SealErrorNeedCoins);
 			Send(&result);
 			return;
@@ -62,6 +72,9 @@ void CUser::ItemSealProcess(Packet& pkt)
 			|| !pItem->nSerialNum || pItem->bFlag == (uint8)ItemFlag::ITEM_FLAG_SEALED
 			|| pItem->bFlag == (uint8)ItemFlag::ITEM_FLAG_CHAR_SEAL
 			|| pItem->isDuplicate() || pItem->isExpirationTime() || pItem->isRented()) {
+			LOG(LogCategory::LOG_GENERAL, "SEALDBG: REJECT item-eligibility User=%s null=%d bSrcPos=%u nNum=%u wantID=%u sCount=%d serial=%I64u bFlag=%u exp=%u",
+				GetName().c_str(), (int)(pItem==nullptr), bSrcPos, pItem?pItem->nNum:0, nItemID,
+				pItem?(int)pItem->sCount:0, pItem?pItem->nSerialNum:0, pItem?pItem->bFlag:0, pItem?pItem->nExpirationTime:0);
 			result << uint8(SealErrorCodes::SealErrorFailed);
 			Send(&result);
 			return;
