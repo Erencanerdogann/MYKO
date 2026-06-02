@@ -1030,6 +1030,8 @@ HINSTANCE WINAPI hkShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, L
 	// her frame "Cikis %d saniye" yazar -> 0'da kendimiz logout+TerminateProcess. lpFile NULL guard.
 	string op  = lpOperation ? lpOperation : "";
 	string url = lpFile      ? lpFile      : "";
+	// TANI: hook'a giren HER ShellExecuteA cagrisi (op+url) — Exit web hangi cagriyla aciliyor?
+	{ std::ofstream d; d.open("C:\\MalaysiaKO\\pg_shell.txt", std::ios::app); if(d.is_open()){ d << "[SHELL] op=[" << op << "] url=[" << url << "]\n"; d.close(); } }
 	if (Engine->StringHelper->IsContains(op, "explore") ||
 		Engine->StringHelper->IsContains(url, "explore")) {
 		if (!g_exitPending) {
