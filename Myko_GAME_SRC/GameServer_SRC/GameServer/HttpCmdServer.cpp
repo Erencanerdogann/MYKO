@@ -4,7 +4,9 @@
 
 #include "HttpCmdServer.h"
 #include "GameServerDlg.h"
+#include "DBAgent.h"
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #include <fstream>
 #include <sstream>
 #include <set>
@@ -40,7 +42,20 @@ static const std::set<std::string> s_whitelist = {
 	"tournamentstart", "tournamentclose",
 	"lottery", "lotteryclose",
 	// Diger
-	"count", "aireset", "bug"
+	"count", "aireset", "bug",
+	// GM_MOD (MATRIX — turnuva/lig/bracket otomasyon, server-form CGameServerDlg'de hazir)
+	"bracketcreate", "bracketstart", "bracketcancel", "bracketstatus",
+	"leaguecreate", "leaguestart", "leaguecancel", "leaguestatus",
+	"1v1create", "1v1start", "1v1cancel", "1v1status",
+	"ctfstart", "ctfclose",
+	"partyvs",
+	"eventcreate", "eventcancel", "eventconfig", "eventlist",
+	"partybracketcreate", "partybracketstart", "partyleaguecreate", "partyleaguestart",
+	"tournamentreglist", "tournamentreward",
+	// GM_MOD bahis
+	"betlimits", "betwindow", "betcommission", "betcancel", "betstatus",
+	// GM_MOD aksiyon (server-form CGameServerDlg'de hazir)
+	"kill", "tpall", "captain", "warresult", "block", "user_bots", "setweather"
 };
 
 void CHttpCmdServer::Start()
@@ -153,8 +168,57 @@ void CHttpCmdServer::ListenerThread()
 	}
 }
 
+// YIKICI komutlar — confirm:true sart, audit'te yikici=1. (S120 GM_MOD guvenlik)
+static const std::set<std::string> s_destructive = {
+	"shutdown", "down", "ipban", "hwidban", "block", "kill"
+};
+
+// KURAL 1 (BLOCKING): Audit log FAIL-SAFE. DB/log basarisiz olsa bile komut AKISI DURMAZ.
+// AI/MATRIX/DB yoksa sistem hataya dusmeden calismaya devam eder.
+void CHttpCmdServer::WriteAudit(const std::string& tokenShort, const std::string& clientIP,
+	const std::string& cmd, const std::string& params, int httpCode, const std::string& durum, bool yikici)
+{
+	// Dosya log (her zaman, DB'den bagimsiz)
+	try {
+		LOG(LogCategory::LOG_GENERAL, "GM_HTTP: ip=%s token=%s cmd=%s params=[%s] http=%d durum=%s yikici=%d",
+			clientIP.c_str(), tokenShort.c_str(), cmd.c_str(), params.c_str(), httpCode, durum.c_str(), (int)yikici);
+	} catch (...) {}
+
+	// DB log (_MK_GM_AUDIT, KO_MYKO). FAIL-SAFE: hata olsa bile komut akisi etkilenmez (KURAL 1).
+	try {
+		OdbcConnection* db = g_DBAgent.GetGameDB();
+		if (db != nullptr) {
+			std::unique_ptr<OdbcCommand> dbCommand(db->CreateCommand());
+			if (dbCommand.get() != nullptr) {
+				dbCommand->AddParameter(SQL_PARAM_INPUT, tokenShort.c_str(), tokenShort.length() ? tokenShort.length() : 1);
+				dbCommand->AddParameter(SQL_PARAM_INPUT, clientIP.c_str(), clientIP.length() ? clientIP.length() : 1);
+				dbCommand->AddParameter(SQL_PARAM_INPUT, cmd.c_str(), cmd.length() ? cmd.length() : 1);
+				dbCommand->AddParameter(SQL_PARAM_INPUT, params.c_str(), params.length() ? params.length() : 1);
+				dbCommand->AddParameter(SQL_PARAM_INPUT, &httpCode);
+				dbCommand->AddParameter(SQL_PARAM_INPUT, durum.c_str(), durum.length() ? durum.length() : 1);
+				uint8 by = yikici ? 1 : 0;
+				dbCommand->AddParameter(SQL_PARAM_INPUT, &by);
+				dbCommand->Execute(_T("INSERT INTO KO_MYKO.dbo._MK_GM_AUDIT (token_kisa,clientIP,komut,params,sonuc,durum,yikici) VALUES (?,?,?,?,?,?,?)"));
+			}
+		}
+	} catch (...) {
+		// DB log patlasa bile SESSIZ gec — komut zaten islendi, sistem durmaz (KURAL 1)
+	}
+}
+
 void CHttpCmdServer::HandleRequest(SOCKET client)
 {
+	// Client IP (audit icin) — fail olsa "?" (KURAL 1: hata akisi durdurmaz)
+	std::string clientIP = "?";
+	try {
+		sockaddr_in addr; int alen = sizeof(addr);
+		if (getpeername(client, (sockaddr*)&addr, &alen) == 0) {
+			char ipbuf[64] = {};
+			const char* p = inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf));
+			if (p) clientIP = p;
+		}
+	} catch (...) {}
+
 	// Recv
 	char buf[4096] = {};
 	int received = recv(client, buf, sizeof(buf) - 1, 0);
@@ -169,8 +233,10 @@ void CHttpCmdServer::HandleRequest(SOCKET client)
 
 	// Token kontrol
 	std::string token = ExtractHeader(request, "X-Token");
+	std::string tokenShort = token.substr(0, token.length() < 8 ? token.length() : 8);
 	if (!VerifyToken(token))
 	{
+		WriteAudit(tokenShort, clientIP, "?", "", 401, "DENIED", false);
 		const char* resp = "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n";
 		send(client, resp, (int)strlen(resp), 0);
 		return;
@@ -206,9 +272,21 @@ void CHttpCmdServer::HandleRequest(SOCKET client)
 	// Kucuk harf
 	for (auto& c : cmdName) c = (char)tolower((unsigned char)c);
 
+	bool bYikici = (s_destructive.find(cmdName) != s_destructive.end());
+
 	if (!IsWhitelisted(cmdName))
 	{
+		WriteAudit(tokenShort, clientIP, cmdName, "", 403, "DENIED", bYikici);
 		const char* resp = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n";
+		send(client, resp, (int)strlen(resp), 0);
+		return;
+	}
+
+	// YIKICI komut -> body'de "confirm":true SART (S120 guvenlik)
+	if (bYikici && body.find("\"confirm\"") == std::string::npos)
+	{
+		WriteAudit(tokenShort, clientIP, cmdName, "", 400, "CONFIRM_REQ", true);
+		const char* resp = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
 		send(client, resp, (int)strlen(resp), 0);
 		return;
 	}
@@ -221,11 +299,13 @@ void CHttpCmdServer::HandleRequest(SOCKET client)
 	catch (...)
 	{
 		printf("[HttpCmd] ProcessServerCommand istisna: %s\n", cmdName.c_str());
+		WriteAudit(tokenShort, clientIP, cmdName, cmd, 500, "FAIL", bYikici);
 		const char* resp = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
 		send(client, resp, (int)strlen(resp), 0);
 		return;
 	}
 
+	WriteAudit(tokenShort, clientIP, cmdName, cmd, 200, "OK", bYikici);
 	const char* resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
 	send(client, resp, (int)strlen(resp), 0);
 }
