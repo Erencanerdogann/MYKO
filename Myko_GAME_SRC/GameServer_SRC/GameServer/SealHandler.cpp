@@ -429,6 +429,9 @@ void CUser::ReqSealItem(Packet& pkt)
 	uint32 nItemID; uint16 bound_count = 0;
 	pkt >> bSealType >> nItemID >> bSrcPos;
 
+	LOG(LogCategory::LOG_GENERAL, "SEALDBG: DBREQ-ENTER User=%s bSealType=%u nItemID=%u bSrcPos=%u gold=%u",
+		GetName().c_str(), bSealType, nItemID, bSrcPos, m_iGold);
+
 	Packet result(WIZ_ITEM_UPGRADE, uint8(ItemUpgradeOpcodes::ITEM_SEAL));
 	result << bSealType;
 
@@ -437,16 +440,23 @@ void CUser::ReqSealItem(Packet& pkt)
 
 	auto* pItem = GetItem(SLOT_MAX + bSrcPos);
 	if (pItem == nullptr || pItem->nNum != nItemID) {
+		LOG(LogCategory::LOG_GENERAL, "SEALDBG: DBREQ-REJECT item-mismatch User=%s null=%d nNum=%u wantID=%u",
+			GetName().c_str(), (int)(pItem==nullptr), pItem?pItem->nNum:0, nItemID);
 		result << uint8(SealErrorCodes::SealErrorFailed);
 		Send(&result);
 		return;
 	}
 
-	if ((SealOpcodes)bSealType == SealOpcodes::ITEM_LOCK
-		&& !GoldLose(ITEM_SEAL_PRICE)) {
-		result << bSealResult << nItemID << bSrcPos;
-		Send(&result);
-		return;
+	if ((SealOpcodes)bSealType == SealOpcodes::ITEM_LOCK)
+	{
+		bool bGoldOk = GoldLose(ITEM_SEAL_PRICE);
+		LOG(LogCategory::LOG_GENERAL, "SEALDBG: DBREQ-GOLDLOSE User=%s goldBefore-after=%u GoldLose_donus=%d (false=NeedCoins=lifting-fee)",
+			GetName().c_str(), m_iGold, (int)bGoldOk);
+		if (!bGoldOk) {
+			result << bSealResult << nItemID << bSrcPos;
+			Send(&result);
+			return;
+		}
 	}
 
 	if ((SealOpcodes)bSealType == SealOpcodes::ITEM_UNBOUND
