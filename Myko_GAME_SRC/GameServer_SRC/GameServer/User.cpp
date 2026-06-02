@@ -2884,7 +2884,14 @@ void CUser::SendTargetHP(uint8 echo, int tid, int damage)
 	pkt << uint16(tid) << echo;
 	if (tid >= NPC_BAND) {
 		CNpc *pNpc = g_pMain->GetNpcPtr(tid, GetZoneID());
-		if (!pNpc || pNpc->isDead() || pNpc->GetZoneID() != GetZoneID())
+		if (!pNpc || pNpc->GetZoneID() != GetZoneID())
+			return;
+		// Son (olduren) vurusta NPC isDead()=true olur (m_iHP<=0 + NPC_DEAD).
+		// Eski kod burada return ediyordu -> son vurusun damage'i (WIZ_TARGET_HP'deki
+		// uint16(damage)) client'a HIC gitmiyordu -> kafa ustu son "-X" gosterilmiyordu.
+		// Fix: damage>0 ise (HpChange'ten gelen gercek vurus) olu mob icin de gonder;
+		// damage==0 (HandleTargetHP echo / target sorgusu) ise eski davranis korunur.
+		if (pNpc->isDead() && damage == 0)
 			return;
 
 		pkt << (int)pNpc->m_MaxHP << (int)pNpc->m_iHP;
