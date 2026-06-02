@@ -2742,7 +2742,12 @@ void CUser::RecvUserExp(CNpc* pNpc, uint32 iDamage, uint32 iTotalDamage)
 	if (partyUsers.empty())
 		return;
 
-	const float fPartyModifierXP = 0.3f, fPartyModifierNP = 0.2f;
+	// FIX (2026-06-02, party EXP bolme): fPartyModifierXP=0.3 party bonusu exp'i SISIRIYORDU
+	// (solo 650k -> 2 kisi party'de TOPLAM 845k CIKIYORDU, dusmesi gerekirken). Patron: party'de exp
+	// bolunerek DUSMELI (2 kisi=her biri X/2, 8 kisiye kadar parcalanarak). Bonusu SIFIRLA -> formul
+	// duz level-agirlikli bolme olur: kisi = nFinalExp * (kisi_lvl/toplam_lvl). 2 esit kisi=X/2,
+	// 8 esit kisi=X/8. (NP/Loyalty modifier'a DOKUNULMADI, ona sikayet yok.)
+	const float fPartyModifierXP = 0.0f, fPartyModifierNP = 0.2f;
 
 	int nPartyMembers = (int)partyUsers.size();
 	foreach(itr, partyUsers) {
