@@ -1380,14 +1380,6 @@ void CGameServerDlg::GameEventMainTimer()
 		TournamentCommandPollerTimer();
 	}
 	{
-		// S120 — HttpCmd kuyruk isleyici (race fix): HTTP komutlari ANA thread'de calistir.
-		// HttpCmd thread kuyruga atar, burada (ana thread) isleriz -> race/crash YOK.
-#ifdef HTTP_CMD_SERVER
-		extern void HttpCmdQueueProcess();
-		HttpCmdQueueProcess();
-#endif
-	}
-	{
 		// S115 sabah RUSH — Bahis penceresi kapanma + periyodik status duyuru
 		extern void CheckBetWindowClose();
 		CheckBetWindowClose();
