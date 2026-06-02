@@ -51,15 +51,26 @@ static const std::set<std::string> s_whitelist = {
 	"partyvs",
 	"eventcreate", "eventcancel", "eventconfig", "eventlist",
 	"partybracketcreate", "partybracketstart", "partyleaguecreate", "partyleaguestart",
-	"tournamentreglist", "tournamentreward",
-	// GM_MOD bahis
+	"tournamentreglist",
+	// GM_MOD bahis (ayar — online CUser mutate etmez, guvenli)
 	"betlimits", "betwindow", "betcommission", "betcancel", "betstatus",
-	// GM_MOD aksiyon (server-form CGameServerDlg'de hazir)
-	"kill", "tpall", "captain", "warresult", "block", "user_bots", "setweather",
-	// GM_MOD B1 para/item/stat (S120 server-form, audit'li, hedef online olmali)
-	"noah", "np", "kc", "exp", "give", "level",
-	// GM_MOD B2 ceza (mute/unmute; block/unblock zaten yukarida)
-	"mute", "unmute", "unblock"
+	// GM_MOD aksiyon — GUVENLI olanlar (savas/global ayar, online oyuncu state'i mutate etmez)
+	"captain", "warresult", "setweather"
+
+	// ====================================================================================
+	// 🔴 S120 THREAD-RACE GUVENLIK: RISKLI komutlar KAPATILDI (HttpCmd'den cikarildi).
+	// SEBEP (workflow thread analizi, KANITLI): bu komutlar ProcessServerCommand uzerinden
+	// ham GetUserPtr + KILITSIZ online CUser mutasyonu yapar (item/gold/stat/kick/ban).
+	// HttpCmd ListenerThread, IOCP paket worker'lariyla (oyuncu logout/reset) PARALEL ->
+	// use-after-free / yari-yazilmis state -> CRASH (test: 30 komut -> GameServer cokup restart).
+	// 3000 oyuncuda IOCP reset cok sik -> crash KESIN. Acilis guvenligi: KAPALI.
+	// Bu komutlar IN-GAME GM chat ile kullanilir (IOCP worker thread'i, dogru per-user kilitlerle).
+	// KAPATILANLAR: kill block unblock user_bots tpall tournamentreward
+	//               noah np kc exp give level mute unmute
+	// ACILIS SONRASI: handler-ici m_inventoryLock/m_goldLock + lock-alti isInGame() dogrulamasi
+	//   eklenince (GM_MOD_MASTER_PLAN bolum D) HttpCmd'ye GUVENLE geri acilabilir.
+	// GUVENLI komutlar (notice/turnuva/event/reload/bahis-ayar) acik kaldi — online mutate etmez.
+	// ====================================================================================
 };
 
 void CHttpCmdServer::Start()
