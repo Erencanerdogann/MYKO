@@ -3485,3 +3485,34 @@ COMMAND_HANDLER(CGameServerDlg::HandleLevelChangeServerCommand)
 	return true;
 }
 #pragma endregion
+
+// =====================================================================================
+// GM_MOD SERVER-FORM B2 — CEZA (mute/unmute). block/unblock ZATEN server-form (Handle[un]bannedcommand).
+// ipban/hwidban karmasik (IP/HWID alimi + ayri DB) -> in-game GM'de kalir (yikici, nadir).
+// =====================================================================================
+
+#pragma region CGameServerDlg::HandleMuteServerCommand (/mute <char> [gun 0-1095])
+COMMAND_HANDLER(CGameServerDlg::HandleMuteServerCommand)
+{
+	if (vargs.size() < 1) { printf("[GM_MOD] /mute <CharName> [Gun]\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	if (strUserID.empty() || strUserID.size() > MAX_ID_SIZE || !string_is_valid(strUserID)) { printf("[GM_MOD] mute HATA: gecersiz isim\n"); return true; }
+	uint32 period = 0;
+	if (!vargs.empty()) { int rp = SafeAtoi(vargs.front(), 0, 1095); if (rp > 0) period = (uint32)rp; }
+	g_pMain->UserAuthorityUpdate(BanTypes::MUTE, nullptr, strUserID, "", period);
+	printf("[GM_MOD] mute: %s (%u gun)\n", strUserID.c_str(), period);
+	return true;
+}
+#pragma endregion
+
+#pragma region CGameServerDlg::HandleUnMuteServerCommand (/unmute <char>)
+COMMAND_HANDLER(CGameServerDlg::HandleUnMuteServerCommand)
+{
+	if (vargs.size() < 1) { printf("[GM_MOD] /unmute <CharName>\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	if (strUserID.empty() || strUserID.size() > MAX_ID_SIZE || !string_is_valid(strUserID)) { printf("[GM_MOD] unmute HATA: gecersiz isim\n"); return true; }
+	g_pMain->UserAuthorityUpdate(BanTypes::UNMUTE, nullptr, strUserID, "", 0);
+	printf("[GM_MOD] unmute: %s\n", strUserID.c_str());
+	return true;
+}
+#pragma endregion

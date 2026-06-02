@@ -57,7 +57,9 @@ static const std::set<std::string> s_whitelist = {
 	// GM_MOD aksiyon (server-form CGameServerDlg'de hazir)
 	"kill", "tpall", "captain", "warresult", "block", "user_bots", "setweather",
 	// GM_MOD B1 para/item/stat (S120 server-form, audit'li, hedef online olmali)
-	"noah", "np", "kc", "exp", "give", "level"
+	"noah", "np", "kc", "exp", "give", "level",
+	// GM_MOD B2 ceza (mute/unmute; block/unblock zaten yukarida)
+	"mute", "unmute", "unblock"
 };
 
 void CHttpCmdServer::Start()

@@ -138,6 +138,9 @@ void CGameServerDlg::InitServerCommands()
 		{ "exp",				&CGameServerDlg::HandleExpChangeServerCommand,		"Oyuncuya EXP ver. /exp <Char> <Exp(+/-)>" },
 		{ "give",				&CGameServerDlg::HandleGiveItemServerCommand,		"Oyuncuya item ver. /give <Char> <ItemID> [Adet] [Sure]" },
 		{ "level",				&CGameServerDlg::HandleLevelChangeServerCommand,	"Oyuncuya level ver. /level <Char> <10-83>" },
+		// S120 GM_MOD — B2 ceza server-form (block/unblock zaten yukarida)
+		{ "mute",				&CGameServerDlg::HandleMuteServerCommand,			"Oyuncuyu sustur. /mute <Char> [Gun]" },
+		{ "unmute",				&CGameServerDlg::HandleUnMuteServerCommand,			"Susturmayi kaldir. /unmute <Char>" },
 
 	};
 

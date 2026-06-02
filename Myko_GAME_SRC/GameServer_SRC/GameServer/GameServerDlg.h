@@ -1425,6 +1425,9 @@ public:
 	COMMAND_HANDLER(HandleExpChangeServerCommand);
 	COMMAND_HANDLER(HandleGiveItemServerCommand);
 	COMMAND_HANDLER(HandleLevelChangeServerCommand);
+	// S120 GM_MOD — B2 ceza server-form
+	COMMAND_HANDLER(HandleMuteServerCommand);
+	COMMAND_HANDLER(HandleUnMuteServerCommand);
 
 	COMMAND_HANDLER(HandleServerGameTestCommand);
 	COMMAND_HANDLER(HandleServerBotCommand);
