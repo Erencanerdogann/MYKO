@@ -1420,6 +1420,13 @@ DWORD g_exitStartTick = 0;
 int   g_exitLastShown = -1; // ayni saniyeyi tekrar yazma (spam onle)
 const int EXIT_COUNTDOWN_SEC = 5;
 
+// TANI: hkEndGame GERCEKTEN cagriliyor mu? (naked'dan ayri fn cagrilir, ofstream guvenli)
+void ExitGameLog()
+{
+	std::ofstream d; d.open("C:\\MalaysiaKO\\pg_exit.txt", std::ios::app);
+	if (d.is_open()) { d << "[hkEndGame] CAGRILDI g_exitPending=" << (g_exitPending?1:0) << "\n"; d.close(); }
+}
+
 // hkEndScene'den her frame cagrilir: geri sayim yaz, bitince oldur. (naked olmayan fonksiyon)
 void ExitCountdownTick()
 {
@@ -1453,6 +1460,7 @@ void __declspec(naked) hkEndGame()
 		pushad
 		pushfd
 	}
+	ExitGameLog(); // TANI: hkEndGame cagrildi mi
 	// Geri sayim BASLAT (zaten basladiysa tekrar baslatma). TerminateProcess YAPMA -> oyun render'a
 	// devam etsin, hkEndScene sayaci cizsin. render=false YAPMA (EndScene erken return etmesin).
 	if (!g_exitPending)
