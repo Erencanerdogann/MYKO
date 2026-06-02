@@ -440,11 +440,11 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 		char pbuf[260] = {0};
 		if (isDraw)
 			_snprintf_s(pbuf, sizeof(pbuf), _TRUNCATE,
-				"[PARTY VS BITTI / ENDED] Zone %u — Berabere/Draw (%u-%u)",
+				">> PARTY SAVASI BITTI! (Bolge %u) Berabere kaldi! Skor: %u-%u",
 				info->aTournamentZoneID, redScoreP, blueScoreP);
 		else
 			_snprintf_s(pbuf, sizeof(pbuf), _TRUNCATE,
-				"[PARTY VS BITTI / ENDED] Zone %u — Kazanan party/Winner: %s (%u-%u)",
+				">> PARTY SAVASI BITTI! (Bolge %u) Kazanan: %s party! Skor: %u-%u. Tebrikler!",
 				info->aTournamentZoneID,
 				(winnerPartyID == redPartyID) ? "RED" : "BLUE",
 				(redScoreP > blueScoreP) ? redScoreP : blueScoreP,
@@ -479,7 +479,7 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	if (redScore > blueScore)
 	{
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[TURNUVA BITTI / MATCH ENDED] %s — Kazanan/Winner: %s (%u-%u)",
+			">> TURNUVA BITTI! (%s) Kazanan: %s! Skor: %u-%u. Tebrikler sampiyon!",
 			zoneName,
 			pRedClan ? pRedClan->GetName().c_str() : "?",
 			redScore, blueScore);
@@ -491,7 +491,7 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	else if (blueScore > redScore)
 	{
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[TURNUVA BITTI / MATCH ENDED] %s — Kazanan/Winner: %s (%u-%u)",
+			">> TURNUVA BITTI! (%s) Kazanan: %s! Skor: %u-%u. Tebrikler sampiyon!",
 			zoneName,
 			pBlueClan ? pBlueClan->GetName().c_str() : "?",
 			blueScore, redScore);
@@ -503,7 +503,7 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 	else
 	{
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[TURNUVA BITTI / MATCH ENDED] %s — Berabere/Draw (%u-%u)",
+			">> TURNUVA BITTI! (%s) Berabere kaldi! Skor: %u-%u",
 			zoneName, redScore, blueScore);
 		// Berabere odul: iki klan'a katilim odulu (winnerID=0 -> ikisi de loser sayilir)
 		// DistributeTournamentRewards (winnerClanID=0, loserClanID=Red, ...) -> Red uyeleri loser olarak alir
@@ -631,7 +631,7 @@ static void HandleTournamentEnd(_TOURNAMENT_DATA* info)
 				// Tum sunucuya MVP duyurusu
 				char mvpBuf[200] = { 0 };
 				_snprintf_s(mvpBuf, sizeof(mvpBuf), _TRUNCATE,
-					"[CLAN WAR %s] MVP: %s (%u kill) — +2M Noah +500 NP",
+					">> SAVASIN YILDIZI (MVP)! (%s) %s - %u oldurme yapti! Odul: +2 Milyon Noah, +500 NP!",
 					zoneName, pMVP->GetName().c_str(), mvpKills);
 				std::string mvpMsg = mvpBuf;
 				Packet mvpPkt;

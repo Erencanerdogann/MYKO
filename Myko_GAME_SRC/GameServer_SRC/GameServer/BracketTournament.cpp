@@ -563,11 +563,11 @@ void DistributeBracketRewards(int32_t bracketID, uint16 clanID, const std::strin
 
 		std::string msg;
 		if (position == "CHAMPION") {
-			msg = "[BRACKET] TEBRIKLER! Klanin bracket turnuvasinda SAMPIYON oldu!";
+			msg = ">> SAMPIYON! Klanin turnuvayi kazandi! Tebrikler, en iyisi sizsiniz!";
 		} else if (position == "RUNNER_UP") {
-			msg = "[BRACKET] Final maclari! Klanin 2. oldu. Tebrikler!";
+			msg = ">> Klanin turnuvada 2. oldu! Cok iyi savastiniz, tebrikler!";
 		} else {
-			msg = "[BRACKET] Iyi savas! Katilim odulun aldin.";
+			msg = ">> Iyi savastin! Katilim odulunu aldin.";
 		}
 		Packet pkt;
 		ChatPacket::Construct(&pkt, (uint8)ChatType::WAR_SYSTEM_CHAT, &msg);
@@ -696,7 +696,7 @@ static bool StartBracketMatchTournament(_BRACKET_MATCH_INFO& m, const std::strin
 
 	char buf[256] = { 0 };
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-		"[BRACKET %s] Round %u: %s vs %s @ %s (%u dk) — sampiyonluk yolunda!",
+		">> TURNUVA (%s) Tur %u: %s vs %s, %s'de basliyor! (%u dk) Sampiyonluk yolunda!",
 		bracketName.c_str(), m.round,
 		redName.c_str(), blueName.c_str(),
 		zoneName, BRACKET_MATCH_DURATION_MIN);

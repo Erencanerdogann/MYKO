@@ -92,7 +92,7 @@ void OpenTournamentBets(uint8 zoneID)
 		}
 		char buf[360] = {0};
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[BAHIS ACILDI / BETTING OPEN] Zone %u — %s vs %s | %llds | %s (min %u max %u, komisyon/fee %%%u)",
+			">> BAHIS ACILDI! (Bolge %u) %s vs %s - Bahis icin %lld saniyen var! Yaz: %s | En az %u, en cok %u Noah (komisyon %%%u). Betting is open!",
 			zoneID, redLabel.c_str(), blueLabel.c_str(),
 			(long long)g_betWindowSec, betHint, g_betMinAmount, g_betMaxPerUser, g_betCommissionPct);
 		std::string msg = buf;
@@ -148,12 +148,12 @@ void CheckBetWindowClose()
 			char buf[400] = {0};
 			if (topAmount > 0) {
 				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-					"[BAHIS KAPANDI / BETTING CLOSED] Zone %u — Mac basliyor! %s: %u | %s: %u | En yuksek/Top: %s -> %s (%u)",
+					">> BAHIS KAPANDI! Mac basliyor (Bolge %u). %s: %u Noah | %s: %u Noah. En buyuk bahis: %s -> %s (%u Noah)!",
 					zid, redLabel.c_str(), redPool, blueLabel.c_str(), bluePool,
 					topBetter.c_str(), topSide.c_str(), topAmount);
 			} else {
 				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-					"[BAHIS KAPANDI / BETTING CLOSED] Zone %u — Mac basliyor! Bahis yok / No bets.", zid);
+					">> BAHIS KAPANDI! Mac basliyor (Bolge %u). Kimse bahis koymadi. No bets.", zid);
 			}
 			std::string msg = buf;
 			g_pMain->SendNotice(msg.c_str());
@@ -189,7 +189,7 @@ void CheckBetWindowClose()
 				time_t remaining = closeT - now;
 				char buf[300] = {0};
 				_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-					"[BAHIS / BET] Zone %u — %s: %u (%zu) | %s: %u | Kapanma/Closes: %lld sn",
+					">> BAHIS DURUMU (Bolge %u) - %s: %u Noah (%zu bahis) | %s: %u Noah. Bahis kapanmasina %lld saniye!",
 					zid, redLabel.c_str(), redPool, totalBets,
 					blueLabel.c_str(), bluePool, (long long)remaining);
 				std::string msg = buf;
@@ -212,7 +212,7 @@ static void RefundAllBets(uint8 zoneID, std::vector<_TOURNAMENT_BET>& bets, cons
 			pUser->GoldGain(bet.betAmount);  // iade (komisyon kesilmez)
 			char buf[260] = {0};
 			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"[BET] %s — %u Noah iade edildi. | Refunded %u Noah.",
+				">> %s, bahisin geri verildi: %u Noah. Your bet refunded: %u Noah.",
 				reason, bet.betAmount, bet.betAmount);
 			std::string msg = buf;
 			Packet pkt;
@@ -293,7 +293,7 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 		if (cnt > 0) {
 			char buf[200] = {0};
 			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"[BET REFUND] Zone %u: Beraberlik, %zu bahis iade edildi (komisyon kesilmedi).",
+				">> Bahis iade (Bolge %u): Berabere bitti, %zu bahis geri verildi (komisyon yok).",
 				zoneID, cnt);
 			std::string msg = buf;
 			g_pMain->SendNotice(msg.c_str());
@@ -410,7 +410,7 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 		double winnerOdds = (double)distributable / (double)winnerPool;
 		char buf[400] = {0};
 		_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-			"[BAHIS SONUC / BET RESULT] Zone %u: Havuz/Pool %llu | Komisyon/Fee %llu (%%%u) | %zu kazandi/won (%.2fx), %d kaybetti/lost",
+			">> BAHIS SONUCU (Bolge %u): Toplam havuz %llu Noah | Komisyon %llu (%%%u) | %zu kisi kazandi (%.2f kat), %d kisi kaybetti.",
 			zoneID, (unsigned long long)totalPool, (unsigned long long)commission,
 			g_betCommissionPct, winners.size(), winnerOdds, loserCount);
 		std::string msgR = buf;
@@ -420,7 +420,7 @@ void ResolveTournamentBets(uint8 zoneID, uint16 winnerClanID)
 		if (!winners.empty()) {
 			std::sort(winners.begin(), winners.end(),
 				[](const _PAYOUT_STAT& a, const _PAYOUT_STAT& b){ return a.delta > b.delta; });
-			std::string msgTop = "[BAHIS / BET TOP] En cok kazanan / Top winners: ";
+			std::string msgTop = ">> En cok kazananlar: ";
 			size_t cnt = (winners.size() < 3) ? winners.size() : 3;
 			for (size_t i = 0; i < cnt; i++) {
 				char tbuf[120] = {0};
@@ -803,7 +803,7 @@ COMMAND_HANDLER(CUser::HandleBetStatusCommand)
 		// Satir 3: Kullanicinin kendi bahisi
 		if (myTotal > 0) {
 			_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-				"  Senin bahisin / Your bet: %u Noah (%s) — iptal: +bet cancel", myTotal, myClanName.c_str());
+				"  Senin bahisin: %u Noah (%s). Iptal etmek icin yaz: +bet cancel", myTotal, myClanName.c_str());
 			std::string m3 = buf;
 			Packet p; ChatPacket::Construct(&p, (uint8)ChatType::WAR_SYSTEM_CHAT, &m3); Send(&p);
 		}

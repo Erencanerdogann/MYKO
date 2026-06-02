@@ -171,7 +171,7 @@ static _CMD_RESULT ExecTournamentStart(const std::string& params)
 	// Server-wide duyuru (oyuncu gorur — TR/EN)
 	char ann[260] = {0};
 	_snprintf_s(ann, sizeof(ann), _TRUNCATE,
-		"[TURNUVA BASLADI / MATCH STARTED] %s vs %s @ Zone %u (%u dk/min)!",
+		">> TURNUVA BASLADI! %s vs %s, Bolge %u'de! Sure: %u dakika. Savasin!",
 		pRed->GetName().c_str(), pBlue->GetName().c_str(), zoneID, duration);
 	std::string msg = ann;
 	g_pMain->SendNotice(msg.c_str());
@@ -574,7 +574,7 @@ static _CMD_RESULT ExecDuelStart(const std::string& params)
 	// Server-wide duyuru (TR/EN)
 	char ann[260] = {0};
 	_snprintf_s(ann, sizeof(ann), _TRUNCATE,
-		"[DUELLO / DUEL] %s vs %s @ Zone %u! Teke tek dovus / 1v1 fight!",
+		">> DUELLO! %s vs %s, Bolge %u'de teke tek kapisiyor! Kim kazanacak?",
 		pA->GetName().c_str(), pB->GetName().c_str(), zoneID);
 	std::string msg = ann;
 	g_pMain->SendNotice(msg.c_str());

@@ -243,7 +243,7 @@ static bool Start1v1MatchTeleport(_1V1_MATCH_INFO& m, const std::string& bracket
 
 	char buf[256] = { 0 };
 	_snprintf_s(buf, sizeof(buf), _TRUNCATE,
-		"[1V1 %s] Round %u: %s vs %s @ %s (%u dk) — Solo dovus basliyor!",
+		">> 1v1 TURNUVA (%s) Tur %u: %s vs %s, %s'de! (%u dk) Teke tek dovus basliyor!",
 		bracketName.c_str(), m.round,
 		m.redName.c_str(), m.blueName.c_str(),
 		zoneName, ONE_V_ONE_MATCH_DURATION_MIN);

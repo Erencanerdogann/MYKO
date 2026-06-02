@@ -163,7 +163,7 @@ int32_t CreatePartyVsEvent(uint8 zoneID, uint16 redPartyID, uint16 bluePartyID,
 	g_events.push_back(e);
 
 	// KAYIT ACILDI anonsu (ilk)
-	EventNotice("[ETKINLIK / EVENT] %s vs %s @ %s — KAYIT/HAZIRLIK ACILDI! %u dk sonra bahis. | Registration open, betting in %u min.",
+	EventNotice(">> ETKINLIK YAKLASIYOR! %s vs %s (%s). Hazirlanin, %u dakika sonra bahisler aciliyor! (betting in %u min)",
 		redName.c_str(), blueName.c_str(), EventZoneName(zoneID), e.regSec / 60, e.regSec / 60);
 
 	LOG(LogCategory::LOG_GENERAL,
@@ -189,7 +189,7 @@ bool CancelEvent(int32_t eventID)
 				CancelTournamentBets(it->zoneID);
 				g_pMain->m_ClanVsDataList.DeleteData(it->zoneID);
 			}
-			EventNotice("[ETKINLIK / EVENT] %s vs %s IPTAL edildi. Bahisler iade. | Event cancelled, bets refunded.",
+			EventNotice(">> ETKINLIK IPTAL! %s vs %s yapilmayacak. Bahisler geri verildi. (cancelled, refunded)",
 				it->redName.c_str(), it->blueName.c_str());
 			g_events.erase(it);
 			return true;
@@ -245,7 +245,7 @@ static void EnterBettingPhase(_SCHEDULED_EVENT& e)
 	extern void OpenTournamentBetsForDuration(uint8 zoneID, time_t durationSec);
 	OpenTournamentBetsForDuration(e.zoneID, (time_t)e.betSec);
 
-	EventNotice("[ETKINLIK / EVENT] %s vs %s @ %s — BAHIS ACILDI! %u dk. +bet red/blue MIKTAR | Betting OPEN %u min.",
+	EventNotice(">> BAHISLER ACILDI! %s vs %s (%s). %u dakika sure! Bahis yapmak icin yaz: +bet red MIKTAR ya da +bet blue MIKTAR. (betting %u min)",
 		e.redName.c_str(), e.blueName.c_str(), EventZoneName(e.zoneID), e.betSec / 60, e.betSec / 60);
 }
 
@@ -290,7 +290,7 @@ static void EnterRunningPhase(_SCHEDULED_EVENT& e)
 		SummonClanMembersToZone(e.zoneID, e.redID, e.blueID);
 	}
 
-	EventNotice("[ETKINLIK / EVENT] %s vs %s @ %s — MAC BASLADI! (%u dk) Savas! | MATCH STARTED!",
+	EventNotice(">> MAC BASLADI! %s vs %s (%s). Savas %u dakika surecek! Savasin! (MATCH STARTED)",
 		e.redName.c_str(), e.blueName.c_str(), EventZoneName(e.zoneID), e.matchSec / 60);
 
 	LOG(LogCategory::LOG_GENERAL,
@@ -310,14 +310,14 @@ static void PhaseAnnounce(_SCHEDULED_EVENT& e, const char* phaseName, time_t rem
 
 	if ((e.announceFlags & 2) == 0 && remaining <= (time_t)(totalSec / 2)) {
 		e.announceFlags |= 2;
-		EventNotice("[ETKINLIK / EVENT] %s vs %s — %s: %lld dk kaldi! | %lld min left.",
+		EventNotice(">> %s vs %s - %s asamasi: %lld dakika kaldi! (%lld min left)",
 			e.redName.c_str(), e.blueName.c_str(), phaseName,
 			(long long)(remaining / 60 + 1), (long long)(remaining / 60 + 1));
 	}
 	// son 1 dk (bit 4)
 	if ((e.announceFlags & 4) == 0 && remaining <= 60) {
 		e.announceFlags |= 4;
-		EventNotice("[ETKINLIK / EVENT] %s vs %s — %s SON 1 DAKIKA! | LAST 1 MINUTE!",
+		EventNotice(">> %s vs %s - %s asamasi: SON 1 DAKIKA! Acele edin! (LAST 1 MINUTE)",
 			e.redName.c_str(), e.blueName.c_str(), phaseName);
 	}
 }
@@ -359,7 +359,7 @@ void EventSchedulerTimer()
 		case EventPhase::COUNTDOWN: {
 			// Geri sayim anonsu (10/5/3/2/1)
 			if (remaining == 10 || remaining == 5 || remaining == 3 || remaining == 2 || remaining == 1) {
-				EventNotice("[ETKINLIK / EVENT] %s vs %s — MAC %lld sn sonra! | starts in %lld!",
+				EventNotice(">> %s vs %s - Mac %lld saniye sonra basliyor! Hazir olun! (starts in %lld)",
 					e.redName.c_str(), e.blueName.c_str(), (long long)remaining, (long long)remaining);
 			}
 			if (now >= e.phaseEndTime) {
