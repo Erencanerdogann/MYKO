@@ -1418,6 +1418,14 @@ public:
 	COMMAND_HANDLER(Handleunbannedcommand);
 	COMMAND_HANDLER(Handlebannedcommand);
 
+	// S120 GM_MOD — B1 para/item/stat server-form (HTTP'den, audit'li)
+	COMMAND_HANDLER(HandleGoldChangeServerCommand);
+	COMMAND_HANDLER(HandleLoyaltyChangeServerCommand);
+	COMMAND_HANDLER(HandleKcChangeServerCommand);
+	COMMAND_HANDLER(HandleExpChangeServerCommand);
+	COMMAND_HANDLER(HandleGiveItemServerCommand);
+	COMMAND_HANDLER(HandleLevelChangeServerCommand);
+
 	COMMAND_HANDLER(HandleServerGameTestCommand);
 	COMMAND_HANDLER(HandleServerBotCommand);
 	COMMAND_HANDLER(HandleChaosExpansionOpen);

@@ -131,6 +131,14 @@ void CGameServerDlg::InitServerCommands()
 		{ "setweather",			&CGameServerDlg::HandleSetWeatherCommand,			"Hava tipini degistir (1=fine 2=rain 3=snow) [miktar 0-100]" },
 		{ "reloadcsw",			&CGameServerDlg::HandleReloadCswCommand,			"CSW tablolarini yeniler" },
 
+		// S120 GM_MOD — B1 para/item/stat server-form (HTTP'den, hedef online olmali, audit'li)
+		{ "noah",				&CGameServerDlg::HandleGoldChangeServerCommand,		"Oyuncuya gold ver/al. /noah <Char> <Gold(+/-)>" },
+		{ "np",					&CGameServerDlg::HandleLoyaltyChangeServerCommand,	"Oyuncuya NP ver. /np <Char> <Loyalty>" },
+		{ "kc",					&CGameServerDlg::HandleKcChangeServerCommand,		"Oyuncuya KC ver. /kc <Char> <KC>" },
+		{ "exp",				&CGameServerDlg::HandleExpChangeServerCommand,		"Oyuncuya EXP ver. /exp <Char> <Exp(+/-)>" },
+		{ "give",				&CGameServerDlg::HandleGiveItemServerCommand,		"Oyuncuya item ver. /give <Char> <ItemID> [Adet] [Sure]" },
+		{ "level",				&CGameServerDlg::HandleLevelChangeServerCommand,	"Oyuncuya level ver. /level <Char> <10-83>" },
+
 	};
 
 	init_command_table(CGameServerDlg, commandTable, s_commandTable);

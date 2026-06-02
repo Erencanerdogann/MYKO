@@ -3384,3 +3384,104 @@ COMMAND_HANDLER(CUser::HandleBracketRegisterCommand)
 	return true;
 }
 #pragma endregion
+// =====================================================================================
+// GM_MOD SERVER-FORM B1 — PARA/ITEM/STAT (S120, HTTP/HttpCmdServer'dan calisir)
+// Mantik mevcut CUser:: handler'larin BIREBIR cekirdegi. this(GM)/isGM/Send YOK -> console.
+// Hedef GetUserPtr ile bulunur, online olmali. Audit (_MK_GM_AUDIT) HttpCmdServer'da yakalanir.
+// =====================================================================================
+
+#pragma region CGameServerDlg::HandleGoldChangeServerCommand (/noah <char> <gold+/->)
+COMMAND_HANDLER(CGameServerDlg::HandleGoldChangeServerCommand)
+{
+	if (vargs.size() < 2) { printf("[GM_MOD] /noah <CharName> <Gold(+/-)>\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	CUser* pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr) { printf("[GM_MOD] noah HATA: %s online degil\n", strUserID.c_str()); return true; }
+	int32 nGold = SafeAtoi(vargs.front(), 0, COIN_MAX);
+	if (nGold > 0) { pUser->GoldGain(nGold, true); printf("[GM_MOD] noah: %s +%d gold\n", strUserID.c_str(), nGold); }
+	else if (nGold < 0) { pUser->GoldLose(-nGold, true); printf("[GM_MOD] noah: %s %d gold\n", strUserID.c_str(), nGold); }
+	return true;
+}
+#pragma endregion
+
+#pragma region CGameServerDlg::HandleLoyaltyChangeServerCommand (/np <char> <miktar>)
+COMMAND_HANDLER(CGameServerDlg::HandleLoyaltyChangeServerCommand)
+{
+	if (vargs.size() < 2) { printf("[GM_MOD] /np <CharName> <Loyalty>\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	CUser* pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr) { printf("[GM_MOD] np HATA: %s online degil\n", strUserID.c_str()); return true; }
+	uint32 nLoyalty = SafeAtoi(vargs.front(), 0, LOYALTY_MAX);
+	if (nLoyalty != 0) { pUser->SendLoyaltyChange("Loyalty Command", nLoyalty, false); printf("[GM_MOD] np: %s +%u NP\n", strUserID.c_str(), nLoyalty); }
+	return true;
+}
+#pragma endregion
+
+#pragma region CGameServerDlg::HandleKcChangeServerCommand (/kc <char> <miktar>)
+COMMAND_HANDLER(CGameServerDlg::HandleKcChangeServerCommand)
+{
+	if (vargs.size() < 2) { printf("[GM_MOD] /kc <CharName> <KC>\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	CUser* pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr) { printf("[GM_MOD] kc HATA: %s online degil\n", strUserID.c_str()); return true; }
+	int32 KC = SafeAtoi(vargs.front(), 0, 999999999);
+	if (KC != 0) { pUser->GiveBalance(KC); printf("[GM_MOD] kc: %s +%d KC\n", strUserID.c_str(), KC); }
+	return true;
+}
+#pragma endregion
+
+#pragma region CGameServerDlg::HandleExpChangeServerCommand (/exp <char> <miktar>)
+COMMAND_HANDLER(CGameServerDlg::HandleExpChangeServerCommand)
+{
+	if (vargs.size() < 2) { printf("[GM_MOD] /exp <CharName> <Exp(+/-)>\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	CUser* pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr) { printf("[GM_MOD] exp HATA: %s online degil\n", strUserID.c_str()); return true; }
+	int64 nExp = SafeAtoi(vargs.front(), 0, 2100000000);
+	if (nExp != 0) { pUser->ExpChange("gm command", nExp, true); printf("[GM_MOD] exp: %s %lld EXP\n", strUserID.c_str(), (long long)nExp); }
+	return true;
+}
+#pragma endregion
+
+#pragma region CGameServerDlg::HandleGiveItemServerCommand (/give <char> <itemID> [adet] [sure])
+COMMAND_HANDLER(CGameServerDlg::HandleGiveItemServerCommand)
+{
+	if (vargs.size() < 2) { printf("[GM_MOD] /give <CharName> <ItemID> [Adet] [Sure]\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	CUser* pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr) { printf("[GM_MOD] give HATA: %s online degil\n", strUserID.c_str()); return true; }
+	uint32 nItemID = SafeAtoi(vargs.front(), 0, 999999999); vargs.pop_front();
+	_ITEM_TABLE pTable = g_pMain->GetItemPtr(nItemID);
+	if (pTable.isnull()) { printf("[GM_MOD] give HATA: ItemID %u yok\n", nItemID); return true; }
+	uint16 sCount = 1;
+	if (!vargs.empty()) { sCount = SafeAtoi(vargs.front(), 1, MAX_ITEM_COUNT); vargs.pop_front(); }
+	uint32 sExp = 0;
+	if (!vargs.empty()) { sExp = SafeAtoi(vargs.front(), 0, 65535); vargs.pop_front(); }
+	if (pUser->GiveItem("Give Item Command", nItemID, sCount, true, sExp))
+		printf("[GM_MOD] give: %s item %u x%u\n", strUserID.c_str(), nItemID, sCount);
+	else
+		printf("[GM_MOD] give HATA: %s envanteri dolu olabilir\n", strUserID.c_str());
+	return true;
+}
+#pragma endregion
+
+#pragma region CGameServerDlg::HandleLevelChangeServerCommand (/level <char> <10-83>)
+COMMAND_HANDLER(CGameServerDlg::HandleLevelChangeServerCommand)
+{
+	if (vargs.size() < 2) { printf("[GM_MOD] /level <CharName> <Level 10-83>\n"); return true; }
+	std::string strUserID = vargs.front(); vargs.pop_front();
+	CUser* pUser = g_pMain->GetUserPtr(strUserID, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr || !pUser->isInGame()) { printf("[GM_MOD] level HATA: %s online degil\n", strUserID.c_str()); return true; }
+	uint8 Level = SafeAtoi(vargs.front(), 0, 83);
+	if (Level < 10 || Level > 83) { printf("[GM_MOD] level HATA: min 10 max 83\n"); return true; }
+	for (int i = 0; i < SLOT_MAX; i++) {
+		_ITEM_DATA* pItem = pUser->GetItem(i);
+		if (pItem && pItem->nNum > 0) { printf("[GM_MOD] level HATA: %s once esyalarini cikarmali\n", strUserID.c_str()); return true; }
+	}
+	pUser->LevelChange(Level, false);
+	pUser->AllSkillPointChange(true);
+	pUser->AllPointChange(true);
+	printf("[GM_MOD] level: %s -> %u\n", strUserID.c_str(), Level);
+	return true;
+}
+#pragma endregion

@@ -55,7 +55,9 @@ static const std::set<std::string> s_whitelist = {
 	// GM_MOD bahis
 	"betlimits", "betwindow", "betcommission", "betcancel", "betstatus",
 	// GM_MOD aksiyon (server-form CGameServerDlg'de hazir)
-	"kill", "tpall", "captain", "warresult", "block", "user_bots", "setweather"
+	"kill", "tpall", "captain", "warresult", "block", "user_bots", "setweather",
+	// GM_MOD B1 para/item/stat (S120 server-form, audit'li, hedef online olmali)
+	"noah", "np", "kc", "exp", "give", "level"
 };
 
 void CHttpCmdServer::Start()
