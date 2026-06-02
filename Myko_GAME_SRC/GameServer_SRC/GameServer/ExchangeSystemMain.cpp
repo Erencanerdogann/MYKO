@@ -8,10 +8,6 @@
 */
 void CUser::ExchangeSystemProcess(Packet & pkt)
 {
-	LOG(LogCategory::LOG_GENERAL, "SEALDBG: EXCHANGE-ENTER User=%s trade=%d dead=%d mine=%d fish=%d sellPrep=%d buyPrep=%d merch=%d inGame=%d",
-		GetName().c_str(), (int)isTrading(), (int)isDead(), (int)isMining(), (int)isFishing(),
-		(int)isSellingMerchantingPreparing(), (int)isBuyingMerchantingPreparing(), (int)isMerchanting(), (int)isInGame());
-
 	if (isTrading()
 		|| isDead()
 		|| isMining()
@@ -19,14 +15,10 @@ void CUser::ExchangeSystemProcess(Packet & pkt)
 		|| isSellingMerchantingPreparing()
 		|| isBuyingMerchantingPreparing()
 		|| isMerchanting()
-		|| !isInGame()) {
-		LOG(LogCategory::LOG_GENERAL, "SEALDBG: EXCHANGE-REJECT state-guard User=%s", GetName().c_str());
+		|| !isInGame())
 		return;
-	}
 
 	uint8 opcode = pkt.read<uint8>();
-
-	LOG(LogCategory::LOG_GENERAL, "SEALDBG: EXCHANGE-OPCODE User=%s opcode=%u (8=ITEM_SEAL 9=CHAR_SEAL 2=UPGRADE)", GetName().c_str(), opcode);
 
 	switch (opcode)
 	{
