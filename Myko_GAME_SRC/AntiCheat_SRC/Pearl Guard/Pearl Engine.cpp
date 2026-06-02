@@ -1016,32 +1016,15 @@ void __stdcall GetChildByID_Hook(const std::string& szString,DWORD nUnkown)
 typedef HINSTANCE(WINAPI* tShellExecuteA)(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 tShellExecuteA oShellExecuteA;
 
-// Exit geri sayim global state (tanim 1401 civari, burada forward-decl — ayni dosya global)
-extern bool  g_exitPending;
-extern DWORD g_exitStartTick;
-extern int   g_exitLastShown;
-
 HINSTANCE WINAPI hkShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
 {
-	// FIX (2026-06-02, Exit geri sayim + web engelle): KO exit'te ShellExecute ile nttgameweb aciyordu;
-	// eski kod "explore" gorunce exit(0) -> oyun ANINDA oluyordu (web acilmaya basliyordu + geri sayim
-	// cizilemiyordu). YENI: "explore" (web acma denemesi) yakalaninca exit(0) YAPMA -> web ACMA + oyunu
-	// OLDURME -> geri sayim BAYRAGINI baslat -> KO render loop yasar -> hkEndScene ExitCountdownTick
-	// her frame "Cikis %d saniye" yazar -> 0'da kendimiz logout+TerminateProcess. lpFile NULL guard.
-	string op  = lpOperation ? lpOperation : "";
-	string url = lpFile      ? lpFile      : "";
-	// TANI: hook'a giren HER ShellExecuteA cagrisi (op+url) — Exit web hangi cagriyla aciliyor?
-	{ std::ofstream d; d.open("C:\\MalaysiaKO\\pg_shell.txt", std::ios::app); if(d.is_open()){ d << "[SHELL] op=[" << op << "] url=[" << url << "]\n"; d.close(); } }
-	if (Engine->StringHelper->IsContains(op, "explore") ||
-		Engine->StringHelper->IsContains(url, "explore")) {
-		if (!g_exitPending) {
-			g_exitPending   = true;
-			g_exitStartTick = GetTickCount();
-			g_exitLastShown = -1;
-		}
-		return (HINSTANCE)0x21; // web ACMA, exit ETME -> oyun render'a devam, geri sayim cizilsin
+	string tmp = lpFile ? lpFile : "";
+	if (Engine->StringHelper->IsContains(tmp, "explore")) {
+		exit(0);
+		return (HINSTANCE)0x90;
 	}
-	return oShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+	else
+		return oShellExecuteA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
 }
 
 //Skill Range Start
@@ -1409,50 +1392,14 @@ void SendLogoutBeforeExit()
 	}
 }
 
-// FIX (2026-06-02, Exit geri sayim 5-4-3-2-1): hkEndGame eskiden TerminateProcess ile ANINDA
-// olduruyordu (geri sayim yok). Patron eski "5-4-3-2-1-0 EXIT" YAZILI geri sayimi geri istiyor.
-// KOK: render=false yapilinca hkEndScene erken return ediyor (PearlGui.cpp:128) -> custom cizim olmaz.
-// COZUM: hkEndGame TerminateProcess YAPMAZ, sadece geri sayim BAYRAGINI baslatir + orijinale doner
-// (oyun render'a devam) -> hkEndScene her frame kalan saniyeyi WriteInfoMessage ile yazar -> 0'da
-// SendLogoutBeforeExit + TerminateProcess. RE gerekmez (EndScene zaten hook'lu PearlGui.cpp:330).
-bool  g_exitPending   = false;
-DWORD g_exitStartTick = 0;
-int   g_exitLastShown = -1; // ayni saniyeyi tekrar yazma (spam onle)
-const int EXIT_COUNTDOWN_SEC = 5;
-
-// TANI: hkEndGame GERCEKTEN cagriliyor mu? (naked'dan ayri fn cagrilir, ofstream guvenli)
-void ExitGameLog()
-{
-	std::ofstream d; d.open("C:\\MalaysiaKO\\pg_exit.txt", std::ios::app);
-	if (d.is_open()) { d << "[hkEndGame] CAGRILDI g_exitPending=" << (g_exitPending?1:0) << "\n"; d.close(); }
-}
-
-// hkEndScene'den her frame cagrilir: geri sayim yaz, bitince oldur. (naked olmayan fonksiyon)
-void ExitCountdownTick()
-{
-	if (!g_exitPending)
-		return;
-
-	DWORD elapsed = GetTickCount() - g_exitStartTick;
-	int kalan = EXIT_COUNTDOWN_SEC - (int)(elapsed / 1000);
-
-	if (kalan <= 0)
-	{
-		g_exitPending = false;
-		SendLogoutBeforeExit();                 // ghost-fix korunur (sayac bitince logout)
-		Shell_NotifyIcon(NIM_DELETE, &nid);
-		if (myMutex) ReleaseMutex(myMutex);
-		TerminateProcess(GetCurrentProcess(), 1);
-		return;
-	}
-
-	if (kalan != g_exitLastShown)               // saniye degisince tek sefer yaz
-	{
-		g_exitLastShown = kalan;
-		Engine->WriteInfoMessage((char*)string_format(xorstr("Cikis %d saniye..."), kalan).c_str(),
-			D3DCOLOR_ARGB(255, 255, 64, 64));
-	}
-}
+// NOT (2026-06-02, Exit geri sayim 5-4-3-2-1 PARK): Denendi, OLMADI. KANIT: hkEndGame cagriliyor
+// (pg_exit.txt) AMA orijinale jmp donunce KO kendi "web ac (nntgame) + kapat"ini yapiyor -> render
+// durur -> WriteInfoMessage cizilemez (KO render frame'ine bagimli). Web ShellExecuteA'dan DEGIL
+// (pg_shell bos = ShellExecuteW/CreateProcess). Orijinali calistirmamak = ASM 'ret' AMA arg byte
+// sayisi (ret N) RE edilmeden bilinmiyor -> crash riski. SONUC: geri sayim KnightOnline.exe RE (IDA)
+// gerektiriyor (KO_FNC_END_GAME ic davranisi + cagri konvansiyonu). ACILIS SONRASI. Detay TODO-4.
+// hkEndGame su an CALISAN ghost-fix hali: aninda WIZ_LOGOUT + TerminateProcess (ghost yok, web acilmaz).
+// g_exitPending vb. geri sayim global'leri + ExitCountdownTick KALDIRILDI (PARK).
 
 void __declspec(naked) hkEndGame()
 {
@@ -1460,15 +1407,14 @@ void __declspec(naked) hkEndGame()
 		pushad
 		pushfd
 	}
-	ExitGameLog(); // TANI: hkEndGame cagrildi mi
-	// Geri sayim BASLAT (zaten basladiysa tekrar baslatma). TerminateProcess YAPMA -> oyun render'a
-	// devam etsin, hkEndScene sayaci cizsin. render=false YAPMA (EndScene erken return etmesin).
-	if (!g_exitPending)
+	Shell_NotifyIcon(NIM_DELETE, &nid);
+	Engine->render = false;
+	SendLogoutBeforeExit(); // ghost fix: TerminateProcess oncesi WIZ_LOGOUT -> server aninda dusurur
+	if (myMutex)
 	{
-		g_exitPending   = true;
-		g_exitStartTick = GetTickCount();
-		g_exitLastShown = -1;
+		ReleaseMutex(myMutex);
 	}
+	TerminateProcess(GetCurrentProcess(), 1);
 	__asm {
 		popfd
 		popad

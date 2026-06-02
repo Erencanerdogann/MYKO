@@ -103,10 +103,8 @@ extern CSpell* GetSkillBase(int iSkillID);
 DWORD adresdd = 0x33C;
 
 ULONGLONG thtime = GetTickCount64();
-extern void ExitCountdownTick(); // Pearl Engine.cpp — Exit geri sayim (5-4-3-2-1) her frame
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
-	ExitCountdownTick(); // FIX: Exit'e basilinca geri sayim yaz + bitince oldur (render kontrolunden ONCE)
 	/*if (GetAsyncKeyState(VK_RETURN) & 1 && Engine->Adress > 0)
 	{
 		POINT pt;
