@@ -7,14 +7,21 @@ std::string c = "";
 
 std::string GetName(DWORD obj)
 {
+	// PG4 (2AntiCheat'ten tasindi): pointer dogrula
+	if (!obj || IsBadReadPtr((void*)((DWORD)obj + KO_OFF_NAMELEN), sizeof(DWORD)))
+		return "";
 	DWORD nameLen = *(DWORD*)((DWORD)obj + KO_OFF_NAMELEN);
+	// PG4: sanity check — KO karakter adi max ~20, 256'da cap
+	if (nameLen == 0 || nameLen > 256)
+		return "";
 	char* name = new char[nameLen + 1]{ 0 };
 	if (nameLen < 16)
 		memcpy(name, (char*)((DWORD)obj + KO_OFF_NAME), nameLen);
 	else
 		memcpy(name, (char*)*(DWORD*)((DWORD)obj + KO_OFF_NAME), nameLen);
+	name[nameLen] = '\0'; // PG4: null termination
 	std::string n = name;
-	std::free(name);
+	delete[] name; // PG4 fix: new[] icin std::free DEGIL delete[]
 	return n;
 }
 

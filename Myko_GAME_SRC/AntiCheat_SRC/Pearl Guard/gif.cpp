@@ -13,6 +13,7 @@
 #include <cstring>
 #include <algorithm>
 #include <gif_lib.h>
+#include "N3BASE/LogWriter.h"
 
 using std::size_t;
 using std::uint32_t;
@@ -55,7 +56,7 @@ static int openFileHandleUTF8Win(const char* utf8Filename, int oFlag, int pMode)
     try {
         wideFilename = new WCHAR[wideFilenameCapacity];
     }
-    catch (const std::bad_alloc&) {
+    catch (...) {
         throw EasyGifReader::Error::OUT_OF_MEMORY;
     }
     int wideFilenameLen = MultiByteToWideChar(CP_UTF8, 0, utf8Filename, utf8FilenameLen, wideFilename, wideFilenameCapacity);
@@ -392,7 +393,8 @@ EasyGifReader EasyGifReader::openFile(const char* filename) {
         try {
             data = new Internal;
         }
-        catch (const std::bad_alloc&) {
+        catch (...) {
+            CLogWriter::Write("[gif.cpp:openFile] Internal allocation failed — OUT_OF_MEMORY");
             DGifCloseFile(gif, nullptr);
             throw Error::OUT_OF_MEMORY;
         }
@@ -417,7 +419,8 @@ EasyGifReader EasyGifReader::openMemory(const void* buffer, size_t size) {
     try {
         data = new Internal;
     }
-    catch (const std::bad_alloc&) {
+    catch (...) {
+        CLogWriter::Write("[gif.cpp:openMemory] Internal allocation failed — OUT_OF_MEMORY");
         throw Error::OUT_OF_MEMORY;
     }
     int error = D_GIF_SUCCEEDED;
@@ -441,7 +444,8 @@ EasyGifReader EasyGifReader::openCustom(size_t(*readFunction)(void* outData, siz
     try {
         data = new Internal;
     }
-    catch (const std::bad_alloc&) {
+    catch (...) {
+        CLogWriter::Write("[gif.cpp:openCustom] Internal allocation failed — OUT_OF_MEMORY");
         throw Error::OUT_OF_MEMORY;
     }
     int error = D_GIF_SUCCEEDED;

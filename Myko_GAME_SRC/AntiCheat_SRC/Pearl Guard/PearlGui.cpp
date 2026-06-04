@@ -377,9 +377,10 @@ const DWORD KO_MUTEX = 0xA84C91;// 0x00009DFE01;
 DWORD WINAPI MultiPatch()
 {
 	char buff[50];
+	memset(buff, 0, sizeof(buff)); // PG4 (2AntiCheat'ten): baslatilmamis byte kopyalanmasin
 	sprintf_s(buff, "%s Client[%d]", AcsFolderName, GetCurrentProcessId());
 
-	memcpy((LPVOID)KO_MULTI_CAP, buff, 50);
+	memcpy((LPVOID)KO_MULTI_CAP, buff, sizeof(buff)); // PG4: sabit 50 yerine sizeof(buff)
 
 	return 1;
 }

@@ -41,7 +41,7 @@ void CUIHPBarPlug::ParseUIElements()
 		text_exp = Engine->GetChildByID(m_dVTableAddr, "Text_ExpP");
 		progress_exp = Engine->GetChildByID(m_dVTableAddr, "progress_exp");
 		progress_Sexp = Engine->GetChildByID(m_dVTableAddr, "progress_Sexp");
-		Engine->SetProgressRange(progress_exp, 0, 100.0f); // 0 min deðer 100 max deðer progressbar için
+		Engine->SetProgressRange(progress_exp, 0, 100.0f); // 0 min deï¿½er 100 max deï¿½er progressbar iï¿½in
 		Engine->SetProgressRange(progress_Sexp, 0, 100.0f);
 	}
 	text_nick = Engine->GetChildByID(m_dVTableAddr, "text_nick");
@@ -50,7 +50,7 @@ void CUIHPBarPlug::ParseUIElements()
 	Text_burning = Engine->GetChildByID(m_dVTableAddr, "Text_burning");
 	base_burning_frame = Engine->GetChildByID(m_dVTableAddr, "base_burning_frame");
 	progress_flame = Engine->GetChildByID(base_burning_frame, "Progress_burning");
-	Engine->SetProgressRange(progress_flame, 0, float(burntime*3)); // 0 min deðer 100 max deðer progressbar için
+	Engine->SetProgressRange(progress_flame, 0, float(burntime*3)); // 0 min deï¿½er 100 max deï¿½er progressbar iï¿½in
 	Engine->SetString(Text_burning, string_format("Lv 0"));
 #endif
 }
@@ -97,7 +97,8 @@ void CUIHPBarPlug::ExpChange(int64 exp, int64 maxexp) {
 		Engine->str_replace(yaz, "%", "");
 		Engine->str_split(yaz.c_str(), '.', out);
 
-		int percent = (int)ceil((exp * 100) / maxexp);
+		// B8 fix (2AntiCheat'ten tasindi): division by zero guard â€” stat reset sirasinda maxexp 0 olabilir
+		int percent = (maxexp > 0) ? (int)ceil((exp * 100) / maxexp) : 0;
 
 		if (out.size() == 2)
 		{

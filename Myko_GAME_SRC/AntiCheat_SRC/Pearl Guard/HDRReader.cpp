@@ -77,7 +77,8 @@ SRC HDRReader::GetSRC(string fileName)
 
 	uint32 nameLen = *(int*)(address - 4);
 
-	if (!(nameLen > 0))
+	// PG4 (2AntiCheat'ten tasindi): nameLen dogrula — >0 ve makul (max 512, buffer overflow korumasi)
+	if (nameLen == 0 || nameLen > 512)
 		return SRC(0, "", 0, 0, NULL);
 
 	char* name = new char[nameLen + 1]{ 0 };
