@@ -20,6 +20,7 @@
 #include <winnetwk.h>
 #include <Iphlpapi.h>
 #include <list>
+#include <unordered_map>
 #include "md5.h"
 #include <d3d9.h>
 #include <d3dx9.h>

@@ -38,7 +38,7 @@ static void PreloadMapDir(const std::string& dir, const std::string& ext)
 	FindClose(hFind);
 }
 
-DWORD WINAPI MapPreloadThread(LPVOID lpBase)
+extern "C" DWORD WINAPI MapPreloadThread(LPVOID lpBase)
 {
 	Sleep(8000); // oyun tamamen yuklensin, sonra basla
 	std::string base = (const char*)lpBase;
