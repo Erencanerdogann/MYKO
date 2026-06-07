@@ -2064,6 +2064,18 @@ void CUser::LogOut()
 		return g_pMain->RemoveSessionNames(this);
 	}
 
+	// TODO#242 (S127): RE-ENTRY GUARD — DC tekrarli LogOut palyatifi.
+	// KOK: socket koptugunda CUser::Update() her tick'te (!IsConnected() && !IsOffCharacter())
+	//      -> return LogOut() (User.cpp:1678) cagiriyordu. Update saniyede defalarca tick'lerken
+	//      LogOut da defalarca cagriliyor -> ayni user saniyede 4-5 'NormalLogout' log spam'i +
+	//      cift WIZ_LOGOUT DB request (DISCONNECT log kaniti 2026-06-07: ayni-saniye tekrar).
+	// FIX: ilk LogOut'ta m_bIsLoggingOut zaten set ediliyordu (asagida) ama BASTA kontrol yoktu.
+	//      Artik logout SUREC ICINDEYSE ikinci+ cagrilar sessizce doner -> tek log, tek DB request.
+	// NOT (PALYATIF): bu server-side log/DB spam'ini keser. DC'nin asil kogu CLIENT tarafi
+	//      (client NormalLogout paketi atiyor / cokme aninda logout) -> client source yok, ayri is.
+	if (m_bIsLoggingOut || m_deleted)
+		return;
+
 	LOG_DISCONNECT("[LOGOUT] User=%s Account=%s IP=%s Zone=%d Level=%d Reason=NormalLogout",
 		GetName().c_str(), GetAccountName().c_str(), GetRemoteIP().c_str(), GetZoneID(), GetLevel());
 
