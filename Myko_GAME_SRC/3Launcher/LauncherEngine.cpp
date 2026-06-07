@@ -597,6 +597,18 @@ bool Launcher::Start()
         }
     }).detach();
 
+    // TODO#241 FIX-A (S127 v3.2): version-wait busy-loop -> CPU spin + sonsuz donma duzeltmesi.
+    // ESKI: while(true) bos dongu (Sleep yok) -> CPU %100 spin; version cevabi (0x1) gelmezse
+    //       'Checking version...' SONSUZA kadar donar (timeout/retry YOK). Paket dusen oyuncu
+    //       ekranda kilitli kalir (patron kaniti: ag-zayif oyuncuda surekli takilma).
+    // YENI: (1) her tur Sleep(50) -> busy-spin biter. (2) version (m_bVersionGot) belli surede
+    //       gelmezse RequestVersion'i tekrar gonder (3 deneme, 7sn arayla). (3) hala gelmezse
+    //       'Sunucuya ulasilamadi, tekrar deneyin' state -> sonsuz donma YOK, oyuncu bilgilenir.
+    clock_t verSentAt = clock();
+    int verRetry = 0;
+    const int VER_RETRY_MAX = 3;            // toplam 3 ek deneme
+    const clock_t VER_RETRY_INTERVAL = 7000; // 7sn cevap yoksa tekrar gonder
+
     while (true)
     {
         if (Engine->mSocket->GetSocket() == (void*)INVALID_SOCKET)
@@ -611,6 +623,26 @@ bool Launcher::Start()
             delete pkt;
             mSocket->m_qRecvPkt.pop();
         }
+
+        // Version henuz gelmediyse: belli arayla tekrar iste, limitte uyari ver (sonsuz donma yok)
+        if (!m_bVersionGot && (clock() - verSentAt) > VER_RETRY_INTERVAL)
+        {
+            if (verRetry < VER_RETRY_MAX)
+            {
+                verRetry++;
+                SetState(std::format("Checking version... (retry {}/{})", verRetry, VER_RETRY_MAX));
+                RequestVersion();
+                verSentAt = clock();
+            }
+            else
+            {
+                SetState(xorstr("Sunucuya ulasilamadi. Lutfen launcher'i tekrar acin."));
+                // version alinamadi -> sonsuz spin yerine cik (oyuncu tekrar dener / retry'lar tukendi)
+                return false;
+            }
+        }
+
+        Sleep(50); // CPU busy-spin engelle (ana akis event-driven, recv WSAAsyncSelect ile gelir)
     }
 }
 
