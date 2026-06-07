@@ -1381,14 +1381,23 @@ static LONG WINAPI LauncherCrashFilter(EXCEPTION_POINTERS* ep)
         } catch (...) { /* gec */ }
 
         // -----------------------------------------------------------
-        // Upload (5sn timeout, fail olursa gec)
+        // Upload (FIX-C: 7sn timeout, fail olursa gec)
         // FAZ 4: fingerprint + module + exception + offset eklenmis
+        // NOT (FIX-I): upload SYNC kalir — crash filter sonrasi process TERMINATE oluyor
+        // (EXCEPTION_EXECUTE_HANDLER). Async thread upload bitmeden process kapanir -> rapor
+        // GITMEZ. O yuzden async YAPILMADI; timeout zaten 7sn (FIX-C), best-effort.
         // -----------------------------------------------------------
         Launcher::UploadCrashDump(dumpPath, "Launcher.exe", account, version,
                                   haveInfo ? info.fingerprint : "",
                                   haveInfo ? info.moduleName : "",
                                   haveInfo ? info.exceptionCode : "",
                                   haveInfo ? info.crashOffset : "");
+
+        // TODO#241 FIX-I (S127 v3.5): C1 DISK BIRIKME FIX — upload sonrasi dump dosyasini SIL.
+        // ESKI: gecerli dump upload edildikten sonra %TEMP%'de KALIYORDU (sadece gecersiz dump
+        // siliniyordu). Zamanla %TEMP% birikir (power-user 1.8GB/yil). Upload basarili/basarisiz
+        // farketmez -> lokal kopya gereksiz (sunucuda DB+dosya var), sil. Disk dolmasi onlenir.
+        DeleteFileA(dumpPath);
     }
     return EXCEPTION_EXECUTE_HANDLER;
 }

@@ -30,8 +30,11 @@
 // v3.4 (S127 TODO#241): FIX-E Defender exclusion blogu KALDIRILDI (launcher'dan) — setup.exe
 //       zaten yapiyor + launcher'da ise yaramiyordu (oyuncu vakasi: AV exe sildi) + UAC/blocking
 //       riski. TBL hash + cheat scan guvenlik kontrolleri KALDI. + faz-sonu H1 olu-kod temizligi.
+// v3.5 (S127 TODO#241): FIX-G GDIHelper GIF crash use-after-free+OOB guard (MATRIX kanit:
+//       launcher.exe+0xb514 0xc0000005 x5 TEK gercek crash) + FIX-H START update-check gate
+//       (m_bUpdateChecked, yukleme sirasinda start engellendi) + FIX-I crash dump upload sonrasi sil.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 4
+#define LAUNCHER_BUILD_VERSION_MINOR 5
 
 class Launcher
 {
