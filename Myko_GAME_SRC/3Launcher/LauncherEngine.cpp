@@ -174,24 +174,50 @@ Launcher::Launcher()
         alreadyExists = m_base == path;
     }
 
-    if (!alreadyExists)
-    {
-        std::string command = "powershell.exe -command \"";
-        std::vector<std::string> outs = { "KnightOnLine.exe", "CODE", "Launcher.exe" };
-        command.append(std::format("Add-MpPreference -ExclusionPath '{}\\{}' -Force;", m_base, ""));
-        for (auto& out : outs)
+    // TODO#241 F3 (S127): ACILIS HIZI — Defender PS + CheckTBLHashes + ScanCheatTools
+    // ASYNC thread'e alindi. ESKI: ctor'da SENKRON calisiyordu:
+    //   (a) Defender PS win_system+RunAs -> ilk acilista admin onayi 5-10sn UI blok
+    //   (b) CheckTBLHashes() Data\*.tbl senkron MD5 -> 0.5-2sn blok
+    //   (c) ScanCheatTools() process+window+DLL+driver tarama -> ek blok
+    // Bu uc is ctor'u (dolayisiyla Launcher penceresinin acilmasini) geciktiriyordu.
+    // YENI: detached thread — pencere ANINDA acilir, bu isler arka planda kosar.
+    //   - Defender exclusion: registry-guard (alreadyExists) zaten 2. acilisi atliyor,
+    //     ILK acilis da artik UI'yi bloklamiyor (arka planda RunAs).
+    //   - CheckTBLHashes/ScanCheatTools sonuclari START click GIF fazinda TAZE yeniden
+    //     taraniyordu (Launcher.cpp:1077 'Faz 0: Taze scan') -> ctor taramasi cache on-isi,
+    //     async olmasi START akisini bozmaz (START kendi taze taramasini yapar).
+    std::string l_base = m_base;
+    std::thread([this, l_base, alreadyExists]() {
+        // (a) Defender exclusion (ilk acilis, registry guard yoksa)
+        if (!alreadyExists)
         {
-            command.append(std::format("Add-MpPreference -ExclusionPath '{}\\{}' -Force;", m_base, out));
-        }
-        command.append("\" -Verb RunAs -WindowStyle Hidden");
-        win_system(command.c_str());
+            std::string command = "powershell.exe -command \"";
+            std::vector<std::string> outs = { "KnightOnLine.exe", "CODE", "Launcher.exe" };
+            command.append(std::format("Add-MpPreference -ExclusionPath '{}\\{}' -Force;", l_base, ""));
+            for (auto& out : outs)
+            {
+                command.append(std::format("Add-MpPreference -ExclusionPath '{}\\{}' -Force;", l_base, out));
+            }
+            command.append("\" -Verb RunAs -WindowStyle Hidden");
+            win_system(command.c_str());
 
-        if (!KeyExists(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH"))
-        {
-            CreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH");
+            if (!KeyExists(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH"))
+            {
+                CreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH");
+            }
+            SetVal(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH", l_base);
         }
-        SetVal(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH", m_base);
-    }
+
+        // (b) TBL hash check (Data\*.tbl senkron MD5) — arka plan, sonuc cache'e yazilir
+        this->CheckTBLHashes();
+
+        // (c) KOXP/cheat tool scan — arka plan, sonuc m_scanThreatDetected/Name cache
+        {
+            std::string detected;
+            this->m_scanThreatDetected = this->ScanCheatTools(detected);
+            this->m_scanThreatName = detected;
+        }
+    }).detach();
 
     // S113: L1 SELF-HEAL — KRITIK kontrol: sadece UI/ui.src boyut
     // Bos veya cok kucuk (<1 MB) ise Server.ini'yi geriye sar (Launcher yeniden indirir)
@@ -215,18 +241,8 @@ Launcher::Launcher()
         }
     }
 
-    // S114: TBL HASH CHECK — gomulu resource'tan beklenen hash'leri oku, lokal Data\*.tbl ile karsilastir
-    // Mismatch varsa kullanici Repair'a yonlendirilir (KO KAPATILMAZ — yumusak mod)
-    CheckTBLHashes();
-
-    // S114: KOXP/CHEAT TOOL SCAN — process + window + DLL + driver
-    // Sonuc m_scanThreatDetected/m_scanThreatName'de cache edilir.
-    // MessageBox YOK — sonuc START click sirasinda GIF (SCANNING -> SAFE/ERROR) ile gosterilir.
-    {
-        std::string detected;
-        m_scanThreatDetected = ScanCheatTools(detected);
-        m_scanThreatName = detected;
-    }
+    // TODO#241 F3 (S127): CheckTBLHashes() + ScanCheatTools() YUKARIDAKI async thread'e
+    // tasindi (Defender ile birlikte). Burada SENKRON cagri YOK — ctor bloklamiyor.
 
     // S115 v2.7+ FIX: AUTO-UPDATE thread BURADAN KALDIRILDI.
     // Sebep: WinHTTP + WinSock race ('Connection failed' patron PC bug, S115).
