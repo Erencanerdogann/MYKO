@@ -8,7 +8,7 @@ int			CAPISocket::s_nInstanceCount = 0;
 
 
 #ifdef _CRYPTION
-BOOL		CAPISocket::s_bCryptionFlag = FALSE;			//0 : ºñ¾ÏÈ£È­ , 1 : ¾ÏÈ£È­
+BOOL		CAPISocket::s_bCryptionFlag = FALSE;			//0 : ï¿½ï¿½ï¿½È£È­ , 1 : ï¿½ï¿½È£È­
 CJvCryption	CAPISocket::s_JvCrypt;
 uint32_t	CAPISocket::s_wSendVal = 0;
 uint32_t	CAPISocket::s_wRcvVal = 0;
@@ -33,7 +33,7 @@ CAPISocket::CAPISocket()
 
 	m_iSendByteCount = 0;
 	m_bConnected = FALSE;
-	m_bEnableSend = TRUE; // º¸³»±â °¡´É..?
+	m_bEnableSend = TRUE; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½..?
 }
 
 CAPISocket::~CAPISocket()
@@ -80,10 +80,10 @@ void CAPISocket::Disconnect()
 	m_dwPort = 0;
 
 	m_bConnected = FALSE;
-	m_bEnableSend = TRUE; // º¸³»±â °¡´É..?
+	m_bEnableSend = TRUE; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½..?
 
 #ifdef _CRYPTION
-	InitCrypt(0); // ¾ÏÈ£È­ ÇØÁ¦..
+	InitCrypt(0); // ï¿½ï¿½È£È­ ï¿½ï¿½ï¿½ï¿½..
 #endif // #ifdef _CRYPTION
 }
 
@@ -138,23 +138,53 @@ int CAPISocket::Connect(HWND hWnd, const char* pszIP, uint32_t dwPort)
 
 	m_hSocket = (void*)sock;
 
-	// ¼ÒÄÏ ¿É¼Ç
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½É¼ï¿½
 	int iRecvBufferLen = RECEIVE_BUF_SIZE;
 	int iErr = setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&iRecvBufferLen, 4);
 
-	if (connect(sock, (struct sockaddr far*) & server, sizeof(server)) != 0)
+	// TODO#241 F2 (S127): TCP CONNECT non-blocking + 5sn timeout.
+	// ESKI: ciplak blocking connect() -> sunucu gec/dusuk cevap verirse OS default
+	//       timeout (20-240sn) boyunca UI thread DONUYORDU ('Checking 1dk donma').
+	// YENI: socket non-blocking yap -> connect baslat -> select() ile EN COK 5sn bekle.
+	//       5sn'de baglanamazsa hata don (donma YOK). select dali bittikten sonra
+	//       asagidaki WSAAsyncSelect zaten event-mod (async) kuruyor.
 	{
-		int iErrCode = ::WSAGetLastError();
+		u_long ulNonBlock = 1;
+		ioctlsocket(sock, FIONBIO, &ulNonBlock);  // non-blocking moda al
 
-		closesocket(sock);
-		m_hSocket = (void*)INVALID_SOCKET;
+		int iConnRet = connect(sock, (struct sockaddr far*) & server, sizeof(server));
+		bool bConnected = false;
+		if (iConnRet == 0)
+		{
+			bConnected = true;  // aninda baglandi (lokal/hizli ag)
+		}
+		else if (::WSAGetLastError() == WSAEWOULDBLOCK)
+		{
+			// connect devam ediyor â€” select ile 5sn bekle (yazilabilir = baglandi)
+			fd_set writeSet, exceptSet;
+			FD_ZERO(&writeSet);  FD_SET(sock, &writeSet);
+			FD_ZERO(&exceptSet); FD_SET(sock, &exceptSet);
+			struct timeval tv; tv.tv_sec = 5; tv.tv_usec = 0;
 
-#ifdef _DEBUG
-		//		char msg[256];
-		//		sprintf(msg,"Cannot connect to %s on Port %u : ErrorCode : %d", pszIP, dwPort, iErrCode);
-		//		MessageBox(hWnd, msg,"socket error", MB_OK | MB_ICONSTOP);
-#endif
-		return iErrCode;
+			int iSel = select(0, NULL, &writeSet, &exceptSet, &tv);
+			if (iSel > 0 && FD_ISSET(sock, &writeSet))
+			{
+				// SO_ERROR ile gercek baglanti sonucunu dogrula (writeSet tek basina yetmez)
+				int soErr = 0; int soLen = sizeof(soErr);
+				getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&soErr, &soLen);
+				bConnected = (soErr == 0);
+			}
+			// iSel == 0 -> 5sn timeout (donma yok), iSel < 0 / exceptSet -> hata
+		}
+
+		if (!bConnected)
+		{
+			int iErrCode = ::WSAGetLastError();
+			if (iErrCode == 0) iErrCode = WSAETIMEDOUT;  // select-timeout durumu
+			closesocket(sock);
+			m_hSocket = (void*)INVALID_SOCKET;
+			return iErrCode;
+		}
 	}
 
 	WSAAsyncSelect(sock, hWnd, WM_SOCKETMSG, FD_CONNECT | FD_READ | FD_CLOSE);
@@ -229,7 +259,7 @@ BOOL CAPISocket::ReceiveProcess()
 			int16_t siCore = *((int16_t*)(pData + 2));
 			if (siCore <= iCount)
 			{
-				if (PACKET_TAIL == ntohs(*((uint16_t*)(pData + iCount - 2)))) // ÆÐÅ¶ ²¿¸® ºÎºÐ °Ë»ç..
+				if (PACKET_TAIL == ntohs(*((uint16_t*)(pData + iCount - 2)))) // ï¿½ï¿½Å¶ ï¿½ï¿½ï¿½ï¿½ ï¿½Îºï¿½ ï¿½Ë»ï¿½..
 				{
 					Packet* tmpPkt = new Packet();
 					if (s_bCryptionFlag)
@@ -263,7 +293,7 @@ BOOL CAPISocket::ReceiveProcess()
 					pkt->append(&tmpPkt->contents()[1], tmpPkt->size() -1);
 
 					m_qRecvPkt.push(pkt);
-					m_CB.HeadIncrease(siCore + 6); // È¯Çü ¹öÆÛ ÀÎµ¦½º Áõ°¡ ½ÃÅ°±â..
+					m_CB.HeadIncrease(siCore + 6); // È¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å°ï¿½ï¿½..
 					bFoundTail = TRUE;
 #ifdef _DEBUG
 					uint8_t byCmd = pData[4];
@@ -275,9 +305,9 @@ BOOL CAPISocket::ReceiveProcess()
 		}
 		else
 		{
-			// ÆÐÅ¶ÀÌ ±úÁ³´Ù??
+			// ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½??
 			__ASSERT(0, "broken packet header.. skip!");
-			m_CB.HeadIncrease(iCount); // È¯Çü ¹öÆÛ ÀÎµ¦½º Áõ°¡ ½ÃÅ°±â..
+			m_CB.HeadIncrease(iCount); // È¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å°ï¿½ï¿½..
 		}
 
 		delete[] pData, pData = NULL;
@@ -288,7 +318,7 @@ BOOL CAPISocket::ReceiveProcess()
 
 void CAPISocket::Send(uint8_t* pData, int nSize)
 {
-	if (!m_bEnableSend) return; // º¸³»±â °¡´É..?
+	if (!m_bEnableSend) return; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½..?
 	if (INVALID_SOCKET == (SOCKET)m_hSocket || FALSE == m_bConnected)
 		return;
 
@@ -350,7 +380,7 @@ void CAPISocket::Send(uint8_t* pData, int nSize)
 	}
 
 #ifdef _DEBUG
-	uint8_t byCmd = pData[0]; // Åë°è ³Ö±â..
+	uint8_t byCmd = pData[0]; // ï¿½ï¿½ï¿½ ï¿½Ö±ï¿½..
 
 //	__SocketStatisics SS;
 //	SS.dwTime = GetTickCount();
