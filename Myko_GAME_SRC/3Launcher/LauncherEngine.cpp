@@ -1068,12 +1068,23 @@ bool Launcher::CheckForUpdate()
     }
     // remoteVal > localVal -> yeni versiyon, dogrudan indir
 
+    // TODO#241 D1 (S127 v3.3): buraya gelindiyse GERCEKTEN guncelleme inecek (remote yeni VEYA
+    // MD5 farkli; version-esit+MD5-ayni dallari yukarida 'return false' ile elendi). m_bUpdating=true
+    // -> oyuncu START'a basamaz (StartClick/HandleMouse gate), guncelleme-restart cakismasi onlenir.
+    m_bUpdating = true;
+    SetState(xorstr("Guncelleme indiriliyor, lutfen bekleyin..."));
+
     // 3) Yeni exe indir + MD5 dogrula
     std::string tempPath;
     if (!DownloadUpdateFile(remoteMd5, remoteSize, tempPath))
+    {
+        // Indirme basarisiz -> kilidi ac (oyuncu mevcut surumle oynayabilsin, sonsuz kilit YOK)
+        m_bUpdating = false;
+        SetState(xorstr("Guncelleme indirilemedi. Mevcut surumle devam ediliyor."));
         return false;
+    }
 
-    // 4) Helper batch olustur ve calistir, exit
+    // 4) Helper batch olustur ve calistir, exit (m_bUpdating true kalir — zaten kapaniyoruz)
     return LaunchUpdaterAndExit(tempPath);
 }
 

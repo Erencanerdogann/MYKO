@@ -25,8 +25,10 @@
 //       + Defender/TBL-hash/cheat-scan async (acilis hizi). Auto-update tetigi icin bump.
 // v3.2 (S127 TODO#241): FIX-A version-wait timeout+retry+Sleep (Checking sonsuz donma+CPU spin),
 //       FIX-B connect 3 retry + 'onar' dialogu sustur, FIX-C crash upload timeout 16->7sn.
+// v3.3 (S127 TODO#241): D1 auto-update inerken START engelle (m_bUpdating gate) + D2 uyari state
+//       ('guncelleme iniyor, bekleyin') -> oyuncu update-restart cakismasi yasamasin.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 2
+#define LAUNCHER_BUILD_VERSION_MINOR 3
 
 class Launcher
 {
@@ -84,6 +86,10 @@ public:
 	bool IsReady() { return ready; }
 	uint8 GetPercent() { return m_dPercent; };
 	void SetPercent(uint8 per) { m_dPercent = per; };
+	// TODO#241 D1 (S127 v3.3): auto-update (v->yeni exe) inerken START engelle.
+	// CheckForUpdate gercekten indirme yapacaginda true; fail/bitince false. UI thread okur.
+	bool IsUpdating() { return m_bUpdating; }
+	volatile bool m_bUpdating = false;
 	bool m_bVersionGot;
 	bool m_bPatchesGot;
 	std::string m_currentFile;
