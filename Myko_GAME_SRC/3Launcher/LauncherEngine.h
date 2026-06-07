@@ -32,9 +32,13 @@
 //       riski. TBL hash + cheat scan guvenlik kontrolleri KALDI. + faz-sonu H1 olu-kod temizligi.
 // v3.5 (S127 TODO#241): FIX-G GDIHelper GIF crash use-after-free+OOB guard (MATRIX kanit:
 //       launcher.exe+0xb514 0xc0000005 x5 TEK gercek crash) + FIX-H START update-check gate
-//       (m_bUpdateChecked, yukleme sirasinda start engellendi) + FIX-I crash dump upload sonrasi sil.
+//       (m_bUpdateChecked) + FIX-I crash dump upload sonrasi sil.
+// v3.6 (S127 TODO#241): FIX-H GERI ALINDI — IsUpdateChecked() START gate REGRESYON yaratti
+//       (CheckForUpdate hang/uzun -> m_bUpdateChecked false kaliyor -> START SONSUZ kilit,
+//       'guncelleme kontrol ediliyor' takiliyor, oyuna girilemiyor, patron kaniti v3.5).
+//       START tekrar D1 davranisi: IsReady() && !IsUpdating(). FIX-G + FIX-I KALDI.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 5
+#define LAUNCHER_BUILD_VERSION_MINOR 6
 
 class Launcher
 {

@@ -1075,8 +1075,12 @@ bool _fexists(std::string& filename)
 
 void StartClick()
 {
-    // TODO#241 D1+FIX-H (S127): START gate = ready + update KONTROL bitti + update INMIYOR.
-    if (lastStartState == STATE_DOWN && Engine->IsReady() && Engine->IsUpdateChecked() && !Engine->IsUpdating())
+    // TODO#241 D1 (S127): START gate = ready + update INMIYOR.
+    // NOT (FIX-H GERI ALINDI v3.6): IsUpdateChecked() gate KALDIRILDI — regresyon yaratti
+    // (CheckForUpdate hang/uzun surerse m_bUpdateChecked false kaliyor -> START SONSUZ kilit,
+    // 'guncelleme kontrol ediliyor' takiliyor, oyuna girilemiyor). Patron kaniti v3.5.
+    // T=1-5sn cakisma penceresini kapatmak, oyuncuyu komple kilitlemekten cok daha kotuydu.
+    if (lastStartState == STATE_DOWN && Engine->IsReady() && !Engine->IsUpdating())
     {
         states[0] = STATE_HOVER;
         lastStartState = STATE_HOVER;
@@ -1346,9 +1350,10 @@ bool isInArea(int x, int y)
 
 void HandleMouse(ButtonState state, int x, int y)
 {
-    // TODO#241 D1+D2+FIX-H (S127): START gate = ready + update-check bitti + update inmiyor + uyari.
+    // TODO#241 D1+D2 (S127): START gate = ready + update inmiyor + uyari.
+    // NOT (FIX-H GERI ALINDI v3.6): IsUpdateChecked() gate KALDIRILDI (regresyon: sonsuz kilit).
     bool startHit = inHit(x, y, g_StartHitX, g_StartHitY, g_StartHitW, g_StartHitH, StartButtonPosition, StartButtonSurface);
-    if (startHit && Engine->IsReady() && Engine->IsUpdateChecked() && !Engine->IsUpdating())
+    if (startHit && Engine->IsReady() && !Engine->IsUpdating())
     {
         if (lastStartState != STATE_DOWN) states[0] = state;
         if (state == STATE_UP) StartClick();
@@ -1364,8 +1369,6 @@ void HandleMouse(ButtonState state, int x, int y)
                 Engine->SetState(xorstr("Guncelleme indiriliyor, lutfen bekleyin..."));
             else if (!Engine->IsReady())
                 Engine->SetState(xorstr("Yukleme bitene kadar lutfen bekleyin..."));
-            else if (!Engine->IsUpdateChecked())
-                Engine->SetState(xorstr("Guncelleme kontrol ediliyor, lutfen bekleyin..."));
         }
     }
     if (HomePageButtonTexture && x >= HomePageButtonPosition.x && x <= HomePageButtonPosition.x + HomePageButtonSurface.Width && y >= HomePageButtonPosition.y && y <= HomePageButtonPosition.y + HomePageButtonSurface.Height)
