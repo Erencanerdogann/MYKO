@@ -23,8 +23,10 @@
 // v3.0: IP BANNED GIF — ayri ban ekrani (loading_banned.gif), 0x84 ban sorgusuna bagli.
 // v3.1 (S127 TODO#241): multi-client mutex kaldirildi + TCP connect 5sn timeout (1dk donma fix)
 //       + Defender/TBL-hash/cheat-scan async (acilis hizi). Auto-update tetigi icin bump.
+// v3.2 (S127 TODO#241): FIX-A version-wait timeout+retry+Sleep (Checking sonsuz donma+CPU spin),
+//       FIX-B connect 3 retry + 'onar' dialogu sustur, FIX-C crash upload timeout 16->7sn.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 1
+#define LAUNCHER_BUILD_VERSION_MINOR 2
 
 class Launcher
 {
