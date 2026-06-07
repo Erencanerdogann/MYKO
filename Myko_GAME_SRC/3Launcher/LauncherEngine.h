@@ -35,13 +35,15 @@
 //       (m_bUpdateChecked) + FIX-I crash dump upload sonrasi sil.
 // v3.6 (S127 TODO#241): FIX-H GERI ALINDI — IsUpdateChecked() START gate REGRESYON yaratti.
 //       START tekrar D1 davranisi: IsReady() && !IsUpdating(). FIX-G + FIX-I KALDI.
-// v3.7 (S127 TODO#241): FIX-G GERI ALINDI — GDIHelper::run() GIF guard OYUNU ACTIRMIYORDU
-//       (v3.5/v3.6'da crash/acilmama, patron kaniti: v3.4 calisiyor v3.5+ acmiyor). GIF crash
-//       5 kez ESKI surumlerdeydi (nadir race), v3.4 gunlerce calisti -> calisan kodu bozmusum.
-//       GDIHelper v3.4 haline TAM geri alindi. Sadece FIX-I (crash dump sil) KALDI (zararsiz).
-//       DERS: hata yoksa kodu elleme. 'Crash var' diye calisan GIF kodunu degistirdim, patlatti.
+// v3.7 (S127 TODO#241): FIX-G GERI ALINDI — GDIHelper::run() GIF guard OYUNU ACTIRMIYORDU.
+//       GDIHelper v3.4 haline geri alindi. Sadece FIX-I (crash dump sil) KALDI.
+// v3.8 (S127 TODO#241): GIF crash DOGRU COZUM — DB kanit launcher.exe 0xc0000005 GDIHelper::run x6
+//       (use-after-free RACE). KOK: Destroy() ONCE m_pImage siliyordu SONRA isPlayable=FALSE ->
+//       run thread silinmis pointer'a erisiyordu. FIX: Destroy() SIRASI duzeltildi (once durdur+
+//       Sleep(120)+sonra sil) + run()'da sleep-sonrasi TEK SATIR guard (m_pImage NULL break).
+//       run mantigi DEGISMEDI (FIX-G hatasi=run kurcalamak, bu sefer minimal). SAFE GIF akisi korundu.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 7
+#define LAUNCHER_BUILD_VERSION_MINOR 8
 
 class Launcher
 {

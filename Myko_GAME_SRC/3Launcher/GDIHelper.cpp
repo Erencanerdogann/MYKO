@@ -27,12 +27,21 @@ GDIHelper::GDIHelper() {}
 
 /** Function to destroy objects and arrays, call this function on WM_DESTROY of WinProc. **/
 void GDIHelper::Destroy() {
-    // S114: NULL setle ki ikinci SetupBanner cagrida double-free olmasin
+    // TODO#241 (S127 v3.8): GIF CRASH FIX — Destroy() SIRALAMA duzeltmesi.
+    // KOK (DB kanit: launcher.exe 0xc0000005 GDIHelper::run x6, son bugun):
+    //   Eski sira ONCE m_pImage/m_pItem'i silip (delete/free) SONRA isPlayable=FALSE yapiyordu.
+    //   run() thread while(isPlayable) hala TRUE iken (sleep'te) m_pImage silinince, sleep sonrasi
+    //   m_pImage->SelectActiveFrame() SILINMIS pointer -> ACCESS_VIOLATION (use-after-free RACE).
+    // FIX: ONCE isPlayable=FALSE (run dongusunden cikar) + kisa bekle (run son turunu bitirsin) +
+    //   SONRA sil. Boylece silme aninda run thread ARTIK m_pImage'a dokunmuyor. run()'a DOKUNULMADI
+    //   (FIX-G hatasi = run kurcalamakti, geri alindi; asil race Destroy SIRASINDAYDI).
+    isPlayable = FALSE;     // 1) ONCE run dongusunu durdur
+    m_bIsPlaying = FALSE;
+    Sleep(120);             // 2) run thread'in icindeki sleep+son tur bitsin (max frame delay ~ on-larca ms)
+    // 3) ARTIK run thread m_pImage/m_pItem'a erismiyor -> guvenli sil
     if(m_pDimensionIDs) { delete[] m_pDimensionIDs; m_pDimensionIDs = NULL; }
     if(m_pItem)         { free(m_pItem); m_pItem = NULL; }
     if(m_pImage)        { delete m_pImage; m_pImage = NULL; }
-    m_bIsPlaying = FALSE;
-    isPlayable = FALSE;
     if (staticControl) {
         RemoveWindowSubclass(staticControl, &StaticControlProc, unique_id);
         staticControl = NULL;
@@ -58,6 +67,10 @@ void GDIHelper::run()
     
     while(isPlayable) {
         std::this_thread::sleep_for(std::chrono::milliseconds(animation_duration));
+        // TODO#241 (S127 v3.8): sleep sirasinda Destroy() cagrilmis olabilir (isPlayable=FALSE +
+        // m_pImage silindi). Silinmis pointer'a DOKUNMA -> crash engelle. TEK SATIR guard (run
+        // mantigini DEGISTIRMEZ, sadece use-after-free'i keser; FIX-G'nin riskli frame-oynamasi YOK).
+        if (!isPlayable || m_pImage == NULL) break;
         m_pImage->SelectActiveFrame(&Guid, m_iCurrentFrame);
 
         m_iCurrentFrame = (++m_iCurrentFrame) % m_FrameCount;
