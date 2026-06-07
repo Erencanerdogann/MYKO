@@ -27,8 +27,11 @@
 //       FIX-B connect 3 retry + 'onar' dialogu sustur, FIX-C crash upload timeout 16->7sn.
 // v3.3 (S127 TODO#241): D1 auto-update inerken START engelle (m_bUpdating gate) + D2 uyari state
 //       ('guncelleme iniyor, bekleyin') -> oyuncu update-restart cakismasi yasamasin.
+// v3.4 (S127 TODO#241): FIX-E Defender exclusion blogu KALDIRILDI (launcher'dan) — setup.exe
+//       zaten yapiyor + launcher'da ise yaramiyordu (oyuncu vakasi: AV exe sildi) + UAC/blocking
+//       riski. TBL hash + cheat scan guvenlik kontrolleri KALDI. + faz-sonu H1 olu-kod temizligi.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 3
+#define LAUNCHER_BUILD_VERSION_MINOR 4
 
 class Launcher
 {

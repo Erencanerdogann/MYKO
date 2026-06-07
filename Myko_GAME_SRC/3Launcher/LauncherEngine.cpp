@@ -164,50 +164,24 @@ Launcher::Launcher()
     m_settingsIP = sIP;
 
     GetCurrentDirectoryA(MAX_PATH, m_strBasePath);
-    std::string m_base = std::string(m_strBasePath);
+    // NOT (FIX-E): lokal 'm_base' degiskeni kaldirildi — Defender exclusion blogu silinince
+    // kullanansiz kaldi (m_strBasePath member set edilmeye devam ediyor, baska yerde kullanilabilir).
 
-    bool alreadyExists = false;
+    // TODO#241 FIX-E (S127 v3.4): DEFENDER EXCLUSION BLOGU KALDIRILDI (launcher'dan).
+    // SEBEP: (1) setup.exe kurulumda zaten exclusion ekliyor -> launcher'da tekrar GEREKSIZ.
+    //   (2) Launcher'daki exclusion ISE YARAMIYORDU: oyuncu vakasi (S127) — AV acikti, exe SILINDI.
+    //       Defender exclusion 3.parti AV'da (Avast/Kaspersky) etkisiz + UAC reddinde sessiz fail.
+    //   (3) win_system 'powershell -Verb RunAs' -> UAC penceresi + 5sn blocking (async olsa da
+    //       UAC prompt oyuncuyu sasirtir, bazen reddedilir).
+    // YAN ETKI YOK: HKLM\SOFTWARE\CodeGuard\PATH registry'sine baska kritik bagimlilik yok —
+    //   LauncherDiagnostic.cpp:73 zaten 'bu registry ALDATICI, eski launcher yazmis olabilir'
+    //   deyip ona guvenmiyor, gercek Defender'dan PowerShell ile soruyor. Registry yazimi kaldirildi.
+    // GUVENLIK KONTROLLERI KALDI: (b) TBL hash + (c) cheat scan ASYNC calismaya devam.
 
-    if (KeyExists(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH"))
-    {
-        std::string path = GetVal(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH");
-        alreadyExists = m_base == path;
-    }
-
-    // TODO#241 F3 (S127): ACILIS HIZI — Defender PS + CheckTBLHashes + ScanCheatTools
-    // ASYNC thread'e alindi. ESKI: ctor'da SENKRON calisiyordu:
-    //   (a) Defender PS win_system+RunAs -> ilk acilista admin onayi 5-10sn UI blok
-    //   (b) CheckTBLHashes() Data\*.tbl senkron MD5 -> 0.5-2sn blok
-    //   (c) ScanCheatTools() process+window+DLL+driver tarama -> ek blok
-    // Bu uc is ctor'u (dolayisiyla Launcher penceresinin acilmasini) geciktiriyordu.
-    // YENI: detached thread — pencere ANINDA acilir, bu isler arka planda kosar.
-    //   - Defender exclusion: registry-guard (alreadyExists) zaten 2. acilisi atliyor,
-    //     ILK acilis da artik UI'yi bloklamiyor (arka planda RunAs).
-    //   - CheckTBLHashes/ScanCheatTools sonuclari START click GIF fazinda TAZE yeniden
-    //     taraniyordu (Launcher.cpp:1077 'Faz 0: Taze scan') -> ctor taramasi cache on-isi,
-    //     async olmasi START akisini bozmaz (START kendi taze taramasini yapar).
-    std::string l_base = m_base;
-    std::thread([this, l_base, alreadyExists]() {
-        // (a) Defender exclusion (ilk acilis, registry guard yoksa)
-        if (!alreadyExists)
-        {
-            std::string command = "powershell.exe -command \"";
-            std::vector<std::string> outs = { "KnightOnLine.exe", "CODE", "Launcher.exe" };
-            command.append(std::format("Add-MpPreference -ExclusionPath '{}\\{}' -Force;", l_base, ""));
-            for (auto& out : outs)
-            {
-                command.append(std::format("Add-MpPreference -ExclusionPath '{}\\{}' -Force;", l_base, out));
-            }
-            command.append("\" -Verb RunAs -WindowStyle Hidden");
-            win_system(command.c_str());
-
-            if (!KeyExists(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH"))
-            {
-                CreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH");
-            }
-            SetVal(HKEY_LOCAL_MACHINE, "SOFTWARE\\CodeGuard\\PATH", l_base);
-        }
-
+    // TODO#241 F3 (S127): ACILIS HIZI — CheckTBLHashes + ScanCheatTools ASYNC thread'de.
+    // Pencere ANINDA acilir, bu isler arka planda kosar. Sonuclar START click GIF fazinda
+    // TAZE yeniden taraniyor (Launcher.cpp 'Faz 0: Taze scan') -> ctor taramasi cache on-isi.
+    std::thread([this]() {
         // (b) TBL hash check (Data\*.tbl senkron MD5) — arka plan, sonuc cache'e yazilir
         this->CheckTBLHashes();
 
