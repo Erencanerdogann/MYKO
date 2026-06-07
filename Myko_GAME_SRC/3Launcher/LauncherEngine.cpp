@@ -553,12 +553,14 @@ bool Launcher::Start()
     {
         const int CONN_RETRY_MAX = 3;
         const DWORD CONN_BACKOFF[] = { 2000, 3000, 4000 }; // artan bekleme
+        // NOT (faz-sonu H1): Connect() fail edince APISocket m_hSocket=INVALID_SOCKET set ediyor
+        // (APISocket.cpp:149-150), ayrica Connect basinda eski socket'i Disconnect ediyor (94-95)
+        // -> retry'da socket leak YOK. Onceki 'GetSocket()!=INVALID break' olu koddu (fail sonrasi
+        // socket hep INVALID, tetiklenmezdi) -> kaldirildi. Dogrudan Connect retry yeterli.
         for (int r = 0; r < CONN_RETRY_MAX && iErr; r++)
         {
             SetState(std::format("Baglaniliyor... (deneme {}/{})", r + 1, CONN_RETRY_MAX));
             Sleep(CONN_BACKOFF[r]);
-            if (Engine->mSocket->GetSocket() != (void*)INVALID_SOCKET)
-                break; // arada baglanti event geldiyse cik
             iErr = mSocket->Connect(window, m_settingsIP.c_str(), 15100);
         }
 
@@ -590,6 +592,10 @@ bool Launcher::Start()
             // Auto-update fail oldu — sessizce gec, normal Launcher akisi devam
         }
     }).detach();
+    // BILINEN SINIR (faz-sonu H3): CheckForUpdate 5sn gecikmeli (WinSock race, S115 dersi-dokunma).
+    // T=1-5sn arasi ready=true olup m_bUpdating henuz false ise oyuncu START'a basabilir (kucuk
+    // pencere). Cogu oyuncu guncel (update yok) -> erken kilit herkesi 5sn bekletir = daha kotu,
+    // o yuzden ON-flag KONMADI. Uzun update-indirme (asil sorun) m_bUpdating ile zaten kapali.
 
     // TODO#241 FIX-A (S127 v3.2): version-wait busy-loop -> CPU spin + sonsuz donma duzeltmesi.
     // ESKI: while(true) bos dongu (Sleep yok) -> CPU %100 spin; version cevabi (0x1) gelmezse
