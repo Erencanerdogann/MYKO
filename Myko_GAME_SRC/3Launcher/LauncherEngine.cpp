@@ -1262,7 +1262,12 @@ bool Launcher::UploadCrashDump(const std::string& dumpPath,
     HINTERNET hSession = WinHttpOpen(L"MalaysiaKO-Launcher-CrashReporter/1.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
     if (!hSession) return false;
-    WinHttpSetTimeouts(hSession, 3000, 3000, 5000, 5000);
+    // TODO#241 FIX-C (S127 v3.2): crash upload timeout kisalt (5sn->2sn).
+    // ESKI: 3000/3000/5000/5000 -> worst-case ~16sn. Crash crash-filter ICINDE SYNC cagriliyor
+    //       (LauncherCrashFilter ~1361) -> launcher crash'inde oyuncu 16sn DONMUS gorur,
+    //       'acilmiyor' deyip force-close yapar. YENI: resolve/connect 1.5sn, send/recv 2sn
+    //       -> worst-case ~7sn. Sunucu ag yoksa hizli pes eder, crash raporu best-effort.
+    WinHttpSetTimeouts(hSession, 1500, 1500, 2000, 2000);
 
     HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(), 80, 0);
     if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
