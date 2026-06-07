@@ -565,11 +565,15 @@ bool Launcher::Start()
         } catch (...) {
             // Auto-update fail oldu — sessizce gec, normal Launcher akisi devam
         }
+        // TODO#241 FIX-H (S127 v3.5): update KONTROLU bitti (sonuc ne olursa olsun: update yok /
+        // fail / indirme baslayacak). m_bUpdateChecked=true -> START artik serbest (update varsa
+        // m_bUpdating zaten true kalir, D1 gate kapatir). TEK NOKTA: CheckForUpdate'in tum
+        // return dallarini tek tek isaretlemeye gerek yok, caller'da garanti edilir (kacak yok).
+        this->m_bUpdateChecked = true;
     }).detach();
-    // BILINEN SINIR (faz-sonu H3): CheckForUpdate 5sn gecikmeli (WinSock race, S115 dersi-dokunma).
-    // T=1-5sn arasi ready=true olup m_bUpdating henuz false ise oyuncu START'a basabilir (kucuk
-    // pencere). Cogu oyuncu guncel (update yok) -> erken kilit herkesi 5sn bekletir = daha kotu,
-    // o yuzden ON-flag KONMADI. Uzun update-indirme (asil sorun) m_bUpdating ile zaten kapali.
+    // FIX-H: T=1-5sn cakisma penceresi KAPANDI. ready=true olsa bile update-check (m_bUpdateChecked)
+    // bitmeden START tetiklenmez (StartClick/HandleMouse gate). Oyuncu o sirada 'Guncelleme kontrol
+    // ediliyor' gorur (~5sn + version.txt). Guncelse hemen serbest, update varsa indirme gate'ler.
 
     // TODO#241 FIX-A (S127 v3.2): version-wait busy-loop -> CPU spin + sonsuz donma duzeltmesi.
     // ESKI: while(true) bos dongu (Sleep yok) -> CPU %100 spin; version cevabi (0x1) gelmezse

@@ -1075,8 +1075,8 @@ bool _fexists(std::string& filename)
 
 void StartClick()
 {
-    // TODO#241 D1 (S127 v3.3): auto-update inerken START engelle (IsReady'e ek !IsUpdating).
-    if (lastStartState == STATE_DOWN && Engine->IsReady() && !Engine->IsUpdating())
+    // TODO#241 D1+FIX-H (S127): START gate = ready + update KONTROL bitti + update INMIYOR.
+    if (lastStartState == STATE_DOWN && Engine->IsReady() && Engine->IsUpdateChecked() && !Engine->IsUpdating())
     {
         states[0] = STATE_HOVER;
         lastStartState = STATE_HOVER;
@@ -1346,9 +1346,9 @@ bool isInArea(int x, int y)
 
 void HandleMouse(ButtonState state, int x, int y)
 {
-    // TODO#241 D1+D2 (S127 v3.3): auto-update inerken START engelle + uyari ver.
+    // TODO#241 D1+D2+FIX-H (S127): START gate = ready + update-check bitti + update inmiyor + uyari.
     bool startHit = inHit(x, y, g_StartHitX, g_StartHitY, g_StartHitW, g_StartHitH, StartButtonPosition, StartButtonSurface);
-    if (startHit && Engine->IsReady() && !Engine->IsUpdating())
+    if (startHit && Engine->IsReady() && Engine->IsUpdateChecked() && !Engine->IsUpdating())
     {
         if (lastStartState != STATE_DOWN) states[0] = state;
         if (state == STATE_UP) StartClick();
@@ -1357,13 +1357,15 @@ void HandleMouse(ButtonState state, int x, int y)
     else {
         states[0] = STATE_NORMAL;
         if (state == STATE_UP) lastStartState = STATE_NORMAL;
-        // D2: oyuncu START'a basti ama hazir degil/guncelleme iniyor -> sessiz bloklama yerine uyari
+        // D2: oyuncu START'a basti ama hazir degil/guncelleme var -> sessiz bloklama yerine uyari
         if (startHit && state == STATE_UP && Engine)
         {
             if (Engine->IsUpdating())
                 Engine->SetState(xorstr("Guncelleme indiriliyor, lutfen bekleyin..."));
             else if (!Engine->IsReady())
                 Engine->SetState(xorstr("Yukleme bitene kadar lutfen bekleyin..."));
+            else if (!Engine->IsUpdateChecked())
+                Engine->SetState(xorstr("Guncelleme kontrol ediliyor, lutfen bekleyin..."));
         }
     }
     if (HomePageButtonTexture && x >= HomePageButtonPosition.x && x <= HomePageButtonPosition.x + HomePageButtonSurface.Width && y >= HomePageButtonPosition.y && y <= HomePageButtonPosition.y + HomePageButtonSurface.Height)
