@@ -49,21 +49,48 @@ void GDIHelper::run()
     if(m_bIsPlaying == TRUE) {
         return;
     }
+    // TODO#241 FIX-G (S127 v3.5): GIF crash guard — GDIHelper::run() use-after-free + OOB.
+    // KOK (MATRIX crash analiz: launcher.exe+0xb514 0xc0000005 ACCESS_VIOLATION x5):
+    //   (1) m_pItem/m_pImage NULL veya Destroy() ile free edilmis olabilir -> NULL deref
+    //   (2) ((UINT*)m_pItem[0].value)[m_iCurrentFrame] frame index dizi siniri disi -> OOB read
+    //   (3) m_FrameCount==0 -> '% m_FrameCount' DIV-BY-ZERO
+    //   (4) sleep sirasinda baska thread Destroy() -> m_pImage delete -> sleep sonrasi
+    //       SelectActiveFrame() silinmis pointer -> ACCESS_VIOLATION (use-after-free RACE)
+    // FIX: her erisimden ONCE NULL + isPlayable + m_FrameCount guard; sleep SONRASI tekrar kontrol.
+    if (m_pImage == NULL || m_pItem == NULL || m_FrameCount == 0) {
+        return; // GIF init bozuk -> oynatma, crash etme
+    }
+
     m_iCurrentFrame = 0;
     GUID Guid = FrameDimensionTime;
     m_pImage->SelectActiveFrame(&Guid, m_iCurrentFrame);
     ++m_iCurrentFrame;
     m_bIsPlaying = TRUE;
-    animation_duration = ((UINT*)m_pItem[0].value)[m_iCurrentFrame] * 10;
-    
+    // Frame delay oku — index m_FrameCount sinirinda tut (OOB read engelle)
+    if (m_iCurrentFrame < m_FrameCount && m_pItem[0].value != NULL)
+        animation_duration = ((UINT*)m_pItem[0].value)[m_iCurrentFrame] * 10;
+    else
+        animation_duration = 100; // guvenli default (10 FPS)
+
     while(isPlayable) {
         std::this_thread::sleep_for(std::chrono::milliseconds(animation_duration));
+
+        // SLEEP SONRASI TEKRAR GUARD: sleep sirasinda Destroy() cagrilmis olabilir
+        // (isPlayable=FALSE + m_pImage/m_pItem free). Silinmis pointer'a DOKUNMA.
+        if (!isPlayable || m_pImage == NULL || m_pItem == NULL || m_FrameCount == 0)
+            break;
+
         m_pImage->SelectActiveFrame(&Guid, m_iCurrentFrame);
 
-        m_iCurrentFrame = (++m_iCurrentFrame) % m_FrameCount;
+        // Frame ilerlet — UB'siz (++ ayri ifade) + modulo guvenli (m_FrameCount>0 yukarida garanti)
+        m_iCurrentFrame = (m_iCurrentFrame + 1) % m_FrameCount;
         InvalidateRect(staticControl, NULL, FALSE);
         UpdateWindow(staticControl);
-       
+
+        // Bir sonraki frame'in delay'ini guvenli oku (OOB engelle)
+        if (m_iCurrentFrame < m_FrameCount && m_pItem[0].value != NULL)
+            animation_duration = ((UINT*)m_pItem[0].value)[m_iCurrentFrame] * 10;
+
         if (!isLooped && m_iCurrentFrame == 0)
         {
             // S114: GIF 1 dongu bitti, sadece pencereye PostQuit gonder.
