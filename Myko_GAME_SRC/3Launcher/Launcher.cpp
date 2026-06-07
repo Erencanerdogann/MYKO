@@ -424,9 +424,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // S113: DPI scaling kapali — yuksek DPI ekranlarda Windows otomatik scaling kapatilir, ham 945x580 cizilir
     SetProcessDPIAware();
 
-    CreateMutexA(0, FALSE, xorstr("Local\\$launcher$"));
-    if (GetLastError() == ERROR_ALREADY_EXISTS)
-        return false;
+    // TODO#241 F1 (S127): MULTI-CLIENT FIX — tek-instance mutex KALDIRILDI.
+    // ESKI: CreateMutexA("Local\\$launcher$") + ERROR_ALREADY_EXISTS->return false
+    //       2./3. launcher'i (oyuncu START'a basmadan acarsa) SESSIZCE oldurUyordu.
+    //       'bazen acilir bazen acilmaz' = bu yarisin tezahuruydu (START sonrasi
+    //       ExitProcess mutex'i serbest birakir, basmadan acarsa mutex dolu kalir).
+    // YENI: Mutex YOK — multibox oyuncu istedigi kadar launcher acabilir. Launcher
+    //       zaten START sonrasi ExitProcess(0) (Launcher.cpp:1056) yaptigi icin
+    //       coklu launcher kalintisi olmaz; oyun client'inin kendi single-instance'i
+    //       (varsa) ayri katman, launcher kilidi multibox'i engellemEMELI.
 
     GetCurrentDirectoryA(MAX_PATH, WP);
 
