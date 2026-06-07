@@ -21,8 +21,10 @@
 // v2.9: MD5-kor guncelleme bugu fix — versiyon esit + icerik (MD5) farkliysa yine indir.
 //       (MalaysiaKO2 debug 2.8 vs sunucu release 2.8 ayni versiyon farkli MD5 -> cekmiyordu)
 // v3.0: IP BANNED GIF — ayri ban ekrani (loading_banned.gif), 0x84 ban sorgusuna bagli.
+// v3.1 (S127 TODO#241): multi-client mutex kaldirildi + TCP connect 5sn timeout (1dk donma fix)
+//       + Defender/TBL-hash/cheat-scan async (acilis hizi). Auto-update tetigi icin bump.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 0
+#define LAUNCHER_BUILD_VERSION_MINOR 1
 
 class Launcher
 {
