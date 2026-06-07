@@ -33,12 +33,15 @@
 // v3.5 (S127 TODO#241): FIX-G GDIHelper GIF crash use-after-free+OOB guard (MATRIX kanit:
 //       launcher.exe+0xb514 0xc0000005 x5 TEK gercek crash) + FIX-H START update-check gate
 //       (m_bUpdateChecked) + FIX-I crash dump upload sonrasi sil.
-// v3.6 (S127 TODO#241): FIX-H GERI ALINDI — IsUpdateChecked() START gate REGRESYON yaratti
-//       (CheckForUpdate hang/uzun -> m_bUpdateChecked false kaliyor -> START SONSUZ kilit,
-//       'guncelleme kontrol ediliyor' takiliyor, oyuna girilemiyor, patron kaniti v3.5).
+// v3.6 (S127 TODO#241): FIX-H GERI ALINDI — IsUpdateChecked() START gate REGRESYON yaratti.
 //       START tekrar D1 davranisi: IsReady() && !IsUpdating(). FIX-G + FIX-I KALDI.
+// v3.7 (S127 TODO#241): FIX-G GERI ALINDI — GDIHelper::run() GIF guard OYUNU ACTIRMIYORDU
+//       (v3.5/v3.6'da crash/acilmama, patron kaniti: v3.4 calisiyor v3.5+ acmiyor). GIF crash
+//       5 kez ESKI surumlerdeydi (nadir race), v3.4 gunlerce calisti -> calisan kodu bozmusum.
+//       GDIHelper v3.4 haline TAM geri alindi. Sadece FIX-I (crash dump sil) KALDI (zararsiz).
+//       DERS: hata yoksa kodu elleme. 'Crash var' diye calisan GIF kodunu degistirdim, patlatti.
 #define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 6
+#define LAUNCHER_BUILD_VERSION_MINOR 7
 
 class Launcher
 {
