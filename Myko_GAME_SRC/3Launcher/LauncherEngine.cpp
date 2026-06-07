@@ -539,41 +539,35 @@ void Launcher::RequestNotices()
 
 bool Launcher::Start()
 {
+    // TODO#241 FIX-B (S127 v3.2): connect RETRY + 'onar' dialogu sustur.
+    // ESKI: connect tek deneme; fail -> 'Connection failed' + self-heal RunAllChecks thread
+    //       -> ERROR/WARN varsa 'ONAR' dialogu (WM_USER+101). connect-fail self-heal DEFAULT
+    //       ACIK (Launcher.ini PROD'da yok -> [SelfHeal] Enabled=1). Ag anlik koptu mu herkeste
+    //       'onar' cikip kafa karistiriyor + RunAllChecks ~10sn takiliyor, AMA sorun ag -> cozmuyor.
+    // YENI: (1) connect 2-3 retry (F2'nin 5sn timeout'u ile, kisa backoff). Ag anlik toparlarsa
+    //       launcher KENDI baglanir (kapat-ac gerekmez). (2) hala fail -> SADE mesaj, 'onar'
+    //       dialogu/RunAllChecks YOK (ag sorununu onar cozmuyordu, sadece kasiyordu).
     mSocket = new CAPISocket();
     int iErr = mSocket->Connect(window, m_settingsIP.c_str(), 15100);
     if (iErr)
     {
-        m_stateString = xorstr("Connection failed. Please retry connecting.");
+        const int CONN_RETRY_MAX = 3;
+        const DWORD CONN_BACKOFF[] = { 2000, 3000, 4000 }; // artan bekleme
+        for (int r = 0; r < CONN_RETRY_MAX && iErr; r++)
+        {
+            SetState(std::format("Baglaniliyor... (deneme {}/{})", r + 1, CONN_RETRY_MAX));
+            Sleep(CONN_BACKOFF[r]);
+            if (Engine->mSocket->GetSocket() != (void*)INVALID_SOCKET)
+                break; // arada baglanti event geldiyse cik
+            iErr = mSocket->Connect(window, m_settingsIP.c_str(), 15100);
+        }
 
-        // S115 v2.7+ C plani: Self-heal arka plan tarama tetikle
-        // connect() basarisiz oldu — arka planda 5 kontrol calistir, ERROR varsa
-        // PostMessage(WM_USER+101) ile basit Dialog ac (oyuncu sadece ONAR'a basar).
-        // WinSock race korkusu yok: connect() zaten denenmis ve bitmis.
-        HWND hwnd = window;
-        Launcher* self = this;
-        std::thread([hwnd, self]() {
-            Sleep(1000); // oyuncu "Connection failed" mesajini okusun
-
-            char workDir[MAX_PATH] = { 0 };
-            GetCurrentDirectoryA(MAX_PATH, workDir);
-            std::string gamePath(workDir);
-
-            self->m_diagResults = LauncherDiagnostic::RunAllChecks(gamePath, self->m_settingsIP);
-
-            // ERROR veya WARNING varsa Dialog tetikle
-            int problems = 0;
-            for (const auto& r : self->m_diagResults) {
-                if (r.status == LauncherDiagnostic::CheckStatus::ERROR_LEVEL ||
-                    r.status == LauncherDiagnostic::CheckStatus::WARNING) {
-                    problems++;
-                }
-            }
-            if (problems > 0 && hwnd && IsWindow(hwnd)) {
-                PostMessageA(hwnd, WM_USER + 101, 0, 0);
-            }
-        }).detach();
-
-        return false;
+        if (iErr)
+        {
+            // Tum denemeler basarisiz -> SADE mesaj (onar dialogu / RunAllChecks YOK)
+            SetState(xorstr("Sunucuya baglanilamadi. Lutfen tekrar deneyin."));
+            return false;
+        }
     }
 
     RequestVersion();
