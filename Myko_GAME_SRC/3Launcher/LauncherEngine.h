@@ -105,13 +105,8 @@ public:
 	// CheckForUpdate gercekten indirme yapacaginda true; fail/bitince false. UI thread okur.
 	bool IsUpdating() { return m_bUpdating; }
 	volatile bool m_bUpdating = false;
-	// TODO#241 FIX-H (S127 v3.5): auto-update KONTROLU bitene kadar START beklet.
-	// CheckForUpdate version.txt'yi cekip karar verene kadar false -> START 'guncelleme kontrol
-	// ediliyor' ile bekler. Karar sonrasi (update yok / fail / indirme baslayacak) true.
-	// Boylece patch hizli bitip ready=true olsa bile update-check bitmeden START tetiklenmez
-	// (eski T=1-5sn cakisma penceresi kapanir).
-	bool IsUpdateChecked() { return m_bUpdateChecked; }
-	volatile bool m_bUpdateChecked = false;
+	// NOT (faz-sonu H1): IsUpdateChecked()/m_bUpdateChecked (FIX-H) v3.6'da GERI ALINDI
+	// (sonsuz kilit regresyonu) -> olu kod, kaldirildi. START gate = IsReady && !IsUpdating.
 	bool m_bVersionGot;
 	bool m_bPatchesGot;
 	std::string m_currentFile;
