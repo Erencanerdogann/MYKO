@@ -154,14 +154,28 @@ void CUser::MoveProcess(Packet & pkt)
 	// Teleport hack detection: reject movement > 300 units from current position
 	// m_bCheckWarpZoneChange: zone gecisi sonrasi ilk harekette kontrol atla
 	// m_lastZoneChangeTime: zone gecisi sonrasi 5 saniye grace period
+	// IS1 (S127) FALSE-POSITIVE FIX: ESKI tek-paket 300unit -> ANINDA KICK. LAG/yuksek-ping'te
+	// paketler birikip toplu gelince normal kosma 300+ unit "sicrama" gorunur -> GERCEK oyuncu
+	// teleport-hacker sanilip atilirdi (log kaniti: xxxxxx/IPray/Buca lvl52-54 atildi).
+	// YENI: ardisik-ihlal sayaci. 1-2 sicrama LAG say -> log + pozisyon GERI-SAR (kick YOK,
+	// FLY_HACK gibi). 3 ardisik ihlal = gercek hack -> kick. Normal hareket sayaci sifirlar.
+	// Gercek teleport-hacker surekli isinlar -> 3 ardisik dolar -> yine yakalanir.
 	if (!isGM() && !m_bCheckWarpZoneChange && GetX() != 0 && GetZ() != 0
 		&& (UNIXTIME2 - m_lastZoneChangeTime) > 2000) {
 		float dx = real_x - GetX(), dz = real_z - GetZ();
 		float distSq = dx * dx + dz * dz;
 		if (distSq > 300.0f * 300.0f) {
-			LOG_HACK("Teleport: %s dist=%.0f from(%.0f,%.0f) to(%.0f,%.0f) IP=%s", GetName().c_str(), sqrtf(distSq), GetX(), GetZ(), real_x, real_z, GetRemoteIP().c_str());
-			goDisconnect("Teleport hack detected", __FUNCTION__);
-			return;
+			m_nTeleportViolation++;
+			LOG_HACK("Teleport: %s dist=%.0f from(%.0f,%.0f) to(%.0f,%.0f) viol=%d IP=%s", GetName().c_str(), sqrtf(distSq), GetX(), GetZ(), real_x, real_z, m_nTeleportViolation, GetRemoteIP().c_str());
+			if (m_nTeleportViolation >= 3) {
+				goDisconnect("Teleport hack detected", __FUNCTION__);
+				return;
+			}
+			// 1-2. ihlal: LAG olabilir -> hareketi REDDET (eski pozisyona geri-sar), kick YOK
+			real_x = GetX(); real_z = GetZ(); real_y = GetY();
+		}
+		else if (m_nTeleportViolation > 0) {
+			m_nTeleportViolation = 0; // normal hareket geldi -> sayaci sifirla (ardisik degil)
 		}
 	}
 

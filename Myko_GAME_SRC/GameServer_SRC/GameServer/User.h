@@ -446,6 +446,9 @@ public:
 	uint8	m_bResHpType;
 	bool	m_bWarp, m_bCheckWarpZoneChange, m_bIsZoneChanging;
 	ULONGLONG m_lastZoneChangeTime;
+	// IS1 (S127): Teleport hack false-positive fix. Tek-paket sicrama LAG olabilir (paket birikimi).
+	// Ardisik ihlal say: 1-2 sicrama affet (log+geri-sar), 3+ ardisik = gercek hack (kick).
+	int m_nTeleportViolation = 0;
 	uint8	m_bNeedParty;
 
 	int16	m_sPartyIndex;
