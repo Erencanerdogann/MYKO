@@ -518,9 +518,15 @@ void CUser::Chat(Packet & pkt)
 			return;
 
 		bNation = pUser->GetNation();
+		// S128 PM ROUTING FIX: "(GM)" tag SADECE mesaj icerigine (chatstr) eklenir,
+		// gonderen adina (strSender) DEGIL. Eski kod strSender'a da "(GM) " prefix ekliyordu ->
+		// oyuncunun ekraninda gonderen "(GM) GMAdi" gorunuyordu -> oyuncu reply yazinca client
+		// hedef olarak "(GM) GMAdi" gonderiyordu -> GetUserPtr (ChatHandler:695) o ismi bulamiyor
+		// -> "boyle oyuncu yok" + ikinci PM kanali gibi davranis. Gonderen adi GERCEK karakter adi
+		// olmali ki reply ayni session'a (tek thread) donsun. Tag mesajda kaliyor (oyuncu GM oldugunu gorur).
 		chatstr = "(GM) " + chatstr;
 		strMessage = &chatstr;
-		strSender = "(GM) " + GetName();
+		strSender = GetName();
 	}
 
 	// GMs should use GM chat to help them stand out amongst players.
