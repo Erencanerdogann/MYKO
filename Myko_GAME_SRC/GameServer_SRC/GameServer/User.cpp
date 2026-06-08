@@ -2798,7 +2798,26 @@ void CUser::RecvUserExp(CNpc* pNpc, uint32 iDamage, uint32 iTotalDamage)
 			continue;
 
 		if (nFinalExp > 0) {
-			TempValue = (nFinalExp * (1 + fPartyModifierXP * (nPartyMembers - 1))) * (double)pUser->GetLevel() / (double)nTotalLevel;
+			// S128 PARTY EXP SCALING (patron yeni sistem): level-orani bolme YERINE
+			// sabit party-size orani — her uye AYNI orani alir (modern MMO, party odullendirici).
+			// Eski: nFinalExp * (oyuncu_lvl/toplam_lvl) -> 8 kisi her biri ~%12.5 (cok agresif).
+			// Yeni: nFinalExp * partyExpRates[kisi-1] -> 1=%100 2=%79 ... 8=%45 (yumusak dusus).
+			// nFinalExp = monsterExp * GetPartyRewardModifier (level-farki bonusu KORUNUR).
+			static const float partyExpRates[8] =
+			{
+				1.00f, // 1 kisi
+				0.79f, // 2 kisi
+				0.68f, // 3 kisi
+				0.61f, // 4 kisi
+				0.56f, // 5 kisi
+				0.52f, // 6 kisi
+				0.48f, // 7 kisi
+				0.45f  // 8 kisi
+			};
+			int rateIdx = nPartyMembers - 1;
+			if (rateIdx < 0) rateIdx = 0;
+			if (rateIdx > 7) rateIdx = 7; // MAX_PARTY_USERS=8 guard
+			TempValue = nFinalExp * partyExpRates[rateIdx];
 			int iExp = (int)TempValue;
 			if (TempValue > iExp) iExp++;
 			if (iExp > 0 && !pUser->JackPotExp(iExp))
