@@ -60,3 +60,9 @@ ipch/
 *.pem
 *.key
 **/credentials.json
+
+# S128 temizlik — eski client/zone/rapor coplerini bir daha alma
+/src/
+/NEW_CLIENT/
+/raporlar/
+/web_snapshot_S93/
