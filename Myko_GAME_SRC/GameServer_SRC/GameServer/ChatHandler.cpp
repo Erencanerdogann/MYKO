@@ -738,8 +738,9 @@ void CUser::ChatTargetSelect(Packet & pkt)
 		{
 
 			to_gm_pmName = m_sPrivateChatUser;
-			std::string message = "Hello, please state your issue without using phrases like 'Hi', 'How are you?', etc. "
-				"A responsible GM will get back to you as soon as possible.";
+			// S128: GM PM otomatik karsilama — TR+ENG, kisa net. ASCII (Turkce karakter string bozar).
+			std::string message = "Lutfen sorununuzu dogrudan yazin, GM en kisa surede donus yapacak. "
+				"/ Please state your issue directly, a GM will reply shortly.";
 			Packet newpkt;
 			ChatPacket::Construct(&newpkt, (uint8)ChatType::PRIVATE_CHAT, &message, &gm_name, GetNation(), pUser->GetSocketID(), GetLoyaltySymbolRank(), uint8(0));
 			Send(&newpkt);
