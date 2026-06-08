@@ -64,8 +64,15 @@ void MagicInstance::Run()
 		if (!bIsRecastingSavedMagic
 			&& !pSkill.bCastTime && (MagicOpcode)bOpcode == MagicOpcode::MAGIC_EFFECTING
 			&& !TO_USER(pSkillCaster)->isGenieActive()) {
-			if (UNIXTIME2 - p.m_castusetime < 300)
+			if (UNIXTIME2 - p.m_castusetime < 300) {
+				// UX fix (S128): instant-cast spam reddi SISTEM korumasi (oyuncu duzeltemez,
+				// parmagi hizli). Client'a 'skill failed' MAGIC_FAIL paketi GONDERME (sessiz drop).
+				// 300ms koruma AYNEN durur (return -> skill uygulanmaz, m_castusetime guncellenmez).
+				// SKILL_FAIL debug LOG + bSkillSuccessful=false korunur (SendSkillFailed icinde,
+				// bSendFail kontrolunden ONCE calisir). Sadece R6 instant dali — R5/digerleri degismez.
+				bSendFail = false;
 				return SendSkillFailed(-1, "R6_instant_spam_300ms");
+			}
 
 			p.m_castusetime = UNIXTIME2;
 		}
