@@ -61,9 +61,17 @@ void MagicInstance::Run()
 		// Instant-cast skill spam protection: minimum 300ms between casts
 		// Genie aktifken bypass — genie kendi hizinda calisir
 		// B1 fix: RecastSavedMagic sirasinda spam korumasini bypass et
+		// S128 fix: minor heal (107705/207705/108705/208705) MUAF — bu 300ms ORTAK
+		//   m_castusetime (pUserMagicUsed.status, skill-bazli DEGIL) kullaniyor. Oyuncu
+		//   baska instant skill (saldiri vb) atinca m_castusetime guncellenir, hemen ardindan
+		//   minor heal basinca minor ORTAK pencereye takiliyordu -> "minor yavas/atamiyorum"
+		//   (assassin saldiri+heal kombosu). Minor'un ZATEN kendi 50ms cooldown'u var
+		//   (asagida is_minor, :512+ ve kontrol :1632+) -> ortak 300ms gereksiz. Muaf tut.
+		bool is_minor_skill = nSkillID == 107705 || nSkillID == 207705 || nSkillID == 108705 || nSkillID == 208705;
 		if (!bIsRecastingSavedMagic
 			&& !pSkill.bCastTime && (MagicOpcode)bOpcode == MagicOpcode::MAGIC_EFFECTING
-			&& !TO_USER(pSkillCaster)->isGenieActive()) {
+			&& !TO_USER(pSkillCaster)->isGenieActive()
+			&& !is_minor_skill) {
 			if (UNIXTIME2 - p.m_castusetime < 300) {
 				// UX fix (S128): instant-cast spam reddi SISTEM korumasi (oyuncu duzeltemez,
 				// parmagi hizli). Client'a 'skill failed' MAGIC_FAIL paketi GONDERME (sessiz drop).
