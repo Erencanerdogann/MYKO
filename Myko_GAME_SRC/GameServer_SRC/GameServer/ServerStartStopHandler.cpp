@@ -382,6 +382,22 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 				if (pUser == nullptr)
 					continue;
 
+				// S128 fix: ASKIDA ACCOUNT-STALE TEMIZLIGI — DC olup idle'a dusen ama
+				// m_accountNameMap'ten silinmemis session, ayni hesabin yeni girisini
+				// blokluyor (GetUserPtr eski idle CUser'i buluyor -> goDisconnect idle'da
+				// no-op -> char SONSUZA kadar askida, IPray/ccc dongusu).
+				// CHOZUM: idle session in-game DEGIL + account dolu + merchant grace YOK ise
+				// account-map stale entry'sini POINTER-GUARD'li temizle (RemoveSessionNames
+				// icindeki guard ayni hesabin yeni session'ini korur). Sadece map-erase
+				// (lock'lu), socket/LogOut'a DOKUNMAZ -> S120 IOCP race riski yok.
+				if (!pUser->m_strAccountID.empty()
+					&& !pUser->isInGame()
+					&& (!pUser->IsOffCharacter() || pUser->GetOffMerchantTime() == 0))
+				{
+					g_pMain->RemoveSessionNames(pUser);
+					continue;
+				}
+
 				// Sadece DC grace period'daki karakterleri isle
 				if (!pUser->IsOffCharacter() || pUser->GetOffMerchantTime() == 0)
 					continue;
