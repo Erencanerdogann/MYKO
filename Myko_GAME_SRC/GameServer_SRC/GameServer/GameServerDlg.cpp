@@ -1120,15 +1120,8 @@ void CGameServerDlg::RemoveSessionNames(CUser *pSession)
 	STRTOUPPER(upperName);
 
 	{ // remove account name from map (limit scope)
-		// S128 fix: POINTER-GUARD — sadece map'teki kayit BU session ise sil.
-		// Sebep: ayni hesap yeniden girip AddAccountName ile map'i YENI session'a
-		// yonlendirmisse, gec calisan stale temizlik (idle/DC) YENI/mesru session'i
-		// SILMEMELI (yoksa GetUserPtr null -> mesru oyuncu kopar). Eski kod kor erase
-		// yapiyordu (isim eslesince sil), pointer kontrol etmiyordu.
 		m_accountNameLock.lock();
-		auto itr = m_accountNameMap.find(upperName);
-		if (itr != m_accountNameMap.end() && itr->second == pSession)
-			m_accountNameMap.erase(itr);
+		m_accountNameMap.erase(upperName);
 		m_accountNameLock.unlock();
 	}
 
