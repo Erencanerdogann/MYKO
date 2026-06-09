@@ -3780,11 +3780,69 @@ bool MagicInstance::ExecuteType4()
 		if (pTarget == nullptr)
 			continue;
 
-		// DEBUFF BILGI SISTEMI 27.09.2020 — KALDIRILDI (2026-06-09, patron istegi)
+		// DEBUFF BILGI SISTEMI 27.09.2020 — KAPATILDI (2026-06-09, patron istegi)
 		// Malice/Parasite/Superior Parasite atilinca party chat'e "X Adli Karektere ... Atildi"
-		// otomatik bildirimi gidiyordu -> istenmiyor. Skill calismaya devam eder, sadece
-		// chat bildirimi YOK. pTarget asagidaki buff/debuff uygulama mantiginda kullaniliyor,
-		// ona DOKUNULMADI; sadece chat gonderen blok + pUser tanimi silindi.
+		// otomatik bildirimi gidiyordu -> istenmiyor. Skill calismaya devam eder, bildirim YOK.
+		// Kod SILINMEDI, yorum satirinda — geri acmak icin asagidaki blogu yorumdan cikar.
+		/*
+		CUser * pUser = TO_USER(pSkillCaster);
+
+		if (pUser == nullptr)
+			continue;
+
+		if (pTarget->isPlayer())
+		{
+			if (nSkillID == 112703 || nSkillID == 111703)
+			{
+				std::string DebuffNotice = string_format("%s Adli Karektere Malice Atildi", pTarget->GetName().c_str());
+				std::string Nick = pUser->GetName();
+				Packet DBInfoPacket;
+				ChatPacket::Construct(&DBInfoPacket, (uint8)ChatType::PARTY_CHAT, &DebuffNotice, &Nick);
+				g_pMain->Send_PartyMember(pUser->GetPartyID(), &DBInfoPacket);
+			}
+			if (nSkillID == 212703 || nSkillID == 211703)
+			{
+				std::string DebuffNotice = string_format("%s Adli Karektere Malice Atildi", pTarget->GetName().c_str());
+				std::string Nick = pUser->GetName();
+				Packet DBInfoPacket;
+				ChatPacket::Construct(&DBInfoPacket, (uint8)ChatType::PARTY_CHAT, &DebuffNotice, &Nick);
+				g_pMain->Send_PartyMember(pUser->GetPartyID(), &DBInfoPacket);
+			}
+			if (nSkillID == 112745 || nSkillID == 111745)
+			{
+				std::string DebuffNotice = string_format("%s Adli Karektere Parasite Atildi", pTarget->GetName().c_str());
+				std::string Nick = pUser->GetName();
+				Packet DBInfoPacket;
+				ChatPacket::Construct(&DBInfoPacket, (uint8)ChatType::PARTY_CHAT, &DebuffNotice, &Nick);
+				g_pMain->Send_PartyMember(pUser->GetPartyID(), &DBInfoPacket);
+			}
+			if (nSkillID == 212745 || nSkillID == 211745)
+			{
+				std::string DebuffNotice = string_format("%s Adli Karektere Parasite Atildi", pTarget->GetName().c_str());
+				std::string Nick = pUser->GetName();
+				Packet DBInfoPacket;
+				ChatPacket::Construct(&DBInfoPacket, (uint8)ChatType::PARTY_CHAT, &DebuffNotice, &Nick);
+				g_pMain->Send_PartyMember(pUser->GetPartyID(), &DBInfoPacket);
+			}
+			if (nSkillID == 112771)
+			{
+				std::string DebuffNotice = string_format("%s Adli Karektere Superior Parasite Atildi", pTarget->GetName().c_str());
+				std::string Nick = pUser->GetName();
+				Packet DBInfoPacket;
+				ChatPacket::Construct(&DBInfoPacket, (uint8)ChatType::PARTY_CHAT, &DebuffNotice, &Nick);
+				g_pMain->Send_PartyMember(pUser->GetPartyID(), &DBInfoPacket);
+			}
+			if (nSkillID == 212771)
+			{
+				std::string DebuffNotice = string_format("%s Adli Karektere Superior Parasite Atildi", pTarget->GetName().c_str());
+				std::string Nick = pUser->GetName();
+				Packet DBInfoPacket;
+				ChatPacket::Construct(&DBInfoPacket, (uint8)ChatType::PARTY_CHAT, &DebuffNotice, &Nick);
+				g_pMain->Send_PartyMember(pUser->GetPartyID(), &DBInfoPacket);
+			}
+		}
+		*/
+		// DEBUFF BILGI SISTEMI 27.09.2020 end
 
 		//if (pSkill && pSkill.bCastTime == 0
 		//	&& pSkill.sRange > 0
