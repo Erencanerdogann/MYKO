@@ -686,6 +686,7 @@ struct _FORGETTEN_TEMPLE
 	bool  isLastSummon;
 	bool  isFinished;
 	bool  isWaiting;
+	bool  bRewardSent;
 
 	uint16 Stage;
 	uint8  Type;
@@ -715,6 +716,7 @@ struct _FORGETTEN_TEMPLE
 		isLastSummon = false;
 		isFinished = false;
 		isWaiting = false;
+		bRewardSent = false;
 		Stage = 1;
 		Type = 0;
 		MinLevel = 0;

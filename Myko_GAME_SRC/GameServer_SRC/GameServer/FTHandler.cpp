@@ -53,6 +53,11 @@ void CGameServerDlg::ForgettenTempleSendItem()
 {
 #define MIN_DAMAGE 50000
 
+	// G5 fix: tekrar cagrilirsa (YOL A sonra FtFinish'te YOL B guard) cift odul verme.
+	if (pForgettenTemple.bRewardSent)
+		return;
+	pForgettenTemple.bRewardSent = true;
+
 	std::vector<_EVENT_REWARD> mreward;
 	m_EventRewardArray.m_lock.lock();
 	foreach_stlmap_nolock(itr, m_EventRewardArray)
@@ -127,6 +132,10 @@ void CGameServerDlg::ForgettenTempleSendItem()
 
 void CGameServerDlg::FtFinish() {
 	pForgettenTemple.isActive = false;
+	// G5 fix: sure dolup zaman-asimi (YOL B) ile bitince odul dagitilmiyordu.
+	// Warp ONCESI, odul daha verilmediyse dagit (cift odul guard: bRewardSent).
+	if (!pForgettenTemple.bRewardSent)
+		ForgettenTempleSendItem();
 	KickOutZoneUsers(ZONE_FORGOTTEN_TEMPLE, ZONE_MORADON);
 	ForgettenTempleReset();
 	Announcement(IDS_MONSTER_CHALLENGE_CLOSE);
