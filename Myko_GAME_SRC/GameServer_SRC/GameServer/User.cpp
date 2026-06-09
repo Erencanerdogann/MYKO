@@ -5093,18 +5093,23 @@ uint8 CUser::GetSymbol() {
 void CUser::GmListProcess(bool logout) {
 
 	Guard lock(g_pMain->m_GmListlock);
+	// FIX (2026-06-09): sag-ust GM liste panelinde bos/garbage isim ("XXXXXX") goruluyordu.
+	// Kok: GetName() bos/gecersiz iken listeye push ediliyordu (isim set edilmeden cagri).
+	// Bos isim listeye EKLENMESIN. Ayrica gonderim oncesi bos girdiler atlanir (eski kirli kayit guvenligi).
 	if (isGM() || isGMUser()) {
+		std::string gmName = GetName();
+		bool validName = !gmName.empty() && gmName.size() <= MAX_ID_SIZE;
 		if (logout) {
-			if (std::find(g_pMain->m_GmList.begin(), g_pMain->m_GmList.end(), GetName()) == g_pMain->m_GmList.end())
+			if (std::find(g_pMain->m_GmList.begin(), g_pMain->m_GmList.end(), gmName) == g_pMain->m_GmList.end())
 				return;
 
-			g_pMain->m_GmList.erase(std::remove(g_pMain->m_GmList.begin(), g_pMain->m_GmList.end(), GetName()), g_pMain->m_GmList.end());
+			g_pMain->m_GmList.erase(std::remove(g_pMain->m_GmList.begin(), g_pMain->m_GmList.end(), gmName), g_pMain->m_GmList.end());
 		}
-		else {
-			if (std::find(g_pMain->m_GmList.begin(), g_pMain->m_GmList.end(), GetName()) != g_pMain->m_GmList.end())
+		else if (validName) {
+			if (std::find(g_pMain->m_GmList.begin(), g_pMain->m_GmList.end(), gmName) != g_pMain->m_GmList.end())
 				return;
 
-			g_pMain->m_GmList.push_back(GetName());
+			g_pMain->m_GmList.push_back(gmName);
 		}
 	}
 
@@ -5113,7 +5118,7 @@ void CUser::GmListProcess(bool logout) {
 	newpkt.DByte();
 	newpkt << count;
 	for (auto& itr : g_pMain->m_GmList)
-		if(++count) newpkt << itr;
+		if (!itr.empty() && ++count) newpkt << itr;  // bos girdileri gonderme (XXXXXX onleme)
 	newpkt.put(1, count);
 	Send(&newpkt);
 }
