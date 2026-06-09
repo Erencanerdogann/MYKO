@@ -141,6 +141,7 @@ void CGameServerDlg::InitServerCommands()
 		// S120 GM_MOD — B2 ceza server-form (block/unblock zaten yukarida)
 		{ "mute",				&CGameServerDlg::HandleMuteServerCommand,			"Oyuncuyu sustur. /mute <Char> [Gun]" },
 		{ "unmute",				&CGameServerDlg::HandleUnMuteServerCommand,			"Susturmayi kaldir. /unmute <Char>" },
+		{ "namechange",			&CGameServerDlg::HandleNameChangeServerCommand,		"Karakter adi degistir (online). /namechange <EskiNick> <YeniNick>" },
 
 	};
 
