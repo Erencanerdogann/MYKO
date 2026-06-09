@@ -12,6 +12,12 @@ static char THIS_FILE[] = __FILE__;
 static LPDIRECTINPUTDEVICE lpDID = NULL;
 WNDPROC	s_lpfnMouseWheelProc = NULL;
 
+// UIManager.cpp:139 — D3D cparams.hFocusWindow (title-bagimsiz GUVENILIR pencere ref).
+// m_hWnd (FindWindow-title, UIManager.cpp:48) multi-client'ta race'li: 2./3. client
+// acilirken title henuz yazilmamis (MultiPatch async) -> FindWindow NULL -> input olu ->
+// siyah ekran/Alt-Tab donma/kasma. gameWindow race'siz, fallback m_hWnd.
+extern HWND gameWindow;
+
 CLocalInput::CLocalInput(void)
 {
 	m_lpDI = NULL;
@@ -234,7 +240,10 @@ void CLocalInput::Tick(void)
 	// karakteri hareket ettiriyordu (ayni PC 2 client / CMD onde iken arka oyun hareket).
 	// GetActiveWindow THREAD-yerel (her client kendini aktif sanir). GetForegroundWindow =
 	// sistemde GERCEKTEN onde olan TEK pencere. Oyun onde degilse input okumayi KESER.
-	if (::GetForegroundWindow() != m_hWnd)
+	// FIX (multi-client race): m_hWnd (FindWindow-title) yerine gameWindow (D3D, race'siz).
+	// gameWindow NULL ise (erken asama) gate ATLA -> input kilitlenmesin (login/acilis).
+	HWND hWndRef = (gameWindow != NULL) ? gameWindow : m_hWnd;
+	if (hWndRef != NULL && ::GetForegroundWindow() != hWndRef)
 		return;
 
 	///////////////////////
@@ -310,12 +319,13 @@ void CLocalInput::Tick(void)
 	m_ptOldMouse = m_ptCurMouse;
 
 	RECT rcClient;
-	::GetClientRect(m_hWnd, &rcClient);
+	// FIX (multi-client race): m_hWnd yerine hWndRef (gameWindow fallback m_hWnd).
+	::GetClientRect(hWndRef, &rcClient);
 	::GetCursorPos(&m_ptCurMouse);
-	::ScreenToClient(m_hWnd, &m_ptCurMouse);
+	::ScreenToClient(hWndRef, &m_ptCurMouse);
 
 	// cift guvence: mouse client alani disinda VEYA pencere onde degilse isleme
-	if (PtInRect(&rcClient, m_ptCurMouse) == FALSE || ::GetForegroundWindow() != m_hWnd)
+	if (PtInRect(&rcClient, m_ptCurMouse) == FALSE || (hWndRef != NULL && ::GetForegroundWindow() != hWndRef))
 	{
 	}
 	else
