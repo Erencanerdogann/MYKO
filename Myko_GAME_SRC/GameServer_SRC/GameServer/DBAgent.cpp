@@ -1059,7 +1059,13 @@ bool CDBAgent::UpdateSavedMagic(CUser *pUser)
 	foreach(itr, pUser->m_savedMagicMap) {
 		if (!itr->second) continue;
 		int32 sctime = 0;
-		if (itr->first > 0 && (itr->second - UNIXTIME2 > 1000)) sctime = (uint32)((itr->second - UNIXTIME2) / 1000);
+		// skill-During fix: underflow (itr->second<=UNIXTIME2) + smallint tasma korumasi.
+		// Kolon smallint (MATRIX teyit) -> >32767 SQL Server wrap/reddeder, GS kesmeli.
+		if (itr->first > 0 && itr->second > UNIXTIME2) {
+			uint64 remain = (itr->second - UNIXTIME2) / 1000;
+			if (remain > 32767) remain = 32767;
+			if (remain > 1) sctime = (int32)remain;
+		}
 		if (itr->first > 0 && sctime > 0) { nSkillID[i] = itr->first; tExpiryTime[i] = sctime; }
 		if (++i >= 10) break;
 	}

@@ -4598,7 +4598,17 @@ int16 CUser::GetSavedMagicDuration(uint32 nSkillID)
 	if (itr == m_savedMagicMap.end())
 		return 0;
 
-	return int16((itr->second - UNIXTIME2) / 1000);
+	// skill-During fix: int16 tasma + uint64 underflow korumasi.
+	// itr->second (uint64 ms) <= UNIXTIME2 ise sure gecmis -> underflow yerine 0.
+	// Kalan saniye 65535'e cikabilir ama int16 max 32767 + DB kolonu smallint ->
+	// >32767 SQL Server'da wrap/hata verir (MATRIX Dev48), GS-tarafi clamp sart.
+	if (itr->second <= UNIXTIME2)
+		return 0;
+
+	uint64 remain = (itr->second - UNIXTIME2) / 1000;   // saniye
+	if (remain > 32767)
+		remain = 32767;
+	return (int16)remain;
 }
 
 /**
