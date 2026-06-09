@@ -342,8 +342,17 @@ uint32 CGameServerDlg::Timer_t_3(void* lpParam) {
 #pragma region CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 {
+	// CURRENTUSER heartbeat (askida char B yontem): her 30sn online char'larin last_heartbeat'ini
+	// damgala. isInOnline (DB) son 2dk heartbeat'i olani online sayar -> crash/DC'de heartbeat durur
+	// -> 2dk sonra DB otomatik hayalet sayip login acar (manuel/restart bagimsiz, kalici cozum).
+	static ULONGLONG s_nextHeartbeat = 0;
+
 	while (g_bRunning)
 	{
+		bool bHeartbeatTick = (UNIXTIME2 >= s_nextHeartbeat);
+		if (bHeartbeatTick)
+			s_nextHeartbeat = UNIXTIME2 + 30; // 30sn periyot (TTL 2dk'ya 4 tick tolerans)
+
 		g_pMain->m_socketMgr.GetLock().lock();
 		SessionMap sessMap = g_pMain->m_socketMgr.GetActiveSessionMap();
 		g_pMain->m_socketMgr.GetLock().unlock();
@@ -366,6 +375,10 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 					g_pMain->DelayedTime = UNIXTIME2 + (1 * SECOND);
 					pUser->CheckDelayedTime();
 				}
+
+				// 30sn heartbeat damgasi (online char gercekten yasiyor)
+				if (bHeartbeatTick && !pUser->m_strAccountID.empty())
+					g_DBAgent.UpdateCurrentUserHeartbeat(pUser->m_strAccountID);
 			}
 		}
 

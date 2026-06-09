@@ -1120,6 +1120,28 @@ bool CDBAgent::RemoveCurrentUser(string & strAccountID)
 	return true;
 }
 #pragma endregion
+
+#pragma region CDBAgent::UpdateCurrentUserHeartbeat(const string & strAccountID)
+// Askida char/CURRENTUSER hayalet kalici cozum (B yontem): online char'lar 30sn'de bir
+// last_heartbeat damgalar. isInOnline (DB scalar fn) son 2dk heartbeat'i olani online sayar;
+// crash/DC'de heartbeat durur -> 2dk sonra DB otomatik hayalet sayip login acar. Agent Job temizler.
+bool CDBAgent::UpdateCurrentUserHeartbeat(const string & strAccountID)
+{
+	unique_ptr<OdbcCommand> dbCommand(m_AccountDB->CreateCommand());
+	if (dbCommand.get() == nullptr)
+		return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, strAccountID.c_str(), strAccountID.length());
+	if (!dbCommand->Execute(_T("UPDATE CURRENTUSER SET last_heartbeat = GETDATE() WHERE strAccountID = ?")))
+	{
+		ReportSQLError(m_AccountDB->GetError());
+		return false;
+	}
+
+	return true;
+}
+#pragma endregion
+
 #pragma region CDBAgent::InsertCurrentUser(string & strAccountID)
 void CDBAgent::InsertCheatLog(CUser * pUser)
 {

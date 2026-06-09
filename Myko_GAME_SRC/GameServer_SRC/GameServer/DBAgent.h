@@ -319,6 +319,7 @@ public:
 	bool UpdateSheriffTable(uint8 Type, std::string ReportedUser, uint8 Yes, uint8 No, std::string Sheriff);
 	bool SetLogInInfo(std::string & strAccountID, std::string & strCharID, std::string & strServerIP, short sServerNo, std::string & strClientIP, uint8 bInit);
 	bool RemoveCurrentUser(std::string & strAccountID);
+	bool UpdateCurrentUserHeartbeat(const std::string & strAccountID);
 	void DestroyPusSessions(CUser * pUser);
 	void InsertCheatLog(CUser * pUser);
 	bool CreatePusSession(uint16 sFreeCount, CUser * pUser);
