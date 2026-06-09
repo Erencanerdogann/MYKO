@@ -134,8 +134,10 @@ void CUser::ExpChange(std::string descp, int64 iExp, bool bIsBonusReward)
 			int64 carry = m_iExp - m_iMaxExp;
 			m_iExp = 0;
 			LevelChange(++m_bLevel);
+			// carry zaten bonuslu (item/premium/event) EXP'nin artigi -> bIsBonusReward=true
+			// ver ki recursive cagride bonus carpanlari TEKRAR uygulanmasin (EXP sismesi).
 			if (carry > 0)
-				ExpChange("levelup carry", carry);
+				ExpChange("levelup carry", carry, true);
 			return;
 		}
 
