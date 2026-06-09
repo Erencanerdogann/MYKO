@@ -97,8 +97,10 @@ void CUser::ExpChange(std::string descp, int64 iExp, bool bIsBonusReward)
 		if (bExpSealStatus)
 			ExpSealChangeExp(iExp);
 		else {
+			// 246 fix: level-up oncesi erken clamp YOK. Fazla EXP m_iExp'te kalsin ki
+			// carry-over (m_iExp - m_iMaxExp) hesaplanip sonraki seviyeye tasinabilsin.
+			// Max-level clamp asagida (max level kolu) ayrica yapiliyor.
 			m_iExp += iExp;
-			if (m_iMaxExp > 0 && m_iExp > m_iMaxExp) m_iExp = m_iMaxExp;
 		}
 	}
 
@@ -125,9 +127,15 @@ void CUser::ExpChange(std::string descp, int64 iExp, bool bIsBonusReward)
 	else if (m_iExp >= m_iMaxExp)
 	{
 		if (GetLevel() < g_pMain->m_byMaxLevel) {
-			// Reset our XP, level us up.
-			m_iExp -= m_iMaxExp;
+			// 246 fix: kalan EXP'yi (carry-over) sifirlamadan sonraki seviyeye tasi.
+			// Eski kod m_iExp -= m_iMaxExp yapip return ediyordu; cok EXP'de (2+ level)
+			// kalan kayboluyordu. LevelChange m_iMaxExp'i yeni seviyeye gore gunceller,
+			// recursive ExpChange kalani dogru max ile yeniden degerlendirir.
+			int64 carry = m_iExp - m_iMaxExp;
+			m_iExp = 0;
 			LevelChange(++m_bLevel);
+			if (carry > 0)
+				ExpChange("levelup carry", carry);
 			return;
 		}
 
