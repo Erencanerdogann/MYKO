@@ -1610,6 +1610,7 @@ public:
 	bool CheckRightClickExchange(uint32 nExchangeID);
 	COMMAND_HANDLER(HandleHelpCommand);
 	COMMAND_HANDLER(HandleResetRLoyaltyCommand);
+	COMMAND_HANDLER(HandleNameChangeCommand);
 	COMMAND_HANDLER(HandleGiveItemCommand);
 	COMMAND_HANDLER(HandleOnlineZoneGiveItemCommand);
 	COMMAND_HANDLER(HandleOnlineGiveItemCommand);

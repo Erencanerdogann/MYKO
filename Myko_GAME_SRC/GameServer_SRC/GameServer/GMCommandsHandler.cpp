@@ -3591,3 +3591,82 @@ COMMAND_HANDLER(CGameServerDlg::HandleNameChangeServerCommand)
 	return true;
 }
 #pragma endregion
+
+#pragma region CUser::HandleNameChangeCommand (+namechange <EskiNick> <YeniNick>) IN-GAME GM
+// G1: In-game GM komutu. +namechange yazinca CUser::s_commandTable'dan tetiklenir (server-form
+// degil). Online hedef karakterin adini SP CHANGE_NEW_ID ile degistirir + RAM canli guncelle.
+COMMAND_HANDLER(CUser::HandleNameChangeCommand)
+{
+	if (!isGM())
+		return false;
+
+	if (vargs.size() < 2)
+	{
+		g_pMain->SendHelpDescription(this, "Kullanim: +namechange <EskiNick> <YeniNick> (hedef ONLINE olmali)");
+		return true;
+	}
+
+	std::string strOld = vargs.front(); vargs.pop_front();
+	std::string strNew = vargs.front(); vargs.pop_front();
+
+	if (strOld.empty() || strOld.size() > MAX_ID_SIZE || !string_is_valid(strOld)) { g_pMain->SendHelpDescription(this, "namechange HATA: gecersiz eski isim"); return true; }
+	if (strNew.empty() || strNew.size() > MAX_ID_SIZE || !string_is_valid(strNew)) { g_pMain->SendHelpDescription(this, "namechange HATA: gecersiz yeni isim"); return true; }
+	if (strOld == strNew) { g_pMain->SendHelpDescription(this, "namechange HATA: eski ve yeni isim ayni"); return true; }
+
+	CUser* pUser = g_pMain->GetUserPtr(strOld, NameType::TYPE_CHARACTER);
+	if (pUser == nullptr) { g_pMain->SendHelpDescription(this, "namechange HATA: hedef online degil (sadece online karakter)"); return true; }
+
+	if (pUser->isKing()) { g_pMain->SendHelpDescription(this, "namechange HATA: kral ismi degistirilemez"); return true; }
+
+	std::string strAccount = pUser->GetAccountName();
+	std::string oldname = pUser->GetName();
+
+	uint8 bResult = g_DBAgent.UpdateCharacterName(strAccount, oldname, strNew);
+	if (bResult != 3)
+	{
+		std::string msg = string_format("namechange FAIL: %s -> %s (SP=%d, 1=gecersiz/var 2=kullanimda)", oldname.c_str(), strNew.c_str(), bResult);
+		g_pMain->SendHelpDescription(this, msg.c_str());
+		return true;
+	}
+
+	// RAM canli guncelle (NCS scroll recetesi: NameChangeHandler.cpp:258-280)
+	std::string userid = oldname, useridcopy = strNew;
+	STRTOUPPER(userid); STRTOUPPER(useridcopy);
+
+	if (pUser->isInClan()) {
+		CKnights* pKnights = g_pMain->GetClanPtr(pUser->GetClanID());
+		if (pKnights != nullptr) {
+			_KNIGHTS_USER* pKnightUser = pKnights->m_arKnightsUser.GetData(userid);
+			if (pKnightUser != nullptr) {
+				_KNIGHTS_USER* pCopy = new _KNIGHTS_USER();
+				*pCopy = *pKnightUser;
+				pCopy->strUserName = strNew;
+				pUser->m_pKnightsUser = pCopy;
+				if (pKnights->m_arKnightsUser.PutData(useridcopy, pCopy))
+					pKnights->m_arKnightsUser.DeleteData(userid);
+				else
+					delete pCopy;
+			}
+		}
+	}
+
+	g_pMain->ReplaceCharacterName(pUser, strNew);
+
+	if (pUser->isInClan() && pUser->m_pKnightsUser != nullptr)
+		pUser->m_pKnightsUser->strUserName = strNew;
+
+	pUser->UserInOut(INOUT_OUT);
+	pUser->UserInOut(INOUT_IN);
+
+	Packet bottom(WIZ_USER_INFORMATIN, uint8(BottomUserListOpcode::RegionDelete));
+	bottom.SByte(); bottom << oldname;
+	pUser->SendToRegion(&bottom, nullptr, pUser->GetEventRoom());
+
+	pUser->UserNameChangeInsertLog(oldname, strNew);
+
+	std::string okmsg = string_format("namechange OK: %s -> %s", oldname.c_str(), strNew.c_str());
+	g_pMain->SendHelpDescription(this, okmsg.c_str());
+	printf("[GM_MOD] namechange OK (in-game GM): %s -> %s (account=%s)\n", oldname.c_str(), strNew.c_str(), strAccount.c_str());
+	return true;
+}
+#pragma endregion

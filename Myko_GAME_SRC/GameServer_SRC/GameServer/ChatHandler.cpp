@@ -328,6 +328,7 @@ void CUser::InitChatCommands()
 		{ "censoradd",			&CUser::HandleCensorAddCommand,					"Kelime ekler. Ornek: +censoradd kelime" },
 		{ "censordel",			&CUser::HandleCensorDelCommand,					"Kelime siler. Ornek: +censordel kelime" },
 		{ "censorreload",		&CUser::HandleCensorReloadCommand,				"Kufur listesini dosyadan yeniden yukler." },
+		{ "namechange",			&CUser::HandleNameChangeCommand,				"Karakter adi degistir (online). +namechange <EskiNick> <YeniNick>" },
 	};
 
 	init_command_table(CUser, commandTable, s_commandTable);
