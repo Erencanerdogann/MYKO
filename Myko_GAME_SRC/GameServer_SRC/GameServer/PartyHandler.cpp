@@ -737,8 +737,25 @@ void CUser::PartyNemberRemove(uint16 UserID, _PARTY_GROUP* pmyparty)
 	}
 	else {
 		if (pParty->uid[0] == targetSocketID) {
-			PartyisDelete();
-			return;
+			// G3 fix: LIDER cikiyor. Eskiden direkt PartyisDelete -> TUM party patliyordu.
+			// Artik: party'de baska uye varsa liderligi ILK DOLU slota devret + normal uye
+			// gibi cikmaya devam et (party dagilmaz). Tek basinaysa disband (dogru).
+			// NOT: uid[1] bos olabilir (slot -1), ilk dolu slotu bul (sabit uid[1] DEGIL).
+			int16 nextLeaderUid = -1;
+			for (int i = 1; i < MAX_PARTY_USERS; i++) {
+				if (pParty->uid[i] >= 0) { nextLeaderUid = pParty->uid[i]; break; }
+			}
+
+			if (nextLeaderUid < 0) {
+				// Lider yalniz -> anlamsiz party, dagit (orijinal davranis)
+				PartyisDelete();
+				return;
+			}
+
+			// Liderligi ilk dolu uyeye devret; sonra asagidaki normal cikis akisi
+			// eski lideri (artik uid[0] degil) duzgun cikarir. PartyLeaderPromote guard'li.
+			PartyLeaderPromote((uint16)nextLeaderUid, pParty);
+			// devir sonrasi uid[0] yeni lider; targetSocketID artik uid[0] degil -> normal akis
 		}
 	}
 

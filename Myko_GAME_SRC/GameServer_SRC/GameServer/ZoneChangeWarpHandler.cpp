@@ -210,16 +210,9 @@ bool CUser::ZoneChange(uint16 sNewZone, float x, float z, int16 eventroom /*= -1
 	m_bCheckWarpZoneChange = true; // zone gecisi sonrasi ilk harekette teleport hack kontrolunu atla
 	m_lastZoneChangeTime = UNIXTIME2; // teleport hack grace period icin
 
-	// G2 fix: Party LIDERI zone gecince eskiden PartyNemberRemove->PartyisDelete ile
-	// TUM party dagiliyordu. Artik once liderligi 2. siradakine devret, sonra normal uye
-	// gibi cik -> party dagilmaz, devam eder. (User.cpp:462 + DatabaseThread:1387 ile ayni recete.)
-	// Tek-uyelik party: PartyLeaderPromote uid[1] bos -> guard'la return -> sonra tek-uye disband (dogru).
-	if (isInParty()) {
-		auto* pParty = g_pMain->GetPartyPtr(GetPartyID());
-		if (pParty != nullptr && isPartyLeader())
-			PartyLeaderPromote(pParty->uid[1], pParty);
-	}
-
+	// G2/G3: Party LIDERI zone gecince/cikinca party dagilmasin -> liderlik devri artik
+	// PartyNemberRemove icinde MERKEZI yapiliyor (lider cikisi tespit edilince ilk dolu uyeye
+	// devret + normal cik). Buradaki ozel ekleme kaldirildi, tek kaynak = PartyNemberRemove.
 	PartyNemberRemove(GetSocketID());
 
 	if (hasRival())
