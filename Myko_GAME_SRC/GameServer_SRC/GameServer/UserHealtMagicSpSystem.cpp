@@ -959,6 +959,9 @@ void CUser::SetMaxSp()
 }
 
 void CUser::KA_KillUpdate() {
+	// KILLASSIST COMBO EKRANI KAPATILDI (2026-06-09, patron istegi — KURAL 0-B)
+	// PK'da "Kill / Combo" ekrani client'a gidiyordu -> istenmiyor. Sayac mantigi (totalkillcount)
+	// CALISIR, sadece ekran paketi (Send) gonderilmez. Geri acmak icin Send satirlarini yorumdan cikar.
 	if (!isInPKZone()) return;
 	Packet newpkt(WIZ_KILLASSIST, uint8(kaopcode::kill));
 
@@ -969,7 +972,7 @@ void CUser::KA_KillUpdate() {
 
 devamet:
 	newpkt << uint8(1) << uint32(1) << GetName() << uint8(1);
-	if (pktsend) { newpkt << ++pAssistKill.serikillcount; Send(&newpkt); }
+	if (pktsend) { newpkt << ++pAssistKill.serikillcount; /* Send(&newpkt); -- combo ekrani kapali */ }
 
 	pAssistKill.totalkillcount++;
 	pAssistKill.lastkilltime = UNIXTIME;
@@ -977,8 +980,10 @@ devamet:
 	if (pAssistKill.totalkillcount % 10 != 0) return;
 	Packet newpkt2(WIZ_KILLASSIST, uint8(kaopcode::kill));
 	newpkt2 << uint8(3) << uint32(1) << GetName() << GetNation() << pAssistKill.totalkillcount;
+	/* combo (10 kill) ekrani kapali:
 	if (isInParty()) g_pMain->Send_PartyMember(GetPartyID(), &newpkt2);
 	else Send(&newpkt2);
+	*/
 	//printf("heyyooo\n");
 }
 
@@ -992,9 +997,11 @@ void CUser::KA_ResetCheck(bool zonechange /*= false*/) {
 	if (pin.totalkillcount > 0 && pin.lastkilltime && UNIXTIME - pin.lastkilltime > 15 * MINUTE) killreset = true;
 	if (pin.totalassistcount > 0 && pin.lastassisttime && UNIXTIME - pin.lastassisttime > 15 * MINUTE) assistreset = true;
 
+	// KILLASSIST reset paketi KAPATILDI (2026-06-09, combo/assist ekrani kapali oldugu icin reset de gereksiz).
+	// Sayac sifirlama mantigi CALISIR, sadece ekran-reset paketi (Send) gonderilmez.
 	Packet newpkt(WIZ_KILLASSIST);
-	if (killreset) { pin.serikillcount = 0; pin.totalkillcount = 0; pin.lastkilltime = 0; newpkt << uint8(kaopcode::kill) << uint8(2); Send(&newpkt); }
-	if (assistreset) { pin.totalassistcount = 0; pin.lastassisttime = 0; newpkt.clear(); newpkt << uint8(kaopcode::assist) << uint8(2); Send(&newpkt); }
+	if (killreset) { pin.serikillcount = 0; pin.totalkillcount = 0; pin.lastkilltime = 0; newpkt << uint8(kaopcode::kill) << uint8(2); /* Send(&newpkt); -- ekran kapali */ }
+	if (assistreset) { pin.totalassistcount = 0; pin.lastassisttime = 0; newpkt.clear(); newpkt << uint8(kaopcode::assist) << uint8(2); /* Send(&newpkt); -- ekran kapali */ }
 }
 
 void CUser::KA_AssistDebufUpdate(CUser* pkiller) {
@@ -1013,9 +1020,11 @@ void CUser::KA_AssistDebufUpdate(CUser* pkiller) {
 }
 
 void CUser::KA_AssistScreenSend(uint8 type) {
+	// KILLASSIST assist ekrani KAPATILDI (2026-06-09, patron istegi — KURAL 0-B).
+	// "Go Assist" ekrani client'a gidiyordu -> istenmiyor. Sayac CALISIR, ekran paketi (Send) gitmez.
 	if (UNIXTIME - pAssistKill.lastassisttime > 29) pAssistKill.totalassistcount = 0;
 	pAssistKill.lastassisttime = UNIXTIME;
 	Packet newpkt(WIZ_KILLASSIST, uint8(kaopcode::assist));
 	newpkt << uint8(1) << uint16(1) << uint8(1) << (uint16)++pAssistKill.totalassistcount << type;
-	Send(&newpkt);
+	/* Send(&newpkt); -- assist ekrani kapali */
 }
