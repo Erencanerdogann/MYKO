@@ -44,8 +44,9 @@
 //       run mantigi DEGISMEDI (FIX-G hatasi=run kurcalamak, bu sefer minimal). SAFE GIF akisi korundu.
 // v3.9 (S127 TODO#241): SADECE TEMIZLIK — FIX-H olu kodu (m_bUpdateChecked flag/getter/set/yorum)
 //       silindi (v3.6'da geri alinmisti, kalinti kalmisti). DAVRANIS v3.8 ile AYNI, kod hatasiz/temiz.
-#define LAUNCHER_BUILD_VERSION_MAJOR 3
-#define LAUNCHER_BUILD_VERSION_MINOR 9
+// v4.0 (S131): L1 DownloadFile donus kontrolu + L2 FTP timeout 1800sn (asili indirme sonsuz takilma fix).
+#define LAUNCHER_BUILD_VERSION_MAJOR 4
+#define LAUNCHER_BUILD_VERSION_MINOR 0
 
 class Launcher
 {
