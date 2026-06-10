@@ -357,7 +357,7 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 		// Timer thread'i 3000 senkron round-trip yerine 1 round-trip blokluyor -> 3000+ oyuncuda kasma yok.
 		std::string heartbeatCsv;
 		if (bHeartbeatTick)
-			heartbeatCsv.reserve(4096);
+			heartbeatCsv.reserve(8192); // 1 chunk (max 7900 byte) sigar, yeniden-alloc yok
 
 		g_pMain->m_socketMgr.GetLock().lock();
 		SessionMap sessMap = g_pMain->m_socketMgr.GetActiveSessionMap();
@@ -382,8 +382,14 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 					pUser->CheckDelayedTime();
 				}
 
-				// 30sn heartbeat: account'i CSV'ye ekle (tek tek UPDATE YOK, batch icin biriktir)
+				// 30sn heartbeat: account'i CSV'ye ekle (tek tek UPDATE YOK, batch icin biriktir).
+				// CHUNK (8000 sinir fix): ODBC varchar ColumnSize max 8000 -> CSV 7900 byte'a ulasinca
+				// flush. Aksi halde 800+ oyuncuda HY104 / truncation -> online oyuncu yanlislikla DC olur.
 				if (bHeartbeatTick && !pUser->m_strAccountID.empty()) {
+					if (heartbeatCsv.size() + pUser->m_strAccountID.size() + 1 > 7900) {
+						g_DBAgent.UpdateCurrentUserHeartbeatBatch(heartbeatCsv); // dolu chunk'i bosalt
+						heartbeatCsv.clear();
+					}
 					if (!heartbeatCsv.empty())
 						heartbeatCsv += ',';
 					heartbeatCsv += pUser->m_strAccountID;
@@ -391,7 +397,7 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 			}
 		}
 
-		// Dongu disinda TEK batch UPDATE (online char'larin last_heartbeat'ini damgala)
+		// Dongu disinda kalan son chunk'i da gonder
 		if (bHeartbeatTick && !heartbeatCsv.empty())
 			g_DBAgent.UpdateCurrentUserHeartbeatBatch(heartbeatCsv);
 
