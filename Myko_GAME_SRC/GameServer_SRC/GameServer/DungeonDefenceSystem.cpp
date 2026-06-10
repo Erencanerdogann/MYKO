@@ -892,9 +892,12 @@ void CUser::DungeonDefenceSendPartyBBSNeeded(Packet & pkt)
 		{
 			pParty = g_pMain->GetPartyPtr(pUser->m_sPartyID);
 
+			// FIX K3 (S131): nullptr durumunda 'return' lock'u (858) acmadan cikiyordu ->
+			// m_SeekingPartyArrayLock kalici kilit -> BBS sistemi hang. 'continue' ile o
+			// kaydi atla, lock loop sonunda (917) normal birakilir.
 			if (pParty == nullptr) //Shouldn't be hit.
-				return;
-				
+				continue;
+
 			pUser->m_strSeekingNote = pParty->WantedMessage;
 			PartyMembers = GetPartyMemberAmount(pParty);
 			sClass = pParty->sWantedClass;
