@@ -162,7 +162,13 @@ void XdailyQuest::InitQuests(uint8 p)
 		filteredList.push_back(kcbq_quests[i]);
 	}
 
-	if (filteredList.empty()) 
+	// FIX (S131 vector crash KOK): liste yeniden kuruldu -> stale selectQuestID OOB. Gecerli araliga clamp.
+	if (filteredList.empty())
+		selectQuestID = 0;
+	else if (selectQuestID >= filteredList.size())
+		selectQuestID = (uint16)(filteredList.size() - 1);
+
+	if (filteredList.empty())
 		return;
 
 	pageCount = abs(ceil((double)filteredList.size() / (double)12));
@@ -297,7 +303,8 @@ bool XdailyQuest::ReceiveMessage(CN3UIBase* pSender, uint32_t dwMsg)
 			remove(name.c_str());
 		}
 
-		Engine->m_UiMgr->uiQuestRewards->LoadInfo(filteredList[selectQuestID]);
+		if (selectQuestID < filteredList.size()) // FIX (S131): sinir kontrolu
+			Engine->m_UiMgr->uiQuestRewards->LoadInfo(filteredList[selectQuestID]);
 		Engine->m_UiMgr->uiQuestRewards->Open();
 	}
 	else if (pSender == btn_close) {

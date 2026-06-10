@@ -9,7 +9,7 @@ HookQuestPage::HookQuestPage()
 	offsets.push_back(0x5E0);
 	offsets.push_back(0);
 #else
-	offsets.push_back(0x250);   // 2369		//ka_change Satýr : 33
+	offsets.push_back(0x250);   // 2369		//ka_change Satï¿½r : 33
 	offsets.push_back(0);
 #endif
 
@@ -236,7 +236,7 @@ void HookQuestPage::KillTrigger(uint8 questID, uint16 mob)
 				(*itr)->Status = (uint8)DailyQuestStatus::ongoing;
 			}
 		}
-		if (Engine->IsVisible(quest_rewards))
+		if (Engine->IsVisible(quest_rewards) && selectQuestID < filteredList.size()) // FIX (S131): sinir kontrolu
 			LoadInfo(filteredList[selectQuestID]);
 		break;
 	}
@@ -298,6 +298,14 @@ void HookQuestPage::InitQuests(uint8 p)
 
 		filteredList.push_back(kcbq_quests[i]);
 	}
+
+	// FIX (S131 vector crash KOK): liste yeniden kuruldu -> stale selectQuestID filteredList'i tasirir
+	// (mob oldurunce KillTrigger LoadInfo(filteredList[selectQuestID]) -> 'vector subscript out of range').
+	// Gecerli araliga clamp et.
+	if (filteredList.empty())
+		selectQuestID = 0;
+	else if (selectQuestID >= filteredList.size())
+		selectQuestID = (uint16)(filteredList.size() - 1);
 
 	if (filteredList.empty()) {
 		for (int i = 0; i < 15; i++)Engine->SetVisible(baseGroup[i], false);
@@ -383,7 +391,7 @@ bool HookQuestPage::ReceiveMessage(DWORD* pSender, uint32_t dwMsg)
 
 	std::string msg = "";
 	if (pSender == (DWORD*)m_btnOk) {
-		if (!filteredList.empty()) {
+		if (!filteredList.empty() && selectQuestID < filteredList.size()) { // FIX (S131): sinir kontrolu
 			LoadInfo(filteredList[selectQuestID]);
 			Engine->SetVisible(quest_rewards, true);
 		}
@@ -430,7 +438,7 @@ bool HookQuestPage::ReceiveMessage(DWORD* pSender, uint32_t dwMsg)
 			}
 		}
 
-		if (!filteredList.empty()) {
+		if (!filteredList.empty() && selectQuestID < filteredList.size()) { // FIX (S131): sinir kontrolu
 			LoadInfo(filteredList[selectQuestID]);
 			Engine->SetVisible(quest_rewards, true);
 		}
