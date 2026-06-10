@@ -628,15 +628,29 @@ void CUser::XSafe_ProcInfo(Packet& pkt)
 	vector<ProcessInfo> process;
 	uint32 size;
 	pkt >> size;
+	// FIX K1 (S131): client-kontrollu 'size'/'windowsize' icin ust sinir YOKTU. ByteBuffer
+	// read tukenince exception ATMAZ (0 doner, _rpos koşulsuz ilerler) -> dongu size kez doner.
+	// size=0xFFFFFFFF -> milyarlarca push_back -> OOM/CPU -> sunucu-geneli DoS (tek paketle).
+	// Cap + buffer-tukendi guard ekle (HandleChestBlock:2097 clamp deseni). Mesru proc-info << 1024.
+	if (size > 1024)
+		return;
 	for (uint32 i = 0; i < size; i++)
 	{
+		if (pkt.rpos() >= pkt.size()) // paket bitti -> bos eleman uretme, kir
+			break;
+
 		int id, windowsize;
 		string name;
 		vector<string> windows;
 		pkt >> id >> name >> windowsize;
 
+		if (windowsize < 0 || windowsize > 256) // ikinci OOM vektoru + signed-int guard
+			windowsize = 0;
+
 		for (int j = 0; j < windowsize; j++)
 		{
+			if (pkt.rpos() >= pkt.size())
+				break;
 			string windowtitle;
 			pkt >> windowtitle;
 			windows.push_back(windowtitle);
