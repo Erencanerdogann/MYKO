@@ -3297,7 +3297,10 @@ void CUser::UserLookChange(int pos, int itemid, int durability)
 	
 	Packet result(WIZ_USERLOOK_CHANGE);
 	result << GetSocketID() << uint8(pos) << itemid << uint16(durability);
-	SendToRegion(&result, this, GetEventRoom());
+	// S131 görüntü-senkron fix: 0xFFFF sentinel = event-room filtresi UYGULAMA.
+	// Görünüm paketi ayni region'daki HERKESE gitmeli (görüş alani zaten Send_UnitRegion ile sinirli).
+	// Eski GetEventRoom() ile event-room farkli olan yakindaki oyuncu eski kiyafeti goruyordu.
+	SendToRegion(&result, this, 0xFFFF);
 }
 
 void CUser::SendNotice()

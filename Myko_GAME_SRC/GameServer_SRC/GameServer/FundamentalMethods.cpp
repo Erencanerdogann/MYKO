@@ -907,7 +907,13 @@ void CGameServerDlg::Send_UnitRegion(Packet *pkt, C3DMap *pMap, int x, int z, CU
 			|| !pUser->isInGame())
 			continue;
 
-		if (nEventRoom >= 0 && nEventRoom != pUser->GetEventRoom())
+		// S131 görüntü-senkron fix: 0xFFFF = "event-room filtresi UYGULAMA" sentinel'i.
+		// Eski kod `nEventRoom >= 0` ile -1 bypass yapacakti ama uint16'da -1=0xFFFF asla <0 olmaz,
+		// filtre HEP aktifti -> görünüm paketi (UserLookChange) sadece ayni event-room'a gidiyordu ->
+		// Juraid/Dungeon event'lerinde yakindaki oyuncu eski kiyafet/item goruyordu (intermittent).
+		// 0xFFFF gecilirse filtre atlanir = görünüm herkese gider. Diger 50+ cagri (gercek room degeri
+		// geciyor) AYNEN filtreli kalir (davranis degismez), sadece görünüm broadcast'i muaf.
+		if (nEventRoom != 0xFFFF && nEventRoom != pUser->GetEventRoom())
 			continue;
 
 		pUser->Send(pkt);
