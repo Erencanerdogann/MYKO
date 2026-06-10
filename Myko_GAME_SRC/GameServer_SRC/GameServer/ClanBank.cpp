@@ -170,7 +170,9 @@ void CUser::ClanWarehouseItemInput(Packet& pkt)
 		if (Page > 3) { ReturnValue = 0; break; }
 		uint16_t reference_pos = 24 * Page;
 
-		if (bSrcPos > HAVE_MAX || reference_pos + bDstPos > WAREHOUSE_MAX
+		// FIX IT1 (S131 FAZ4): off-by-one OOB. array[WAREHOUSE_MAX]=[192] gecerli [0..191].
+		// '>' ile ==192 gecip array[192] yaziyordu (heap OOB write). '>=' dogru.
+		if (bSrcPos >= HAVE_MAX || reference_pos + bDstPos >= WAREHOUSE_MAX
 			|| (nItemID >= ITEM_NO_TRADE_MIN && nItemID <= ITEM_NO_TRADE_MAX)) { ReturnValue = 0; break; }
 
 		auto* pSrcItem = GetItem(SLOT_MAX + bSrcPos);
@@ -346,7 +348,7 @@ void CUser::ClanWarehouseItemOutput(Packet& pkt)
 		else { if ((pTable.m_sWeight + m_sItemWeight) > m_sMaxWeight) { ReturnValue = 3; break; } }
 
 		uint16_t reference_pos = 24 * Page;
-		if (reference_pos + bSrcPos > WAREHOUSE_MAX || bDstPos > HAVE_MAX) { ReturnValue = 0; break; }
+		if (reference_pos + bSrcPos >= WAREHOUSE_MAX || bDstPos >= HAVE_MAX) { ReturnValue = 0; break; } // FIX IT1: off-by-one OOB ('>'-> '>=')
 
 		auto* pSrcItem = &pKnights->m_sClanWarehouseArray[reference_pos + bSrcPos];
 		if (pSrcItem == nullptr || pSrcItem->nNum != nItemID || pSrcItem->sCount < nCount) { ReturnValue = 0; break; }
@@ -490,7 +492,7 @@ void CUser::ClanWarehouseItemMove(Packet& pkt)
 
 	uint16_t reference_pos = 24 * Page;
 
-	if (reference_pos + bSrcPos > WAREHOUSE_MAX || reference_pos + bDstPos > WAREHOUSE_MAX)
+	if (reference_pos + bSrcPos >= WAREHOUSE_MAX || reference_pos + bDstPos >= WAREHOUSE_MAX) // FIX IT1: off-by-one OOB ('>'-> '>=')
 	{
 		ReturnValue = 0;
 		goto fail_return;
@@ -592,7 +594,7 @@ void CUser::ClanWarehouseInventoryItemMove(Packet& pkt)
 		goto fail_return;
 	}
 
-	if (bSrcPos > HAVE_MAX || bDstPos > HAVE_MAX)
+	if (bSrcPos >= HAVE_MAX || bDstPos >= HAVE_MAX) // FIX IT1: off-by-one ('>'-> '>=', slot 0..27)
 		goto fail_return;
 
 	auto* pSrcItem = GetItem(SLOT_MAX + bSrcPos);
