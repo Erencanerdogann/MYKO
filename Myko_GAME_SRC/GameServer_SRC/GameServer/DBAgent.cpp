@@ -1142,6 +1142,35 @@ bool CDBAgent::UpdateCurrentUserHeartbeat(const string & strAccountID)
 }
 #pragma endregion
 
+#pragma region CDBAgent::UpdateCurrentUserHeartbeatBatch(const string & csvAccounts)
+// BATCH (S131 performans): 3000 online char icin 3000 ayri UPDATE yerine TEK sorgu.
+// csvAccounts = virgulle ayrilmis account listesi ("acc1,acc2,..."). STRING_SPLIT (MSSQL 2016+)
+// ile sunucu tarafinda parcalanir. TEK parametre -> SQL injection YOK (concat degil, parametre).
+// Timer thread'ini 3000 round-trip yerine 1 round-trip blokluyor -> 3000+ oyuncuda kasma yok.
+bool CDBAgent::UpdateCurrentUserHeartbeatBatch(const string & csvAccounts)
+{
+	if (csvAccounts.empty())
+		return true; // online kimse yok, yapilacak is yok
+
+	unique_ptr<OdbcCommand> dbCommand(m_AccountDB->CreateCommand());
+	if (dbCommand.get() == nullptr)
+		return false;
+
+	dbCommand->AddParameter(SQL_PARAM_INPUT, csvAccounts.c_str(), csvAccounts.length());
+	// STRING_SPLIT: csv -> satirlar; JOIN ile sadece o account'lari damgala. TRIM guvenlik.
+	if (!dbCommand->Execute(_T(
+		"UPDATE CU SET CU.last_heartbeat = GETDATE() "
+		"FROM CURRENTUSER CU "
+		"INNER JOIN STRING_SPLIT(?, ',') S ON CU.strAccountID = LTRIM(RTRIM(S.value))")))
+	{
+		ReportSQLError(m_AccountDB->GetError());
+		return false;
+	}
+
+	return true;
+}
+#pragma endregion
+
 #pragma region CDBAgent::InsertCurrentUser(string & strAccountID)
 void CDBAgent::InsertCheatLog(CUser * pUser)
 {

@@ -320,6 +320,7 @@ public:
 	bool SetLogInInfo(std::string & strAccountID, std::string & strCharID, std::string & strServerIP, short sServerNo, std::string & strClientIP, uint8 bInit);
 	bool RemoveCurrentUser(std::string & strAccountID);
 	bool UpdateCurrentUserHeartbeat(const std::string & strAccountID);
+	bool UpdateCurrentUserHeartbeatBatch(const std::string & csvAccounts); // S131 batch: 3000 UPDATE -> 1
 	void DestroyPusSessions(CUser * pUser);
 	void InsertCheatLog(CUser * pUser);
 	bool CreatePusSession(uint16 sFreeCount, CUser * pUser);

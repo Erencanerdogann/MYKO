@@ -353,6 +353,12 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 		if (bHeartbeatTick)
 			s_nextHeartbeat = UNIXTIME2 + 30; // 30sn periyot (TTL 2dk'ya 4 tick tolerans)
 
+		// S131 BATCH: online account'lari topla, dongu sonunda TEK UPDATE at (3000 UPDATE -> 1).
+		// Timer thread'i 3000 senkron round-trip yerine 1 round-trip blokluyor -> 3000+ oyuncuda kasma yok.
+		std::string heartbeatCsv;
+		if (bHeartbeatTick)
+			heartbeatCsv.reserve(4096);
+
 		g_pMain->m_socketMgr.GetLock().lock();
 		SessionMap sessMap = g_pMain->m_socketMgr.GetActiveSessionMap();
 		g_pMain->m_socketMgr.GetLock().unlock();
@@ -376,11 +382,18 @@ uint32 CGameServerDlg::Timer_UpdateSessions(void * lpParam)
 					pUser->CheckDelayedTime();
 				}
 
-				// 30sn heartbeat damgasi (online char gercekten yasiyor)
-				if (bHeartbeatTick && !pUser->m_strAccountID.empty())
-					g_DBAgent.UpdateCurrentUserHeartbeat(pUser->m_strAccountID);
+				// 30sn heartbeat: account'i CSV'ye ekle (tek tek UPDATE YOK, batch icin biriktir)
+				if (bHeartbeatTick && !pUser->m_strAccountID.empty()) {
+					if (!heartbeatCsv.empty())
+						heartbeatCsv += ',';
+					heartbeatCsv += pUser->m_strAccountID;
+				}
 			}
 		}
+
+		// Dongu disinda TEK batch UPDATE (online char'larin last_heartbeat'ini damgala)
+		if (bHeartbeatTick && !heartbeatCsv.empty())
+			g_DBAgent.UpdateCurrentUserHeartbeatBatch(heartbeatCsv);
 
 		// DC Grace Period: idle session'lardaki OffCharacter karakterlerin timer'ini calistir
 		// DC olunca socket kapanir ve karakter m_activeSessions'tan m_idleSessions'a tasinir.
