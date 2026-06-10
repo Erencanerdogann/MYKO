@@ -214,8 +214,17 @@ DWORD WINAPI PearlEngine::SuspendCheck(PearlEngine* e)
 		if (TimeTest1 != 0)
 		{
 			Sleep(1000);
-			if ((TimeTest2 - TimeTest1) > 8000)
-				e->Shutdown(xorstr("You cannot suspend the game. Please do not use cheat software."));  // Bu hatay� alan ki�iler "Suspend" etmeye �al��m�� demektir.
+			// FIX K4 (S131): 8000->20000ms + 3 ardisik sayac (nTime). Tolerans-sayacsizdi (1 olay=kapanis),
+			// zayif-PC/RAM-swap/AV/loading 8sn donmasi mesru oyuncuyu atiyordu. CE-suspend kalici+birikimli
+			// -> her cycle >20sn, 3 ardisik tur kesin yakalar; koruma zayiflamaz.
+			if ((TimeTest2 - TimeTest1) > 20000)
+			{
+				if (++nTime >= 3)
+					e->Shutdown(xorstr("You cannot suspend the game. Please do not use cheat software."));
+			}
+			else
+				nTime = 0;
+			// eski tek-olay esigi (8000) yerine yukaridaki sayacli kontrol. Bu hatay� alan ki�iler "Suspend" etmeye �al��m�� demektir.
 		}
 		if (WaitForSingleObject(e->MainThread, 1) == WAIT_OBJECT_0)
 			e->Shutdown(xorstr("All the pieces of the game can't be working together."));
