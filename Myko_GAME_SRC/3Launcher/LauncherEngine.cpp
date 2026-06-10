@@ -695,6 +695,10 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		CFTPClient FTPClient(PRINT_LOG);
 		FTPClient.InitSession(server, 21, "", "", CFTPClient::FTP_PROTOCOL::HTTP, CFTPClient::ENABLE_LOG);
 		FTPClient.SetProgressFnCallback(reinterpret_cast<void*>(0xFFFFFFFF), &ProgCallback);
+		// FIX L2 (S131): m_iCurlTimeout default 0 = SONSUZ -> asili/yavas FTP'de download thread sonsuza
+		// takiliyordu. 1800sn (30dk) toplam timeout: buyuk patch (ui.src ~1GB) normal indirmeyi etkilemez,
+		// sadece tamamen asili (0 byte ilerleyen) baglantiyi keser. CURLOPT_TIMEOUT (FTPClient.cpp:899).
+		FTPClient.SetTimeout(1800);
 		m_currentFile = file;
 		// FIX L1 (S131 FAZ1): DownloadFile donus degeri kontrol edilmiyordu -> yarim/bos indirme
 		// devam ediyordu (hash bossa yakalanmaz). false ise dur.

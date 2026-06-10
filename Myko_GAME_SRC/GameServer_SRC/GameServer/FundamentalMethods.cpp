@@ -329,7 +329,9 @@ void CGameServerDlg::GetRegionUserList(C3DMap* pMap, uint16 region_x, uint16 reg
 		if (pUser == nullptr || !pUser->isInGame())
 			continue;
 
-		if (nEventRoom >= 0 && nEventRoom != pUser->GetEventRoom())
+		// FIX (S131): nEventRoom uint16 -> '>= 0' DAIMA true (filtre hep aktif). 0xFFFF = "filtre uygulama"
+		// sentinel'i (Send_UnitRegion:916 ile ayni). Room gecerliyken davranis AYNI, 0xFFFF gelirse dogru.
+		if (nEventRoom != 0xFFFF && nEventRoom != pUser->GetEventRoom())
 			continue;
 
 		if (pExcept && pExcept->GetSocketID() == pUser->GetSocketID())
@@ -514,7 +516,7 @@ void CGameServerDlg::GetRegionNpcIn(C3DMap *pMap, uint16 region_x, uint16 region
 			|| pNpc->isDead())
 			continue;
 
-		if (nEventRoom >= 0 && nEventRoom != pNpc->GetEventRoom())
+		if (nEventRoom != 0xFFFF && nEventRoom != pNpc->GetEventRoom()) // FIX (S131): uint16 >=0 daima-true -> 0xFFFF sentinel
 			continue;
 	
 		pkt << pNpc->GetID();
@@ -693,7 +695,7 @@ void CGameServerDlg::Send_Zone_Matched_Class(Packet *pkt, uint8 bZoneID, CUser* 
 			|| pUser->isInParty())
 			continue;
 
-		if (nEventRoom >= 0 && nEventRoom != pUser->GetEventRoom())
+		if (nEventRoom != 0xFFFF && nEventRoom != pUser->GetEventRoom()) // FIX (S131): uint16 >=0 daima-true -> 0xFFFF sentinel
 			continue;
 
 		if (pUser->isInMoradon()
@@ -740,7 +742,7 @@ void CGameServerDlg::Send_Zone(Packet *pkt, uint8 bZoneID, CUser* pExceptUser /*
 				continue;
 			}
 
-			if (nEventRoom >= 0 && nEventRoom != pUser->GetEventRoom())
+			if (nEventRoom != 0xFFFF && nEventRoom != pUser->GetEventRoom()) // FIX (S131): uint16 >=0 daima-true -> 0xFFFF sentinel
 				continue;
 
 			targets.push_back(pUser);
@@ -1049,7 +1051,7 @@ void CGameServerDlg::Send_FilterUnitRegion(Packet *pkt, C3DMap *pMap, int x, int
 			|| !pUser->isInGame())
 			continue;
 
-		if (nEventRoom >= 0 && nEventRoom != pUser->GetEventRoom())
+		if (nEventRoom != 0xFFFF && nEventRoom != pUser->GetEventRoom()) // FIX (S131): uint16 >=0 daima-true -> 0xFFFF sentinel
 			continue;
 
 		if (sqrt(pow((pUser->m_curx - ref_x), 2) + pow((pUser->m_curz - ref_z), 2)) < 32)
