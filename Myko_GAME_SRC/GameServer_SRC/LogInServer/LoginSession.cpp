@@ -21,6 +21,13 @@ static std::map<std::string, IPFailRecord> s_ipFailMap;
 static const int IP_MAX_FAILS = 15;
 static const int IP_BAN_SECONDS = 120;
 
+// FIX K6 (S131): per-account sayac, account rotasyonuyla (a1,a2,a3...) bypass ediliyordu
+// (her account ayri key -> hicbiri esige varmaz). IP-WIDE ust-sayac ekle: ayni IP'den toplam
+// basarisiz deneme (account fark etmeksizin) bu esige varirsa IP banlanir. Patron karari:
+// MalaysiaKO ev-internet agirlikli (tekil IP) -> IP-ban guvenli. Esik per-account'tan YUKSEK
+// tutuldu ki ayni evden mesru yanlis denemeler (aile/paylasim) erken banlanmasin.
+static const int IP_WIDE_MAX_FAILS = 30;
+
 static std::string MakeKey(const std::string &ip, const std::string &account)
 {
 	return ip + ":" + account;
@@ -50,6 +57,16 @@ static int RecordIPLoginFail(const std::string &ip, const std::string &account =
 	rec.failCount++;
 	if (rec.failCount >= IP_MAX_FAILS)
 		rec.banUntil = std::chrono::steady_clock::now() + std::chrono::seconds(IP_BAN_SECONDS);
+
+	// FIX K6 (S131): account verildiyse AYRICA IP-wide sayaci da artir (account rotasyonu
+	// bypass'ini kapatir). IP-wide esige varirsa o IP'yi banla (anahtar = ip, account'suz).
+	if (!account.empty())
+	{
+		auto &ipRec = s_ipFailMap[ip];
+		ipRec.failCount++;
+		if (ipRec.failCount >= IP_WIDE_MAX_FAILS)
+			ipRec.banUntil = std::chrono::steady_clock::now() + std::chrono::seconds(IP_BAN_SECONDS);
+	}
 	return rec.failCount;
 }
 
@@ -58,6 +75,11 @@ static void ResetIPLoginFails(const std::string &ip, const std::string &account 
 	std::lock_guard<std::recursive_mutex> lock(s_ipRateMutex);
 	std::string key = account.empty() ? ip : MakeKey(ip, account);
 	s_ipFailMap.erase(key);
+	// FIX K6 (S131): basarili login'de IP-wide sayaci da temizle (account-key ile birlikte
+	// artirildigi icin). Yoksa mesru kullanicinin gecmis yanlis denemeleri IP-wide birikir,
+	// basariyla girse bile sayac kalir -> sonradan haksiz ban. account-key reset'iyle es-zamanli.
+	if (!account.empty())
+		s_ipFailMap.erase(ip);
 }
 #pragma endregion
 
