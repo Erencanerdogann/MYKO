@@ -56,6 +56,7 @@ void CUser::Initialize()
 	m_pusgifttime = 0;
 	lastTickTime = 31;
 	lastTickTime2 = 31;
+	m_lastRealPacketTime = 0;
 	m_testkillcount = 0;
 	m_clanntsreq = false;
 	m_autoloot = false;
@@ -954,6 +955,11 @@ bool CUser::HandlePacket(Packet & pkt)
 {
 	//TRACE("[CLIENT - GAMESERVER] - [SID=%d] Packet: [%02X] (len=%d)\n", GetSocketID(), pkt.GetOpcode(), pkt.size());
 	uint8 command = pkt.GetOpcode();
+
+	// #242: XSafe (guard heartbeat) DISINDAKI her paket = gercek client aktivitesi.
+	// XSafe_StayAlive idle-FP/gercek-hile ayriminda kapi olarak kullanilir.
+	if (command != XSafe)
+		m_lastRealPacketTime = UNIXTIME2;
 
 	/*if (command == WIZ_MERCHANT) {
 		std::string Header = PacketSend(command);

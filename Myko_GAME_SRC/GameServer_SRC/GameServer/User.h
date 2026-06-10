@@ -180,6 +180,8 @@ public:
 	uint16 m_gmsendpmid;
 	uint32 lastTickTime;
 	uint32 lastTickTime2;
+	// #242: XSafe-disi son paket zamani (ms, UNIXTIME2). Idle-FP vs gercek-hile ayrimi (XGuard XSafe_StayAlive)
+	ULONGLONG m_lastRealPacketTime;
 	uint8	m_testkillcount;
 	uint16  m_KillCount;
 	int		m_iDrakiTime;

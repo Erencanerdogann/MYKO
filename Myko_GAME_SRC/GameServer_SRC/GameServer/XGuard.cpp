@@ -512,11 +512,25 @@ void CUser::XSafe_StayAlive(Packet & pkt)
 	pkt >>  clock1 >> clock2 >> uPublic_key >> ischeckdecated2 >> clock3;
 	if(accountid.size()) STRTOUPPER(accountid);
 
+	// #242 idle-FP kapisi (2026-06-10): multibox arka-plan client paket uretmez -> client
+	// Real_SendTime bayatlar -> heartbeat cheat-flag/stale-clock1 tasir = FALSE POSITIVE.
+	// Gercek hile (Real_Send unhook / injected send / overlay) OYNAYAN client'ta olur ->
+	// server XSafe-disi paket ALIR (<5sn) -> kapi ACIK -> DC aynen calisir.
+	// 5sn < heartbeat periyodu (7sn): idle'da stale heartbeat daima kapi DISINDA kalir.
+	// Client ischeatactive STICKY (hic sifirlanmaz) -> tolere edilen hileci harekete gecince DC.
+	bool bRecentRealPacket = (m_lastRealPacketTime != 0 && (UNIXTIME2 - m_lastRealPacketTime) <= 5000);
+
 	if (ischeckdecated2) {
-		isCheckDecated = true;
-		Packet newpkt(WIZ_DB_SAVE_USER, uint8(ProcDbType::CheatLog));
-		g_pMain->AddDatabaseRequest(newpkt, this);
-		return goDisconnect("checkdecated1", __FUNCTION__);
+		if (bRecentRealPacket) {
+			isCheckDecated = true;
+			Packet newpkt(WIZ_DB_SAVE_USER, uint8(ProcDbType::CheatLog));
+			g_pMain->AddDatabaseRequest(newpkt, this);
+			return goDisconnect("checkdecated1", __FUNCTION__);
+		}
+		// idle tolerans: DC yok, iz birak (test dogrulamasi + gercek-hile takip)
+		LOG_HACK("XSafe TOLERATED (idle) cheatflag: %s (%s) lastRealPkt=%llums ago IP=%s",
+			GetName().c_str(), GetAccountName().c_str(),
+			(ULONGLONG)(UNIXTIME2 - m_lastRealPacketTime), GetRemoteIP().c_str());
 	}
 
 	public_key = md5("1X" + std::to_string(XSafe_VERSION) + "10001" + std::to_string(clock1) + std::to_string(ischeckdecated2) + accountid);
@@ -533,9 +547,16 @@ void CUser::XSafe_StayAlive(Packet & pkt)
 	{
 		if (lastTickTime == clock1)
 		{
-			Packet newpkt(WIZ_DB_SAVE_USER, uint8(ProcDbType::CheatLog));
-			g_pMain->AddDatabaseRequest(newpkt, this);
-			return goDisconnect("lastticktime1", __FUNCTION__);
+			// #242: ayni kapi — idle'da ayni clock1 BEKLENEN durum (paket yok = Real_SendTime sabit)
+			if (bRecentRealPacket)
+			{
+				Packet newpkt(WIZ_DB_SAVE_USER, uint8(ProcDbType::CheatLog));
+				g_pMain->AddDatabaseRequest(newpkt, this);
+				return goDisconnect("lastticktime1", __FUNCTION__);
+			}
+			LOG_HACK("XSafe TOLERATED (idle) staletick: %s (%s) lastRealPkt=%llums ago IP=%s",
+				GetName().c_str(), GetAccountName().c_str(),
+				(ULONGLONG)(UNIXTIME2 - m_lastRealPacketTime), GetRemoteIP().c_str());
 		}
 		else lastTickTime = clock1;
 	}
