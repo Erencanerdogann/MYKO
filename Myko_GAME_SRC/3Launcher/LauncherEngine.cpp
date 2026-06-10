@@ -696,8 +696,16 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		FTPClient.InitSession(server, 21, "", "", CFTPClient::FTP_PROTOCOL::HTTP, CFTPClient::ENABLE_LOG);
 		FTPClient.SetProgressFnCallback(reinterpret_cast<void*>(0xFFFFFFFF), &ProgCallback);
 		m_currentFile = file;
-		FTPClient.DownloadFile(file, path + "/" + file);
+		// FIX L1 (S131 FAZ1): DownloadFile donus degeri kontrol edilmiyordu -> yarim/bos indirme
+		// devam ediyordu (hash bossa yakalanmaz). false ise dur.
+		bool bDownloadOk = FTPClient.DownloadFile(file, path + "/" + file);
 		FTPClient.CleanupSession();
+		if (!bDownloadOk)
+		{
+			SetState(xorstr("Patch download failed: ") + file);
+			std::remove(file.c_str());
+			return false;
+		}
 
 		// MD5 hash dogrulama — DB hash bos olabilir (geri donus uyumlu), o zaman atla
 		if (!expectedHash.empty())
