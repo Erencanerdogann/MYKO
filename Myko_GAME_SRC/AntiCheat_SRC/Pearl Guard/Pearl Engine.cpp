@@ -7566,6 +7566,9 @@ DWORD PearlEngine::rdwordExt(DWORD ulBase)
 DWORD PearlEngine::rdword(DWORD ulBase, std::vector<int> offsets)
 {
 	DWORD ibase = rdwordExt(ulBase);
+	// FIX (S131 vector crash): offsets bos ise size()-1 size_t underflow (0xFFFFFFFF) -> offsets[i] OOB.
+	if (offsets.empty())
+		return ibase;
 	for (size_t i = 0; i < offsets.size() - 1; i++)
 	{
 		int offset = offsets[i];
@@ -7581,6 +7584,9 @@ DWORD PearlEngine::ReadDWORD(DWORD ulBase, std::vector<int> offsets)
 {
 	DWORD ibase;
 	ReadProcessMemory(GetCurrentProcess(), (LPVOID)ulBase, &ibase, sizeof(ibase), NULL);
+	// FIX (S131 vector crash): offsets bos ise size()-1 size_t underflow (0xFFFFFFFF) -> offsets[i] OOB.
+	if (offsets.empty())
+		return ibase;
 	for (size_t i = 0; i < offsets.size() - 1; i++)
 	{
 		int offset = offsets[i];
