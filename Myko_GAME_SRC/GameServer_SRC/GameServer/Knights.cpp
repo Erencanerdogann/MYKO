@@ -350,7 +350,13 @@ bool CKnights::RemoveUser(std::string & strUserID)
 
 	CUser* pRemoveUser = g_pMain->GetUserPtr(pKnightUser->strUserName, NameType::TYPE_CHARACTER);
 	if (pRemoveUser != nullptr)
+	{
 		pRemoveUser->KnightsClanBuffUpdate(false, this);
+		// FIX UAF1 (S131 FAZ6): DeleteData asagida pKnightUser'i delete eder. Online kullanicinin
+		// m_pKnightsUser hala o bloga isaret ederse dangling -> UAF (sonra ->nDonatedNP okununca crash).
+		// RemoveUser(CUser*) bunu yapiyor (line 403), bu overload yapmiyordu. Pointer'i kes.
+		pRemoveUser->m_pKnightsUser = nullptr;
+	}
 
 	// If they're not logged in (note: logged in users being removed have their NP refunded in the other handler)
 	// but they've donated NP, ensure they're refunded for the next time they login.
