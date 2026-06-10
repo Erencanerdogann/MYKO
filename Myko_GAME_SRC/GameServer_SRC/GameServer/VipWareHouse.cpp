@@ -279,12 +279,15 @@ void CUser::VIPhouseProcess(Packet & pkt)
 		if (pTable.isnull() || pTable.m_bCountable == 2)
 			return UseVipKeyError(opcode, 2);
 
+		// FIX K2 (S131): bound kontrolu GetItem deref'inden ONCE yapilmali. bSrcPos client
+		// kontrollu (uint8 0-255), GetItem bounds-check yapmaz -> bSrcPos>=61 ile OOB heap read
+		// (m_sItemArray=75). Once dogrula, sonra eris. (WareHouse.cpp:145-152 dogru sira.)
+		if (bSrcPos >= HAVE_MAX || reference_pos + bDstPos >= VIPWAREHOUSE_MAX)
+			return UseVipKeyError(opcode, 2);
+
 		_ITEM_DATA* pSrcItem = GetItem(SLOT_MAX + bSrcPos);
 		if (pSrcItem == nullptr || pSrcItem->nNum != nItemID
 			|| pSrcItem->isRented() || pSrcItem->isDuplicate())
-			return UseVipKeyError(opcode, 2);
-
-		if (bSrcPos >= HAVE_MAX || reference_pos + bDstPos >= VIPWAREHOUSE_MAX)
 			return UseVipKeyError(opcode, 2);
 
 		auto* pDstItem = &m_sVIPWarehouseArray[reference_pos + bDstPos];
@@ -355,10 +358,14 @@ void CUser::VIPhouseProcess(Packet & pkt)
 		_ITEM_TABLE pTable = g_pMain->GetItemPtr(nItemID);
 		if (pTable.isnull()) return UseVipKeyError(opcode, 2);
 
+		// FIX K2-ikincil (S131): reference_pos+bSrcPos (max 48+255=303) bound kontrolu
+		// dizinin (VIPWAREHOUSE_MAX=48) deref'inden ONCE yapilmali. Aksi halde OOB heap read.
+		if (reference_pos + bSrcPos >= VIPWAREHOUSE_MAX || bDstPos >= HAVE_MAX)
+			return UseVipKeyError(opcode, 2);
+
 		_ITEM_DATA* pSrcItem = &m_sVIPWarehouseArray[reference_pos + bSrcPos];
-		if (pSrcItem == nullptr || reference_pos + bSrcPos >= VIPWAREHOUSE_MAX
-			|| bDstPos >= HAVE_MAX || pSrcItem->nNum != nItemID
-			|| !CheckWeight(pTable, nItemID, (uint16)nCount)) 
+		if (pSrcItem == nullptr || pSrcItem->nNum != nItemID
+			|| !CheckWeight(pTable, nItemID, (uint16)nCount))
 			return UseVipKeyError(opcode, 2);
 
 		_ITEM_DATA* pDstItem = GetItem(SLOT_MAX + bDstPos);
