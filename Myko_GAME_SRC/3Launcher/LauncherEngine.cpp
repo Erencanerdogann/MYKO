@@ -602,10 +602,14 @@ bool Launcher::Start()
     // S115 v2.7+ FIX: AUTO-UPDATE thread Constructor'dan buraya tasindi.
     // SEBEP: Constructor'da WinHTTP thread + WinSock connect ayni anda baslayinca
     //        race yaratip 'Connection failed' veriyordu (patron PC test S115).
-    // COZUM: connect() basarili olduktan SONRA 5sn bekle + WinHTTP thread fork.
-    //        Bu noktada WinSock tam settle, WinHTTP race etmez.
+    // COZUM: connect() basarili olduktan SONRA bekle + WinHTTP thread fork.
+    // v4.3 (2026-06-12): Sleep 5000->1500 (cakisma penceresi kucult — ilk saniyelerde guncelleme
+    //        inmeden START'a basilabiliyordu) + bu surede 'Guncellemeler kontrol ediliyor...' yazisi
+    //        (patron: '5sn dondu saniliyor'). 1.5sn WinSock settle icin yeterli (5sn fazla guvenli idi).
+    //        START kilitlenmez (FIX-H sonsuz kilit regresyonu tekrarlanmaz) — sadece pencere kucultuldu.
     std::thread([this]() {
-        Sleep(5000);  // WinSock settle + ilk paket akisi tamamlansin
+        SetState(xorstr("Guncellemeler kontrol ediliyor..."));
+        Sleep(1500);  // WinSock settle (5sn->1.5sn, cakisma penceresi kucult)
         try {
             this->CheckForUpdate();
         } catch (...) {

@@ -51,8 +51,11 @@
 //       service) YORUM SATIRINA alindi (patron karari: interception/mouse-fix'e izin). Boran vakasi:
 //       makro KULLANMADIGI halde interception driver kalintisi (mouse-fix/Interaccel) yuzunden giremedi.
 //       MRX tespiti process (MRX.exe) + sahte svchost>1MB ile devam. version bump (yoksa sonsuz indirme).
+// v4.3 (2026-06-12): UX FIX — auto-update Sleep 5000->1500 (ilk saniyelerde guncelleme inmeden START'a
+//       basilabiliyordu, cakisma penceresi 5sn->1.5sn) + 'Guncellemeler kontrol ediliyor...' yazisi
+//       (patron: 5sn dondu saniliyor). START KILITLENMEDI (FIX-H sonsuz kilit regresyonu tekrarlanmaz).
 #define LAUNCHER_BUILD_VERSION_MAJOR 4
-#define LAUNCHER_BUILD_VERSION_MINOR 2
+#define LAUNCHER_BUILD_VERSION_MINOR 3
 
 class Launcher
 {
