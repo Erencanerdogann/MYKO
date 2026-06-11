@@ -349,16 +349,36 @@ bool Launcher::ScanCheatTools(std::string& detected)
         }
     }
 
-    // 4) DRIVER SERVICE — "interception" kernel driver kurulu mu?
+    // 3b) interception driver DOSYA kontrolu — install-interception.exe binary'sinden KANITLANDI:
+    //     driver dosyalari System32\drivers\keyboard.sys ve mouse.sys olarak kurulur.
+    //     Windows'un kendi suruculeri kbdclass.sys/mouclass.sys'dir; keyboard.sys/mouse.sys
+    //     SADECE interception kullanir -> yanlis-pozitif YOK. MRX kapali/silinse bile bu kalir.
+    const char* intDriverFiles[] = {
+        "C:\\Windows\\System32\\drivers\\keyboard.sys",
+        "C:\\Windows\\System32\\drivers\\mouse.sys",
+        NULL
+    };
+    for (int i = 0; intDriverFiles[i] != NULL; i++) {
+        if (GetFileAttributesA(intDriverFiles[i]) != INVALID_FILE_ATTRIBUTES) {
+            detected = std::string("Driver file: ") + intDriverFiles[i];
+            return true;
+        }
+    }
+
+    // 4) DRIVER SERVICE — interception kernel driver service'i kurulu mu?
+    //    KANIT (install-interception.exe): service adlari "keyboard" ve "mouse"
+    //    (registry: System\CurrentControlSet\Services\keyboard ve \mouse). "interception" da kontrol.
     SC_HANDLE hSCM = OpenSCManagerA(NULL, NULL, SC_MANAGER_CONNECT);
     if (hSCM != NULL) {
-        SC_HANDLE hSvc = OpenServiceA(hSCM, "interception", SERVICE_QUERY_STATUS);
-        if (hSvc != NULL) {
-            // Servis mevcut — KOXP imzasi (gercek oyuncu interception driver kullanmaz)
-            detected = "Driver: interception (kernel mouse/keyboard hook)";
-            CloseServiceHandle(hSvc);
-            CloseServiceHandle(hSCM);
-            return true;
+        const char* intServices[] = { "keyboard", "mouse", "interception", NULL };
+        for (int i = 0; intServices[i] != NULL; i++) {
+            SC_HANDLE hSvc = OpenServiceA(hSCM, intServices[i], SERVICE_QUERY_STATUS);
+            if (hSvc != NULL) {
+                detected = std::string("Driver service: ") + intServices[i] + " (interception kernel hook)";
+                CloseServiceHandle(hSvc);
+                CloseServiceHandle(hSCM);
+                return true;
+            }
         }
         CloseServiceHandle(hSCM);
     }
