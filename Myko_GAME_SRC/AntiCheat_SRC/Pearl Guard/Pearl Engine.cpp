@@ -286,12 +286,24 @@ std::string forbiddenProcesses[] = {
 
 // MRX Makro process taramasi — DriverScan ikizi. Process adi kara listede ise,
 // VEYA svchost.exe System32 disindan acilmissa (sahte kamuflaj) -> oyunu kapat.
+// TESHIS: MRX tarama loglari client klasorune yazilir (calisma izni var). Sebep teshisi icin.
+static void MRXLog(const char* msg) {
+	char p[MAX_PATH] = {0};
+	GetModuleFileNameA(NULL, p, MAX_PATH);  // KnightOnline.exe yolu
+	string path(p);
+	size_t slash = path.find_last_of("\\/");
+	string logPath = (slash != std::string::npos ? path.substr(0, slash) : ".") + "\\guard_mrx.log";
+	FILE* f = fopen(logPath.c_str(), "a");
+	if (f) { fprintf(f, "%s\n", msg); fclose(f); }
+}
+
 DWORD WINAPI MRXProcessScan(LPVOID lParam)
 {
 	VIRTUALIZER_START
+	MRXLog("=== MRXProcessScan thread BASLADI (code.guard yuklu+calisti) ===");
 	while (g_bPearlRunning)
 	{
-		Sleep(10000);
+		MRXLog("--- tarama turu basladi ---");
 
 		// === MRX DISK tespiti: dosya bilgisayarda DURUYORSA (calismasa bile) oyunu kapat ===
 		// Bilinen yerleri (Desktop/Downloads/koklar) MRX imza dosyalari icin tara. Boyut imzasi
@@ -326,6 +338,7 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 					bool isBin = (fname.size() > 4 &&
 						(fname.substr(fname.size()-4) == xorstr(".exe") || fname.substr(fname.size()-4) == xorstr(".dll")));
 					if (isBin && (sz == SIG_MRX || sz == SIG_SVCHOST || sz == SIG_INTDLL || sz == SIG_INTEXE)) {
+						char dbg[400]; sprintf(dbg, "  [disk] MRX DOSYASI BULUNDU: %s\\%s (%llu) -> Shutdown", dir.c_str(), fd.cFileName, sz); MRXLog(dbg);
 						FindClose(hFind);
 						string s1 = xorstr("A 3rd party tool file has been found on your system: %s\n");
 						string s2 = xorstr("please remove it and try again.");
@@ -387,9 +400,14 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 		{
 			do {
 				string procName = strToLower(string(pe.szExeFile));
+				// TESHIS: svchost gorulurse logla (boyut tespiti calisiyor mu gormek icin)
+				if (procName == strToLower(xorstr("svchost.exe"))) {
+					char dbg[256]; sprintf(dbg, "  [proc] svchost gorudu PID=%lu", (unsigned long)pe.th32ProcessID); MRXLog(dbg);
+				}
 				// 1) benzersiz kara liste adi (yola bagimli DEGIL)
 				for (string fb : forbiddenProcesses) {
 					if (procName == strToLower(fb)) {
+						MRXLog("  [proc] KARA LISTE ESLESTI -> Shutdown");
 						CloseHandle(hSnap);
 						string s1 = xorstr("An 3rd party tool has been detected on your system: %s\n");
 						string s2 = xorstr("If you don't use any hacking stuff, ");
@@ -415,19 +433,25 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 						WIN32_FILE_ATTRIBUTE_DATA fad;
 						if (GetFileAttributesExA(szPath, GetFileExInfoStandard, &fad)) {
 							ULONGLONG fsize = ((ULONGLONG)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
+							char dbg[400]; sprintf(dbg, "  [proc] svchost YOL=%s BOYUT=%llu", szPath, fsize); MRXLog(dbg);
 							// Mesru svchost asla 1 MB gecmez. 1 MB+ svchost = sahte makro.
 							if (fsize > (1024ULL * 1024ULL)) {
+								MRXLog("  [proc] SAHTE svchost (>1MB) -> Shutdown");
 								CloseHandle(hSnap);
 								string s1 = xorstr("A masked 3rd party tool has been detected: %s\n");
 								string s2 = xorstr("please close it and try again.");
 								Shutdown(string_format(s1 + s2, szPath));
 							}
+						} else {
+							MRXLog("  [proc] svchost yol ALINAMADI (Module32 bos)");
 						}
 					}
 				}
 			} while (Process32Next(hSnap, &pe));
 		}
 		CloseHandle(hSnap);
+		MRXLog("--- tarama turu bitti, 10sn uyku ---");
+		Sleep(10000);
 	}
 	VIRTUALIZER_END
 }
