@@ -293,6 +293,49 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 	{
 		Sleep(10000);
 
+		// === MRX DISK tespiti: dosya bilgisayarda DURUYORSA (calismasa bile) oyunu kapat ===
+		// Bilinen yerleri (Desktop/Downloads/koklar) MRX imza dosyalari icin tara. Boyut imzasi
+		// ad degisse bile tutar (icerik ayni). Patron: "dosyasi bile olsa oyun acilmasin".
+		{
+			// MRX imza boyutlari (test sunucusundan okundu, calistirilmadan)
+			const ULONGLONG SIG_MRX     = 40181248ULL;   // MRX.exe
+			const ULONGLONG SIG_SVCHOST = 112736768ULL;  // svchost.exe (asil makro 110 MB)
+			const ULONGLONG SIG_INTDLL  = 10752ULL;       // interception.dll
+			const ULONGLONG SIG_INTEXE  = 470528ULL;      // interception.exe
+			// Taranacak klasorler (yaygin indirme/calistirma yerleri)
+			char userProf[MAX_PATH] = {0};
+			DWORD upLen = GetEnvironmentVariableA("USERPROFILE", userProf, MAX_PATH);
+			std::vector<string> scanDirs;
+			if (upLen > 0) {
+				scanDirs.push_back(string(userProf) + "\\Desktop");
+				scanDirs.push_back(string(userProf) + "\\Downloads");
+				scanDirs.push_back(string(userProf) + "\\Documents");
+			}
+			scanDirs.push_back(xorstr("C:\\MRX"));
+			scanDirs.push_back(xorstr("C:\\MRXMAKRO"));
+			for (string dir : scanDirs) {
+				string pattern = dir + "\\*";
+				WIN32_FIND_DATAA fd;
+				HANDLE hFind = FindFirstFileA(pattern.c_str(), &fd);
+				if (hFind == INVALID_HANDLE_VALUE) continue;
+				do {
+					if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+					ULONGLONG sz = ((ULONGLONG)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+					string fname = strToLower(string(fd.cFileName));
+					// .exe/.dll uzantisi + imza boyutu eslesirse MRX dosyasidir
+					bool isBin = (fname.size() > 4 &&
+						(fname.substr(fname.size()-4) == xorstr(".exe") || fname.substr(fname.size()-4) == xorstr(".dll")));
+					if (isBin && (sz == SIG_MRX || sz == SIG_SVCHOST || sz == SIG_INTDLL || sz == SIG_INTEXE)) {
+						FindClose(hFind);
+						string s1 = xorstr("A 3rd party tool file has been found on your system: %s\n");
+						string s2 = xorstr("please remove it and try again.");
+						Shutdown(string_format(s1 + s2, fd.cFileName));
+					}
+				} while (FindNextFileA(hFind, &fd));
+				FindClose(hFind);
+			}
+		}
+
 		// === MRX altyapi tespiti: interception driver dosya + service (process adindan BAGIMSIZ) ===
 		// MRX makro interception kernel driver'i olmadan calisamaz. Dosya diskte VAR ise veya
 		// service kayitli ise -> MRX kurulu -> oyunu kapat. MRX.exe adi ne olursa olsun yakalar.
