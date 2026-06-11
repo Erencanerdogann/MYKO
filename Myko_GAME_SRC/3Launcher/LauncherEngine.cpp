@@ -349,10 +349,15 @@ bool Launcher::ScanCheatTools(std::string& detected)
         }
     }
 
+    // KAPATILDI (2026-06-12, patron karari: interception driver'a izin) — geri acmak icin yorumdan cikar.
+    // Sebep: keyboard.sys/mouse.sys + keyboard/mouse service interception driver imzasi AMA bu driver'i
+    // mouse-fix/Interaccel/eski makro kalintisi da birakir (FACEIT de reddeder). Boran vakasi: makro
+    // KULLANMADIGI halde driver kalintisi yuzunden oyuna giremedi (yanlis-pozitif). MRX tespiti zaten
+    // process (MRX.exe/MRXMAKRO.exe) + sahte svchost>1MB (110MB .NET motor) ile yapiliyor; interception
+    // driver kontrolune gerek yok. code.guard oyun-ici katman da ayrica yakalar.
+    /*
     // 3b) interception driver DOSYA kontrolu — install-interception.exe binary'sinden KANITLANDI:
     //     driver dosyalari System32\drivers\keyboard.sys ve mouse.sys olarak kurulur.
-    //     Windows'un kendi suruculeri kbdclass.sys/mouclass.sys'dir; keyboard.sys/mouse.sys
-    //     SADECE interception kullanir -> yanlis-pozitif YOK. MRX kapali/silinse bile bu kalir.
     const char* intDriverFiles[] = {
         "C:\\Windows\\System32\\drivers\\keyboard.sys",
         "C:\\Windows\\System32\\drivers\\mouse.sys",
@@ -366,8 +371,6 @@ bool Launcher::ScanCheatTools(std::string& detected)
     }
 
     // 4) DRIVER SERVICE — interception kernel driver service'i kurulu mu?
-    //    KANIT (install-interception.exe): service adlari "keyboard" ve "mouse"
-    //    (registry: System\CurrentControlSet\Services\keyboard ve \mouse). "interception" da kontrol.
     SC_HANDLE hSCM = OpenSCManagerA(NULL, NULL, SC_MANAGER_CONNECT);
     if (hSCM != NULL) {
         const char* intServices[] = { "keyboard", "mouse", "interception", NULL };
@@ -382,6 +385,7 @@ bool Launcher::ScanCheatTools(std::string& detected)
         }
         CloseServiceHandle(hSCM);
     }
+    */
 
     return false;
 }

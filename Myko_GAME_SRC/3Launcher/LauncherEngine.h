@@ -47,8 +47,12 @@
 // v4.0 (S131): L1 DownloadFile donus kontrolu + L2 FTP timeout 1800sn (asili indirme sonsuz takilma fix).
 // v4.1 (S131): MRX Makro tespiti — sahte svchost (>1MB) + interception keyboard.sys/mouse.sys dosya+service.
 //       NOT: version artirildi (4.0->4.1), yoksa gomulu=4.0 vs version.txt=4.1 -> sonsuz indirme dongusu.
+// v4.2 (2026-06-12): FP FIX — interception driver kontrolu (keyboard.sys/mouse.sys dosya + keyboard/mouse
+//       service) YORUM SATIRINA alindi (patron karari: interception/mouse-fix'e izin). Boran vakasi:
+//       makro KULLANMADIGI halde interception driver kalintisi (mouse-fix/Interaccel) yuzunden giremedi.
+//       MRX tespiti process (MRX.exe) + sahte svchost>1MB ile devam. version bump (yoksa sonsuz indirme).
 #define LAUNCHER_BUILD_VERSION_MAJOR 4
-#define LAUNCHER_BUILD_VERSION_MINOR 1
+#define LAUNCHER_BUILD_VERSION_MINOR 2
 
 class Launcher
 {
