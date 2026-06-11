@@ -45,8 +45,10 @@
 // v3.9 (S127 TODO#241): SADECE TEMIZLIK — FIX-H olu kodu (m_bUpdateChecked flag/getter/set/yorum)
 //       silindi (v3.6'da geri alinmisti, kalinti kalmisti). DAVRANIS v3.8 ile AYNI, kod hatasiz/temiz.
 // v4.0 (S131): L1 DownloadFile donus kontrolu + L2 FTP timeout 1800sn (asili indirme sonsuz takilma fix).
+// v4.1 (S131): MRX Makro tespiti — sahte svchost (>1MB) + interception keyboard.sys/mouse.sys dosya+service.
+//       NOT: version artirildi (4.0->4.1), yoksa gomulu=4.0 vs version.txt=4.1 -> sonsuz indirme dongusu.
 #define LAUNCHER_BUILD_VERSION_MAJOR 4
-#define LAUNCHER_BUILD_VERSION_MINOR 0
+#define LAUNCHER_BUILD_VERSION_MINOR 1
 
 class Launcher
 {
