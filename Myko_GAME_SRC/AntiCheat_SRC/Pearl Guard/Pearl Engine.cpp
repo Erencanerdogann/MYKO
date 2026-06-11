@@ -239,7 +239,10 @@ std::string forbiddenModules[] = {
 	xorstr("HyperHideDrv"), xorstr("TitanHide"), xorstr("ScyllaHide"),
 	xorstr("SharpOD"), xorstr("HyperDbg"), xorstr("kdcom_replaced"),
 	xorstr("ProcessHacker"), xorstr("kprocesshacker"),
-	xorstr("VBoxDrv"), xorstr("VBoxNetAdp"), xorstr("VBoxNetFlt")
+	xorstr("VBoxDrv"), xorstr("VBoxNetAdp"), xorstr("VBoxNetFlt"),
+	// MRX Makro tespiti — interception kernel mouse/keyboard driver (en guclu yakalama:
+	// oyuncu MRX.exe'yi silse/yeniden adlandirsa bile bu driver yukluyse cokertir)
+	xorstr("interception"), xorstr("keyboard.sys"), xorstr("mouse.sys")
 };
 
 DWORD WINAPI DriverScan(LPVOID lParam)
@@ -1376,6 +1379,11 @@ DWORD WINAPI PearlEngine::TitleCheck(PearlEngine* e)
 		Engine->TitleWindow(id++,"Wireshark");
 		Engine->TitleWindow(id++,"HTTP Debugger");
 		Engine->TitleWindow(id++,"TitanHide");
+		// MRX Makro — bilinen pencere basliklari (image-recognition bot)
+		Engine->TitleWindow(id++,"MRX");
+		Engine->TitleWindow(id++,"MRX Makro");
+		Engine->TitleWindow(id++,"MRXMAKRO");
+		Engine->TitleWindow(id++,"MrxMakro");
 
 		Sleep(30000);
 	}
