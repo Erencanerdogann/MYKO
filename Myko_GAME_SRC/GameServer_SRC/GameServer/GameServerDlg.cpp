@@ -2180,12 +2180,10 @@ void CGameServerDlg::KickOutZoneUsers(uint8 ZoneID, uint8 TargetZoneID, uint8 bN
 			|| pUser->GetZoneID() != ZoneID)
 			continue;
 
-		if (TargetZoneID > 0 && bNation == pUser->GetNation())
-		{
-			pUser->ZoneChange(TargetZoneID, 0.0f, 0.0f);
-			continue;
-		}
-		else if (TargetZoneID > 0 && bNation == (uint8)Nation::ALL)
+		// FIX O6 (S131): TargetZoneID>0 + bNation=0 (default, ulus belirtilmemis) hicbir dala girmiyordu
+		// -> oyuncu zone'da STUCK kaliyordu (FTHandler:139, CindirellaWar, EventMainTimer hep bNation=0
+		// + TargetZone>0 cagiriyor). bNation 0 (belirtilmemis) veya ALL ise ulus filtresiz herkesi tasi.
+		if (TargetZoneID > 0 && (bNation == 0 || bNation == (uint8)Nation::ALL || bNation == pUser->GetNation()))
 		{
 			pUser->ZoneChange(TargetZoneID, 0.0f, 0.0f);
 			continue;
