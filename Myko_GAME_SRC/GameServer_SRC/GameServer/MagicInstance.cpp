@@ -755,11 +755,13 @@ CastCheckType MagicInstance::CheckCastTime()
 SkillUseResult MagicInstance::UserCanCast()
 {
 	// SKILL_DEBUG macro for UserCanCast
+	// KAPATILDI (S131, prod log spam — her skill reddi GENERAL log'u sisiriyordu, debug amacliydi).
+	// Geri acmak icin asagidaki LOG satirinin yorumunu kaldir. return ISLEVSEL, kaldi.
 	#define UCC_FAIL(r) do { \
-		if (pSkillCaster && pSkillCaster->isPlayer()) \
+		/* if (pSkillCaster && pSkillCaster->isPlayer()) \
 			LOG(LogCategory::LOG_GENERAL, "SKILL_FAIL: User=%s SkillID=%d Opcode=%d Reason=UCC_%s Zone=%d", \
 				TO_USER(pSkillCaster)->GetName().c_str(), nSkillID, bOpcode, r, \
-				TO_USER(pSkillCaster)->GetZoneID()); \
+				TO_USER(pSkillCaster)->GetZoneID()); */ \
 		return SkillUseResult::SkillUseFail; \
 	} while(0)
 
@@ -2226,14 +2228,15 @@ void MagicInstance::SendSkillFailed(int16 sTargetID, const char* reason)
 	if (pSkillCaster == nullptr)
 		return;
 
+	// KAPATILDI (S131, prod log spam — debug amacliydi). Geri acmak icin yorumdan cikar.
 	// SKILL_DEBUG: Log skill fail reason
-	if (reason && pSkillCaster->isPlayer()) {
+	/* if (reason && pSkillCaster->isPlayer()) {
 		CUser* pDbgUser = TO_USER(pSkillCaster);
 		LOG(LogCategory::LOG_GENERAL, "SKILL_FAIL: User=%s SkillID=%d Opcode=%d Reason=%s Target=%d Zone=%d",
 			pDbgUser->GetName().c_str(), nSkillID, bOpcode, reason,
 			sTargetID == -1 ? this->sTargetID : sTargetID,
 			pDbgUser->GetZoneID());
-	}
+	} */
 
 	Packet result;
 	sData[3] = (bOpcode == (int8)MagicOpcode::MAGIC_CASTING ? (int8)e_SkillMagicFailMsg::SKILLMAGIC_FAIL_CASTING : (int8)e_SkillMagicFailMsg::SKILLMAGIC_FAIL_NOEFFECT);
