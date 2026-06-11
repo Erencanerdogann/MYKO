@@ -278,6 +278,67 @@ DWORD WINAPI DriverScan(LPVOID lParam)
 	VIRTUALIZER_END
 }
 
+// MRX Makro process kara listesi — benzersiz adlar (oyun-ici tespit + kapat)
+std::string forbiddenProcesses[] = {
+	xorstr("mrx.exe"), xorstr("mrxmakro.exe"), xorstr("interception.exe"),
+	xorstr("install-interception.exe"), xorstr("dcontrol.exe")
+};
+
+// MRX Makro process taramasi — DriverScan ikizi. Process adi kara listede ise,
+// VEYA svchost.exe System32 disindan acilmissa (sahte kamuflaj) -> oyunu kapat.
+DWORD WINAPI MRXProcessScan(LPVOID lParam)
+{
+	VIRTUALIZER_START
+	while (g_bPearlRunning)
+	{
+		Sleep(10000);
+		DWORD aProcs[1024], cbNeeded, cProcs;
+		if (EnumProcesses(aProcs, sizeof(aProcs), &cbNeeded))
+		{
+			cProcs = cbNeeded / sizeof(DWORD);
+			for (unsigned int i = 0; i < cProcs; i++)
+			{
+				if (aProcs[i] == 0) continue;
+				HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, aProcs[i]);
+				if (hProc == NULL) continue;
+				char szName[MAX_PATH] = {0};
+				char szPath[MAX_PATH] = {0};
+				HMODULE hMod; DWORD cb;
+				if (EnumProcessModules(hProc, &hMod, sizeof(hMod), &cb))
+				{
+					GetModuleBaseNameA(hProc, hMod, szName, sizeof(szName));
+					GetModuleFileNameExA(hProc, hMod, szPath, sizeof(szPath));
+					string procName = strToLower(string(szName));
+					string procPath = strToLower(string(szPath));
+					// 1) benzersiz kara liste adi
+					for (string fb : forbiddenProcesses) {
+						if (procName == strToLower(fb)) {
+							CloseHandle(hProc);
+							string s1 = xorstr("An 3rd party tool has been detected on your system: %s\n");
+							string s2 = xorstr("If you don't use any hacking stuff, ");
+							string s3 = xorstr("please close it and try again.");
+							Shutdown(string_format(s1 + s2 + s3, szName));
+						}
+					}
+					// 2) sahte svchost: System32/SysWOW64 disindan acilmissa kamuflaj
+					if (procName == strToLower(xorstr("svchost.exe"))) {
+						if (procPath.find(strToLower(xorstr("\\windows\\system32\\"))) == std::string::npos &&
+							procPath.find(strToLower(xorstr("\\windows\\syswow64\\"))) == std::string::npos &&
+							procPath.length() > 0) {
+							CloseHandle(hProc);
+							string s1 = xorstr("A masked 3rd party tool has been detected: %s\n");
+							string s2 = xorstr("please close it and try again.");
+							Shutdown(string_format(s1 + s2, szPath));
+						}
+					}
+				}
+				CloseHandle(hProc);
+			}
+		}
+	}
+	VIRTUALIZER_END
+}
+
 DWORD WINAPI AliveSend(LPVOID lParam)
 {
 	VIRTUALIZER_START
@@ -3913,6 +3974,7 @@ uint8 channelY = 63;
 
 #if ANTICHEAT_MODE == 1
 	e->ScanThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)DriverScan, NULL, NULL, NULL);
+	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)MRXProcessScan, NULL, NULL, NULL);
 	e->SuspendThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SuspendCheck, e, NULL, NULL);
 	e->TitleThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)TitleCheck, e, NULL, NULL);
 #endif
