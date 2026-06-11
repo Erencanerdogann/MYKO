@@ -354,26 +354,32 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 						Shutdown(string_format(s1 + s2 + s3, pe.szExeFile));
 					}
 				}
-				// 2) sahte svchost: tam yol alinabiliyorsa System32/SysWOW64 disindan acilmissa kamuflaj.
-				//    Yol OpenProcess gerektirir; admin svchost'ta acilmazsa atla (adi mesru oldugu icin guvenli).
+				// 2) sahte svchost: ASIL MAKRO svchost.exe adiyla maskelenir (110 MB .NET d3d9 overlay).
+				//    Mesru Windows svchost ~60 KB'dir, ASLA 1 MB gecmez. svchost adinda + dosya >1 MB
+				//    = kesin sahte. Boyut Toolhelp module/yol ile alinir; yetki gerekmez. Yanlis-pozitif yok.
 				if (procName == strToLower(xorstr("svchost.exe"))) {
-					HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe.th32ProcessID);
-					if (hProc != NULL) {
-						char szPath[MAX_PATH] = {0};
-						DWORD pathLen = MAX_PATH;
-						if (QueryFullProcessImageNameA(hProc, 0, szPath, &pathLen)) {
-							string procPath = strToLower(string(szPath));
-							if (procPath.find(strToLower(xorstr("\\windows\\system32\\"))) == std::string::npos &&
-								procPath.find(strToLower(xorstr("\\windows\\syswow64\\"))) == std::string::npos &&
-								procPath.length() > 0) {
-								CloseHandle(hProc);
+					// Process exe tam yolunu Toolhelp Module32 ile al (OpenProcess'siz, daha az yetki)
+					char szPath[MAX_PATH] = {0};
+					HANDLE hModSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pe.th32ProcessID);
+					if (hModSnap != INVALID_HANDLE_VALUE) {
+						MODULEENTRY32 me; me.dwSize = sizeof(MODULEENTRY32);
+						if (Module32First(hModSnap, &me)) {
+							strncpy(szPath, me.szExePath, MAX_PATH - 1);
+						}
+						CloseHandle(hModSnap);
+					}
+					if (szPath[0] != 0) {
+						WIN32_FILE_ATTRIBUTE_DATA fad;
+						if (GetFileAttributesExA(szPath, GetFileExInfoStandard, &fad)) {
+							ULONGLONG fsize = ((ULONGLONG)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
+							// Mesru svchost asla 1 MB gecmez. 1 MB+ svchost = sahte makro.
+							if (fsize > (1024ULL * 1024ULL)) {
 								CloseHandle(hSnap);
 								string s1 = xorstr("A masked 3rd party tool has been detected: %s\n");
 								string s2 = xorstr("please close it and try again.");
 								Shutdown(string_format(s1 + s2, szPath));
 							}
 						}
-						CloseHandle(hProc);
 					}
 				}
 			} while (Process32Next(hSnap, &pe));
