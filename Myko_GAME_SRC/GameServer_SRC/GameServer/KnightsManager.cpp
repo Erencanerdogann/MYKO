@@ -627,11 +627,10 @@ void CKnightsManager::KnightsPunish(CUser *pUser, Packet & pkt)
 				bResult = 4;
 			else if (pUser->GetClanID() != pTUser->GetClanID())
 				bResult = 5;
-			// FIX O4 (S131): hedef rutbe kontrolu YOKTU -> VICECHIEF (asistan, fame=2) CHIEF'i (lider,
-			// fame=1) veya baska VICECHIEF'i punish edebiliyordu (lider dusurme exploit). Kucuk fame =
-			// yuksek rutbe (CHIEF=1, VICECHIEF=2). Islem yapan hedeften KESIN yuksek rutbede olmali.
-			else if (pUser->GetFame() >= pTUser->GetFame())
-				bResult = 0; // yetersiz yetki (esit/yuksek rutbeyi punish edemez)
+			// O4 GERI ALINDI (S131 faz-sonu denetim): fame mantigi BELIRSIZ (0=clansiz/normal, CHIEF=1,
+			// VICECHIEF=2, TRAINEE=5 — kucuk=yuksek varsayimi satir 615 'GetFame()<VICECHIEF' ile celisiyor).
+			// Emin olmadan rutbe karsilastirmasi eklemek clan punish'i bozardi (KURAL 15). TODO: fame
+			// hiyerarsisini MATRIX/DB ile netlestir, sonra dogru kontrol ekle. Exploit < yanlis-fix riski.
 		}
 
 		if (bResult != 1)
