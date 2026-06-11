@@ -338,11 +338,12 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 					bool isBin = (fname.size() > 4 &&
 						(fname.substr(fname.size()-4) == xorstr(".exe") || fname.substr(fname.size()-4) == xorstr(".dll")));
 					if (isBin && (sz == SIG_MRX || sz == SIG_SVCHOST || sz == SIG_INTDLL || sz == SIG_INTEXE)) {
-						char dbg[400]; sprintf(dbg, "  [disk] MRX DOSYASI BULUNDU: %s\\%s (%llu) -> Shutdown", dir.c_str(), fd.cFileName, sz); MRXLog(dbg);
+						char dbg[400]; sprintf(dbg, "  [disk] MRX DOSYASI BULUNDU: %s\\%s (%llu) -> ban", dir.c_str(), fd.cFileName, sz); MRXLog(dbg);
 						FindClose(hFind);
-						string s1 = xorstr("A 3rd party tool file has been found on your system: %s\n");
+						// LM_Shutdown: server'a XSafe LOG gonderir (HACK log + HWID/hesap ban). Sadece client kapatmaz.
+						string s1 = xorstr("[MRX] A 3rd party tool file has been found on your system: %s\n");
 						string s2 = xorstr("please remove it and try again.");
-						Shutdown(string_format(s1 + s2, fd.cFileName));
+						LM_Shutdown(string_format(s1 + s2, fd.cFileName));
 					}
 				} while (FindNextFileA(hFind, &fd));
 				FindClose(hFind);
@@ -363,9 +364,9 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 			};
 			for (const char* p : probePaths) {
 				if (GetFileAttributesA(p) != INVALID_FILE_ATTRIBUTES) {
-					string s1 = xorstr("A 3rd party tool driver has been detected: %s\n");
+					string s1 = xorstr("[MRX] A 3rd party tool driver has been detected: %s\n");
 					string s2 = xorstr("please remove it and try again.");
-					Shutdown(string_format(s1 + s2, p));
+					LM_Shutdown(string_format(s1 + s2, p));
 				}
 			}
 		}
@@ -381,9 +382,9 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 						// Mesru 'mouse'/'keyboard' yoktur; bu adlarda service varsa interception'dir.
 						CloseServiceHandle(svc);
 						CloseServiceHandle(scm);
-						string s1 = xorstr("A 3rd party tool service has been detected: %s\n");
+						string s1 = xorstr("[MRX] A 3rd party tool service has been detected: %s\n");
 						string s2 = xorstr("please remove it and try again.");
-						Shutdown(string_format(s1 + s2, sv));
+						LM_Shutdown(string_format(s1 + s2, sv));
 					}
 				}
 				CloseServiceHandle(scm);
@@ -407,12 +408,12 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 				// 1) benzersiz kara liste adi (yola bagimli DEGIL)
 				for (string fb : forbiddenProcesses) {
 					if (procName == strToLower(fb)) {
-						MRXLog("  [proc] KARA LISTE ESLESTI -> Shutdown");
+						MRXLog("  [proc] KARA LISTE ESLESTI -> ban");
 						CloseHandle(hSnap);
-						string s1 = xorstr("An 3rd party tool has been detected on your system: %s\n");
+						string s1 = xorstr("[MRX] An 3rd party tool has been detected on your system: %s\n");
 						string s2 = xorstr("If you don't use any hacking stuff, ");
 						string s3 = xorstr("please close it and try again.");
-						Shutdown(string_format(s1 + s2 + s3, pe.szExeFile));
+						LM_Shutdown(string_format(s1 + s2 + s3, pe.szExeFile));
 					}
 				}
 				// 2) sahte svchost: ASIL MAKRO svchost.exe adiyla maskelenir (110 MB .NET d3d9 overlay).
@@ -436,11 +437,11 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 							char dbg[400]; sprintf(dbg, "  [proc] svchost YOL=%s BOYUT=%llu", szPath, fsize); MRXLog(dbg);
 							// Mesru svchost asla 1 MB gecmez. 1 MB+ svchost = sahte makro.
 							if (fsize > (1024ULL * 1024ULL)) {
-								MRXLog("  [proc] SAHTE svchost (>1MB) -> Shutdown");
+								MRXLog("  [proc] SAHTE svchost (>1MB) -> ban");
 								CloseHandle(hSnap);
-								string s1 = xorstr("A masked 3rd party tool has been detected: %s\n");
+								string s1 = xorstr("[MRX] A masked 3rd party tool has been detected: %s\n");
 								string s2 = xorstr("please close it and try again.");
-								Shutdown(string_format(s1 + s2, szPath));
+								LM_Shutdown(string_format(s1 + s2, szPath));
 							}
 						} else {
 							MRXLog("  [proc] svchost yol ALINAMADI (Module32 bos)");
