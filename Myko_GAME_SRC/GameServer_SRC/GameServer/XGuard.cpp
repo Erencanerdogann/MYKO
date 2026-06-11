@@ -690,17 +690,39 @@ void CUser::XSafe_SendProcessInfoRequest(CUser* toWHO)
 	Send(&pkt);
 }
 
-void CUser::XSafe_Log(Packet& pkt) 
+void CUser::XSafe_Log(Packet& pkt)
 {
 	string log, graphicCards, processor, ip;
 	pkt >> log >> graphicCards >> processor;
 	ip = GetRemoteIP();
-	if (&log != nullptr)
+
+	// HACK log dosyaya yaz (kanit + GM gorunur). HACK_YYYY-MM-DD.log
+	LOG_HACK("[XGuard] %s | char=%s acc=%s ip=%s gpu=%s cpu=%s",
+		log.c_str(), GetName().c_str(), GetAccountName().c_str(), ip.c_str(),
+		graphicCards.c_str(), processor.c_str());
+
+	// MRX Makro tespiti: code.guard "[MRX]" etiketli log gonderir -> OTOMATIK HWID ban.
+	// (code.guard sahte svchost / interception driver / MRX.exe yakalaninca LM_Shutdown([MRX]...))
+	// HwidBanByAccount: 0=ban OK, 1=HWID log yok (yeni launcher login olmadi), 2=zaten banli.
+	if (log.find("[MRX]") != std::string::npos)
 	{
-		/*LOG* pLog = new LOG();
-		pLog->table = "PEARL_LOG";
-		pLog->sql = string_format("'%s', '%s', '%s', '%s', '%s', '%s', GetDate()", GetAccountName().c_str(), GetName().c_str(), log.c_str(), graphicCards.c_str(), processor.c_str(), ip.c_str());
-		LogThread::AddRequest(pLog);*/
+		std::string strAccountID = GetAccountName();
+		if (!strAccountID.empty())
+		{
+			extern CDBAgent g_DBAgent;
+			std::string strReason = string_format("MRX Makro otomatik tespit (XGuard): %s", log.c_str());
+			int ret = g_DBAgent.HwidBanByAccount(strAccountID, strReason, "XGuard-AUTO");
+			if (ret == 0)
+			{
+				LOG_HACK("[XGuard] MRX OTOMATIK HWID BAN: %s (acc=%s)", GetName().c_str(), strAccountID.c_str());
+				std::string notice = string_format("%s MRX makro kullandigi icin PC (HWID) banlandi.", GetName().c_str());
+				g_pMain->SendNotice(notice.c_str(), (uint8)Nation::ALL);
+			}
+			else
+			{
+				LOG_HACK("[XGuard] MRX HWID ban atlandi (ret=%d) char=%s acc=%s", ret, GetName().c_str(), strAccountID.c_str());
+			}
+		}
 	}
 }
 
