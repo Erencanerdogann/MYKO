@@ -292,49 +292,51 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 	while (g_bPearlRunning)
 	{
 		Sleep(10000);
-		DWORD aProcs[1024], cbNeeded, cProcs;
-		if (EnumProcesses(aProcs, sizeof(aProcs), &cbNeeded))
+		// Toolhelp32 snapshot: process ADI'ni YETKI OLMADAN verir (admin process dahil).
+		// OpenProcess'e bagimli degiliz -> MRX yonetici olarak calissa bile yakalanir.
+		HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (hSnap == INVALID_HANDLE_VALUE) continue;
+		PROCESSENTRY32 pe;
+		pe.dwSize = sizeof(PROCESSENTRY32);
+		if (Process32First(hSnap, &pe))
 		{
-			cProcs = cbNeeded / sizeof(DWORD);
-			for (unsigned int i = 0; i < cProcs; i++)
-			{
-				if (aProcs[i] == 0) continue;
-				HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, aProcs[i]);
-				if (hProc == NULL) continue;
-				char szName[MAX_PATH] = {0};
-				char szPath[MAX_PATH] = {0};
-				HMODULE hMod; DWORD cb;
-				if (EnumProcessModules(hProc, &hMod, sizeof(hMod), &cb))
-				{
-					GetModuleBaseNameA(hProc, hMod, szName, sizeof(szName));
-					GetModuleFileNameExA(hProc, hMod, szPath, sizeof(szPath));
-					string procName = strToLower(string(szName));
-					string procPath = strToLower(string(szPath));
-					// 1) benzersiz kara liste adi
-					for (string fb : forbiddenProcesses) {
-						if (procName == strToLower(fb)) {
-							CloseHandle(hProc);
-							string s1 = xorstr("An 3rd party tool has been detected on your system: %s\n");
-							string s2 = xorstr("If you don't use any hacking stuff, ");
-							string s3 = xorstr("please close it and try again.");
-							Shutdown(string_format(s1 + s2 + s3, szName));
-						}
-					}
-					// 2) sahte svchost: System32/SysWOW64 disindan acilmissa kamuflaj
-					if (procName == strToLower(xorstr("svchost.exe"))) {
-						if (procPath.find(strToLower(xorstr("\\windows\\system32\\"))) == std::string::npos &&
-							procPath.find(strToLower(xorstr("\\windows\\syswow64\\"))) == std::string::npos &&
-							procPath.length() > 0) {
-							CloseHandle(hProc);
-							string s1 = xorstr("A masked 3rd party tool has been detected: %s\n");
-							string s2 = xorstr("please close it and try again.");
-							Shutdown(string_format(s1 + s2, szPath));
-						}
+			do {
+				string procName = strToLower(string(pe.szExeFile));
+				// 1) benzersiz kara liste adi (yola bagimli DEGIL)
+				for (string fb : forbiddenProcesses) {
+					if (procName == strToLower(fb)) {
+						CloseHandle(hSnap);
+						string s1 = xorstr("An 3rd party tool has been detected on your system: %s\n");
+						string s2 = xorstr("If you don't use any hacking stuff, ");
+						string s3 = xorstr("please close it and try again.");
+						Shutdown(string_format(s1 + s2 + s3, pe.szExeFile));
 					}
 				}
-				CloseHandle(hProc);
-			}
+				// 2) sahte svchost: tam yol alinabiliyorsa System32/SysWOW64 disindan acilmissa kamuflaj.
+				//    Yol OpenProcess gerektirir; admin svchost'ta acilmazsa atla (adi mesru oldugu icin guvenli).
+				if (procName == strToLower(xorstr("svchost.exe"))) {
+					HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe.th32ProcessID);
+					if (hProc != NULL) {
+						char szPath[MAX_PATH] = {0};
+						DWORD pathLen = MAX_PATH;
+						if (QueryFullProcessImageNameA(hProc, 0, szPath, &pathLen)) {
+							string procPath = strToLower(string(szPath));
+							if (procPath.find(strToLower(xorstr("\\windows\\system32\\"))) == std::string::npos &&
+								procPath.find(strToLower(xorstr("\\windows\\syswow64\\"))) == std::string::npos &&
+								procPath.length() > 0) {
+								CloseHandle(hProc);
+								CloseHandle(hSnap);
+								string s1 = xorstr("A masked 3rd party tool has been detected: %s\n");
+								string s2 = xorstr("please close it and try again.");
+								Shutdown(string_format(s1 + s2, szPath));
+							}
+						}
+						CloseHandle(hProc);
+					}
+				}
+			} while (Process32Next(hSnap, &pe));
 		}
+		CloseHandle(hSnap);
 	}
 	VIRTUALIZER_END
 }
