@@ -199,7 +199,11 @@ int CNpcThread::_Engine() {
 				_mNpcRemove(ptrNpc);
 				m_arNpcArray.DeleteData(sNpcID);
 			}
-			Sleep(250);
+			// PERF (S131): NPC AI tick 250ms->100ms. Mob tepki/hareket akiciligi (250ms gecikme/jitter
+			// -> 100ms). DAVRANIS DEGISMEZ: m_Delay (her NPC kendi hizi) + mutlak zaman damgalari (DOT
+			// Type3/4 = 3sn) korunur -> mob sadece DAHA DUYARLI, saldiri/DOT hizi AYNI. CPU 2.5x sik ama
+			// 16 core/64GB rahat kaldirir (bos: %0.1). Kanit: NpcThread denetim raporu 2026-06-11.
+			Sleep(100);
 		}
 	}
 	catch (std::system_error& ex) {
