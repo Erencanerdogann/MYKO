@@ -6336,7 +6336,9 @@ bool CDBAgent::BracketLoadMatches(int32_t bracketID, std::vector<_BRACKET_MATCH_
 
 	dbCommand->AddParameter(SQL_PARAM_INPUT, &pBracketID);
 
-	if (!dbCommand->Execute(_T("SELECT MatchID, RoundNumber, MatchOrder, RedClanID, BlueClanID, ZoneID, Status, ISNULL(WinnerClanID, 0), ISNULL(DependsOnMatch1, 0) FROM KO_LOG.dbo._MK_BRACKET_MATCHES WHERE BracketID = ? ORDER BY RoundNumber, MatchOrder"))) {
+	// FIX (S131): _MK_BRACKET_MATCHES kolonu 'Round' (1V1/LEAGUE 'RoundNumber' ama BRACKET 'Round').
+	// Kod 'RoundNumber' istiyordu -> "Invalid column name 'RoundNumber'" hatasi. DB kanitli: BRACKET=Round.
+	if (!dbCommand->Execute(_T("SELECT MatchID, Round, MatchOrder, RedClanID, BlueClanID, ZoneID, Status, ISNULL(WinnerClanID, 0), ISNULL(DependsOnMatch1, 0) FROM KO_LOG.dbo._MK_BRACKET_MATCHES WHERE BracketID = ? ORDER BY Round, MatchOrder"))) {
 		return false;
 	}
 
