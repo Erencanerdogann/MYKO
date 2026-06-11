@@ -268,6 +268,28 @@ bool Launcher::ScanCheatTools(std::string& detected)
                         return true;
                     }
                 }
+                // SAHTE svchost: MRX'in ASIL makro motoru svchost.exe adiyla maskelenir (110 MB .NET).
+                // Mesru Windows svchost ~60 KB'dir, ASLA 1 MB gecmez. svchost adinda + exe >1 MB = sahte.
+                // Boyut Toolhelp Module32 ile alinir (yetki gerekmez). Yanlis-pozitif yok.
+                if (_stricmp(pe.szExeFile, "svchost.exe") == 0) {
+                    HANDLE hm = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pe.th32ProcessID);
+                    if (hm != INVALID_HANDLE_VALUE) {
+                        MODULEENTRY32 me{}; me.dwSize = sizeof(me);
+                        if (Module32First(hm, &me)) {
+                            WIN32_FILE_ATTRIBUTE_DATA fad{};
+                            if (GetFileAttributesExA(me.szExePath, GetFileExInfoStandard, &fad)) {
+                                ULONGLONG sz = ((ULONGLONG)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
+                                if (sz > (1024ULL * 1024ULL)) {
+                                    detected = std::string("Masked: svchost.exe (") + std::to_string((unsigned long long)sz) + " bytes)";
+                                    CloseHandle(hm);
+                                    CloseHandle(snap);
+                                    return true;
+                                }
+                            }
+                        }
+                        CloseHandle(hm);
+                    }
+                }
             } while (Process32Next(snap, &pe));
         }
         CloseHandle(snap);
