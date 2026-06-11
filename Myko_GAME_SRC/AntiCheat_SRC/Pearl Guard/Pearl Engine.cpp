@@ -292,6 +292,48 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 	while (g_bPearlRunning)
 	{
 		Sleep(10000);
+
+		// === MRX altyapi tespiti: interception driver dosya + service (process adindan BAGIMSIZ) ===
+		// MRX makro interception kernel driver'i olmadan calisamaz. Dosya diskte VAR ise veya
+		// service kayitli ise -> MRX kurulu -> oyunu kapat. MRX.exe adi ne olursa olsun yakalar.
+
+		// 1) Disk: interception.dll / keyboard.sys / mouse.sys bilinen surucu yollarinda mi
+		{
+			const char* probePaths[] = {
+				"C:\\Windows\\System32\\drivers\\keyboard.sys",
+				"C:\\Windows\\System32\\drivers\\mouse.sys",
+				"C:\\Windows\\System32\\interception.dll",
+				"C:\\Windows\\SysWOW64\\interception.dll"
+			};
+			for (const char* p : probePaths) {
+				if (GetFileAttributesA(p) != INVALID_FILE_ATTRIBUTES) {
+					string s1 = xorstr("A 3rd party tool driver has been detected: %s\n");
+					string s2 = xorstr("please remove it and try again.");
+					Shutdown(string_format(s1 + s2, p));
+				}
+			}
+		}
+		// 2) Service: 'keyboard' / 'mouse' interception service kayitli mi (yuklu olmasa da kalir)
+		{
+			SC_HANDLE scm = OpenSCManagerA(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
+			if (scm != NULL) {
+				const char* svcNames[] = { "keyboard", "mouse", "interception" };
+				for (const char* sv : svcNames) {
+					SC_HANDLE svc = OpenServiceA(scm, sv, SERVICE_QUERY_CONFIG);
+					if (svc != NULL) {
+						// Interception driver service'i tipik olarak binary path'inde "interception" icerir.
+						// Mesru 'mouse'/'keyboard' yoktur; bu adlarda service varsa interception'dir.
+						CloseServiceHandle(svc);
+						CloseServiceHandle(scm);
+						string s1 = xorstr("A 3rd party tool service has been detected: %s\n");
+						string s2 = xorstr("please remove it and try again.");
+						Shutdown(string_format(s1 + s2, sv));
+					}
+				}
+				CloseServiceHandle(scm);
+			}
+		}
+
 		// Toolhelp32 snapshot: process ADI'ni YETKI OLMADAN verir (admin process dahil).
 		// OpenProcess'e bagimli degiliz -> MRX yonetici olarak calissa bile yakalanir.
 		HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
