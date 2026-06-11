@@ -286,15 +286,10 @@ std::string forbiddenProcesses[] = {
 
 // MRX Makro process taramasi — DriverScan ikizi. Process adi kara listede ise,
 // VEYA svchost.exe System32 disindan acilmissa (sahte kamuflaj) -> oyunu kapat.
-// TESHIS: MRX tarama loglari client klasorune yazilir (calisma izni var). Sebep teshisi icin.
+// TESHIS log — PRODUCTION'da KAPALI (no-op). Cagrilar kodda kaldi ama dosyaya yazmaz.
+// Debug gerekince govdeyi geri ac (fopen guard_mrx.log). CLAUDE.md: debug log production'a gitmez.
 static void MRXLog(const char* msg) {
-	char p[MAX_PATH] = {0};
-	GetModuleFileNameA(NULL, p, MAX_PATH);  // KnightOnline.exe yolu
-	string path(p);
-	size_t slash = path.find_last_of("\\/");
-	string logPath = (slash != std::string::npos ? path.substr(0, slash) : ".") + "\\guard_mrx.log";
-	FILE* f = fopen(logPath.c_str(), "a");
-	if (f) { fprintf(f, "%s\n", msg); fclose(f); }
+	(void)msg;  // no-op (production)
 }
 
 DWORD WINAPI MRXProcessScan(LPVOID lParam)
