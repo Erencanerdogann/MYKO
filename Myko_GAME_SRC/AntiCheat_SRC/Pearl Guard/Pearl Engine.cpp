@@ -296,13 +296,21 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 {
 	VIRTUALIZER_START
 	MRXLog("=== MRXProcessScan thread BASLADI (code.guard yuklu+calisti) ===");
-	while (g_bPearlRunning)
+	// #KASMA (2026-06-12, patron karari): SUREKLI TARAMA DONGUSU KAPATILDI (yorum satirina alindi,
+	// KURAL 0-B: calisan kod silinmez). Her 10sn disk+process taramasi periyodik kasma yapiyordu.
+	// Karar: SADECE ACILISTA 1 KEZ tara, oyun-ici sonsuz dongu YOK. Koruma: Launcher zaten giriste
+	// tarar + code.guard acilista 1 kez disk+process. Sureklilik gerekirse asagidaki while/Sleep
+	// yorumdan cikarilir (geri-acilabilir).
+	// unsigned int s_scanTurn = 0;
+	// while (g_bPearlRunning)
 	{
-		MRXLog("--- tarama turu basladi ---");
+		MRXLog("--- tarama turu basladi (acilis tek-gecis) ---");
+		bool bDeepScan = true; // acilis tek-gecis: disk+driver+process hepsi 1 kez taranir
 
 		// === MRX DISK tespiti: dosya bilgisayarda DURUYORSA (calismasa bile) oyunu kapat ===
 		// Bilinen yerleri (Desktop/Downloads/koklar) MRX imza dosyalari icin tara. Boyut imzasi
 		// ad degisse bile tutar (icerik ayni). Patron: "dosyasi bile olsa oyun acilmasin".
+		if (bDeepScan)
 		{
 			// MRX imza boyutlari (test sunucusundan okundu, calistirilmadan)
 			const ULONGLONG SIG_MRX     = 40181248ULL;   // MRX.exe
@@ -350,6 +358,8 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 		// service kayitli ise -> MRX kurulu -> oyunu kapat. MRX.exe adi ne olursa olsun yakalar.
 
 		// 1) Disk: interception.dll / keyboard.sys / mouse.sys bilinen surucu yollarinda mi
+		// #KASMA: driver disk/service taramasi da deep-scan (60sn) — surucu/service nadiren degisir.
+		if (bDeepScan)
 		{
 			const char* probePaths[] = {
 				"C:\\Windows\\System32\\drivers\\keyboard.sys",
@@ -364,25 +374,25 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 					LM_Shutdown(string_format(s1 + s2, p));
 				}
 			}
-		}
-		// 2) Service: 'keyboard' / 'mouse' interception service kayitli mi (yuklu olmasa da kalir)
-		{
-			SC_HANDLE scm = OpenSCManagerA(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
-			if (scm != NULL) {
-				const char* svcNames[] = { "keyboard", "mouse", "interception" };
-				for (const char* sv : svcNames) {
-					SC_HANDLE svc = OpenServiceA(scm, sv, SERVICE_QUERY_CONFIG);
-					if (svc != NULL) {
-						// Interception driver service'i tipik olarak binary path'inde "interception" icerir.
-						// Mesru 'mouse'/'keyboard' yoktur; bu adlarda service varsa interception'dir.
-						CloseServiceHandle(svc);
-						CloseServiceHandle(scm);
-						string s1 = xorstr("[MRX] A 3rd party tool service has been detected: %s\n");
-						string s2 = xorstr("please remove it and try again.");
-						LM_Shutdown(string_format(s1 + s2, sv));
+			// 2) Service: 'keyboard' / 'mouse' interception service kayitli mi (yuklu olmasa da kalir)
+			{
+				SC_HANDLE scm = OpenSCManagerA(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
+				if (scm != NULL) {
+					const char* svcNames[] = { "keyboard", "mouse", "interception" };
+					for (const char* sv : svcNames) {
+						SC_HANDLE svc = OpenServiceA(scm, sv, SERVICE_QUERY_CONFIG);
+						if (svc != NULL) {
+							// Interception driver service'i tipik olarak binary path'inde "interception" icerir.
+							// Mesru 'mouse'/'keyboard' yoktur; bu adlarda service varsa interception'dir.
+							CloseServiceHandle(svc);
+							CloseServiceHandle(scm);
+							string s1 = xorstr("[MRX] A 3rd party tool service has been detected: %s\n");
+							string s2 = xorstr("please remove it and try again.");
+							LM_Shutdown(string_format(s1 + s2, sv));
+						}
 					}
+					CloseServiceHandle(scm);
 				}
-				CloseServiceHandle(scm);
 			}
 		}
 
@@ -446,8 +456,11 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 			} while (Process32Next(hSnap, &pe));
 		}
 		CloseHandle(hSnap);
-		MRXLog("--- tarama turu bitti, 10sn uyku ---");
-		Sleep(10000);
+		MRXLog("--- acilis taramasi bitti (tek-gecis, dongu kapali) ---");
+		// #KASMA: sureklı tarama dongusu KAPATILDI (yorum, KURAL 0-B). Geri acmak icin
+		// yukaridaki while(g_bPearlRunning)'i ve asagidaki Sleep+devam'i yorumdan cikar.
+		// Sleep(30000);
+		// } // <- while sonu (kapali)
 	}
 	VIRTUALIZER_END
 }
