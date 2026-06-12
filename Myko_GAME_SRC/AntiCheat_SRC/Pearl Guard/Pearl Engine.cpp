@@ -407,6 +407,7 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 						char dbg[400]; sprintf(dbg, "  [disk] MRX DOSYASI BULUNDU: %s\\%s (%llu) -> ban", dir.c_str(), fd.cFileName, sz); MRXLog(dbg);
 						FindClose(hFind);
 						// LM_Shutdown: server'a XSafe LOG gonderir (HACK log + HWID/hesap ban). Sadece client kapatmaz.
+						DIAG("MRX", "DISK dosya tespit: %s (boyut=%llu) -> client kapatiliyor", fd.cFileName, sz);
 						string s1 = xorstr("[MRX] A 3rd party tool file has been found on your system: %s\n");
 						string s2 = xorstr("please remove it and try again.");
 						LM_Shutdown(string_format(s1 + s2, fd.cFileName));
@@ -432,12 +433,20 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 			};
 			for (const char* p : probePaths) {
 				if (GetFileAttributesA(p) != INVALID_FILE_ATTRIBUTES) {
+					// NOT: keyboard.sys/mouse.sys interception'a OZGU (Windows'unki kbdclass.sys/i8042prt.sys).
+					// Yine de gorunurluk: hangi dosya tetikledi diag.log'da (FP olursa yakalanir).
+					DIAG("MRX", "DRIVER dosya tespit: %s -> client kapatiliyor", p);
 					string s1 = xorstr("[MRX] A 3rd party tool driver has been detected: %s\n");
 					string s2 = xorstr("please remove it and try again.");
 					LM_Shutdown(string_format(s1 + s2, p));
 				}
 			}
-			// 2) Service: 'keyboard' / 'mouse' interception service kayitli mi (yuklu olmasa da kalir)
+			// 2) Service: interception service kayitli mi.
+			// #FP FIX (2026-06-13, Boran vakasi): ESKI kod sadece service ADINA bakiyordu
+			// ('keyboard'/'mouse' varsa MRX). YANLIS — 'keyboard'/'mouse' GENEL adlar, mesru
+			// OEM/Windows servislerinde de olabilir -> Boran gibi masum oyuncu ban yiyordu.
+			// YENI: service'in BINARY PATH'ini oku (QueryServiceConfig). Path'inde GERCEKTEN
+			// 'interception' geciyorsa MRX. Yoksa = masum, ATLA (false positive yok).
 			{
 				SC_HANDLE scm = OpenSCManagerA(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
 				if (scm != NULL) {
@@ -445,13 +454,40 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 					for (const char* sv : svcNames) {
 						SC_HANDLE svc = OpenServiceA(scm, sv, SERVICE_QUERY_CONFIG);
 						if (svc != NULL) {
-							// Interception driver service'i tipik olarak binary path'inde "interception" icerir.
-							// Mesru 'mouse'/'keyboard' yoktur; bu adlarda service varsa interception'dir.
+							// Binary path'i oku, GERCEKTEN interception mi dogrula
+							bool bGercekInterception = false;
+							DWORD needed = 0;
+							QueryServiceConfigA(svc, NULL, 0, &needed); // gereken boyutu al
+							if (needed > 0) {
+								std::vector<char> buf(needed);
+								QUERY_SERVICE_CONFIGA* cfg = (QUERY_SERVICE_CONFIGA*)buf.data();
+								if (QueryServiceConfigA(svc, cfg, needed, &needed) && cfg->lpBinaryPathName) {
+									std::string path = cfg->lpBinaryPathName;
+									std::string lpath = strToLower(path);
+									// path'inde "interception" gecmesi GEREK (sadece ad yetmez)
+									if (lpath.find(xorstr("interception")) != std::string::npos)
+										bGercekInterception = true;
+								}
+							}
+							// 'interception' adli service ZATEN interception'dir (ad spesifik) -> path olmasa da kabul
+							if (strcmp(sv, "interception") == 0)
+								bGercekInterception = true;
+
 							CloseServiceHandle(svc);
-							CloseServiceHandle(scm);
-							string s1 = xorstr("[MRX] A 3rd party tool service has been detected: %s\n");
-							string s2 = xorstr("please remove it and try again.");
-							LM_Shutdown(string_format(s1 + s2, sv));
+
+							if (bGercekInterception) {
+								CloseServiceHandle(scm);
+								// GORUNURLUK: kapatmadan ONCE diag.log'a iz birak (client kapaninca
+								// server'a ulasamadan kaybolmasin -> DiagLog upload ile bize gelir).
+								DIAG("MRX", "interception service tespit (ad=%s, GERCEK path dogrulandi) -> client kapatiliyor", sv);
+								string s1 = xorstr("[MRX] A 3rd party tool service has been detected: %s\n");
+								string s2 = xorstr("please remove it and try again.");
+								LM_Shutdown(string_format(s1 + s2, sv));
+							}
+							else {
+								// MASUM: ad eslesti ama path interception degil -> FALSE POSITIVE, atla + izle
+								DIAG("MRX", "service '%s' VAR ama interception path DEGIL -> MASUM (FP onlendi, ban YOK)", sv);
+							}
 						}
 					}
 					CloseServiceHandle(scm);
@@ -477,6 +513,7 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 				for (string fb : forbiddenProcesses) {
 					if (procName == strToLower(fb)) {
 						MRXLog("  [proc] KARA LISTE ESLESTI -> ban");
+						DIAG("MRX", "PROCESS tespit: %s (kara liste) -> client kapatiliyor", pe.szExeFile);
 						CloseHandle(hSnap);
 						string s1 = xorstr("[MRX] An 3rd party tool has been detected on your system: %s\n");
 						string s2 = xorstr("If you don't use any hacking stuff, ");
