@@ -125,10 +125,25 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 		if (s_lastFrameTick != 0) {
 			DWORD delta = now - s_lastFrameTick;
 			if (delta > 300) { // 60fps'te frame ~16ms; 300ms = gozle gorulur donma
-				// Donmadan ONCE en son ne oldu? (D3D Reset / SetScissorRect-UI / foreground).
+				// Donmadan ONCE en son ne oldu? SADECE donmaya YAKIN (son 2sn) olayi goster.
+				// Bayat etiket (8dk onceki foreground) yaniltiyor -> 2sn disindaki "yakin olay yok".
 				DWORD evAge = (g_DiagLastEventTick != 0) ? (now - g_DiagLastEventTick) : 999999;
-				DIAG("FREEZE", "EndScene %ums takildi (son olay: %s, %ums once)",
-					delta, g_DiagLastEvent, evAge);
+				const char* yakin = (evAge <= 2000) ? g_DiagLastEvent : "(yakin tetik yok)";
+
+				// Donma aninda DURUM fotosu: bellek + handle + son thread aktivitesi.
+				// "Arka planda ne kasiyor" sorusu icin: MEM artiyorsa sizinti, thread takiliysa o.
+				extern char  g_DiagThreadActivity[64]; // son calisan code.guard thread + zamani
+				extern DWORD g_DiagThreadActivityTick;
+				DWORD thrAge = (g_DiagThreadActivityTick != 0) ? (now - g_DiagThreadActivityTick) : 999999;
+
+				PROCESS_MEMORY_COUNTERS pmc; pmc.cb = sizeof(pmc);
+				DWORD memMB = 0;
+				if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+					memMB = (DWORD)(pmc.WorkingSetSize / (1024 * 1024));
+
+				DIAG("FREEZE", "Oyun %ums dondu | oncesi: %s (%ums) | son cg-thread: %s (%ums once) | RAM=%uMB",
+					delta, yakin, (evAge <= 2000 ? evAge : 0),
+					g_DiagThreadActivity, thrAge, memMB);
 			}
 		}
 		s_lastFrameTick = now;

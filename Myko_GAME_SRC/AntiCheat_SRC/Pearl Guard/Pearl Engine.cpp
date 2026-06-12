@@ -20,6 +20,8 @@ int  g_DiagEnabled = -1;          // -1=okunmadi, 0=kapali, 1=acik (INI'den)
 char g_DiagPath[MAX_PATH] = { 0 };
 char  g_DiagLastEvent[128] = "yok"; // donma anini tetikleyen son olay
 DWORD g_DiagLastEventTick = 0;
+char  g_DiagThreadActivity[64] = "yok"; // son calisan code.guard arka-plan thread
+DWORD g_DiagThreadActivityTick = 0;
 
 // CRASH yakalama filtresi — client cokerse adres + kod + modul yaz, sonra zinciri bozma.
 LONG WINAPI DiagUnhandledFilter(EXCEPTION_POINTERS* ep)
@@ -264,7 +266,7 @@ DWORD WINAPI PearlEngine::SuspendCheck(PearlEngine* e)
 	DWORD TimeTest1 = 0, TimeTest2 = 0;
 	while (true)
 	{
-		
+		DiagThreadTick("SuspendCheck"); // donma aninda suspend kontrol aktifti mi izle
 		if (time.wMinute % 10 == 0 && Engine->m_bHookStart && time.wSecond ==0)
 			Engine->ClearListString(Engine->uiNoticeWind->m_pChatOut);
 
@@ -365,6 +367,7 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 	// while (g_bPearlRunning)
 	{
 		MRXLog("--- tarama turu basladi (acilis tek-gecis) ---");
+		DiagThreadTick("MRXProcessScan"); // donma aninda MRX taramasi aktifti mi (acilista 1 kez)
 		bool bDeepScan = true; // acilis tek-gecis: disk+driver+process hepsi 1 kez taranir
 
 		// === MRX DISK tespiti: dosya bilgisayarda DURUYORSA (calismasa bile) oyunu kapat ===
@@ -532,6 +535,7 @@ DWORD WINAPI AliveSend(LPVOID lParam)
 	unsigned int s_aliveTurn = 0;
 	while (g_bPearlRunning) {
 
+		DiagThreadTick("AliveSend"); // donma aninda bu thread aktifti mi izle
 		CheckAliveTime = clock();
 		Engine->StayAlive();
 

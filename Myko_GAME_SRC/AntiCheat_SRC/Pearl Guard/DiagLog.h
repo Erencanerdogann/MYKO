@@ -31,6 +31,19 @@ extern char g_DiagPath[MAX_PATH];
 extern char  g_DiagLastEvent[128];
 extern DWORD g_DiagLastEventTick;
 
+// THREAD aktivite izi: code.guard arka-plan thread'leri (MRX/Suspend/Alive/Title) "ben simdi
+// calistim" damgasi birakir. Donma aninda hangi cg-thread aktifti -> donma cg'den mi client'tan mi.
+extern char  g_DiagThreadActivity[64];
+extern DWORD g_DiagThreadActivityTick;
+
+static inline void DiagThreadTick(const char* threadAdi)
+{
+	if (g_DiagEnabled <= 0) return;
+	strncpy(g_DiagThreadActivity, threadAdi, sizeof(g_DiagThreadActivity) - 1);
+	g_DiagThreadActivity[sizeof(g_DiagThreadActivity) - 1] = '\0';
+	g_DiagThreadActivityTick = GetTickCount();
+}
+
 // Son olayi damgala (hook'lar cagirir). GetTickCount DiagLog.h icinde windows.h'tan gelir.
 static inline void DiagMark(const char* ev)
 {
