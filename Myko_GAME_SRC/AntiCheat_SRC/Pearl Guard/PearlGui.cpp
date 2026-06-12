@@ -38,6 +38,7 @@ HRESULT WINAPI SetScissorRect(LPDIRECT3DDEVICE9 pDevice, D3DSTATEBLOCKTYPE Type,
 	HRESULT ret = oSetScissorRect(pDevice, Type, ppSB);
 	//printf("THETHYKE | EXCEPTION 4\n");
 	ischeatactive = true;
+	DiagMark("SetScissorRect (UI/chat clip cizim)"); // resize donmasi suphelisi: son olay bu mu?
 	return ret;
 }
 PDWORD IDirect3D9_vtable = NULL;
@@ -98,6 +99,7 @@ HRESULT WINAPI hkReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* Present
 
 	// DiagLog D3D: device Reset = alt-tab/resize/fullscreen-gecis/device-lost. Acilista
 	// kapanma + alt-tab donma burada gorunur (Reset basarisiz olursa siyah ekran/crash).
+	DiagMark("D3D Reset");
 	DIAG("D3D", "Reset cagrildi: %ux%u Windowed=%d Vsync=%d (alt-tab/resize/device-lost)",
 		Present->BackBufferWidth, Present->BackBufferHeight,
 		(int)Present->Windowed, Engine->m_SettingsMgr->m_iVsync);
@@ -122,8 +124,12 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 		DWORD now = GetTickCount();
 		if (s_lastFrameTick != 0) {
 			DWORD delta = now - s_lastFrameTick;
-			if (delta > 300) // 60fps'te frame ~16ms; 300ms = gozle gorulur donma
-				DIAG("FREEZE", "EndScene %ums takildi (onceki frame'den beri)", delta);
+			if (delta > 300) { // 60fps'te frame ~16ms; 300ms = gozle gorulur donma
+				// Donmadan ONCE en son ne oldu? (D3D Reset / SetScissorRect-UI / foreground).
+				DWORD evAge = (g_DiagLastEventTick != 0) ? (now - g_DiagLastEventTick) : 999999;
+				DIAG("FREEZE", "EndScene %ums takildi (son olay: %s, %ums once)",
+					delta, g_DiagLastEvent, evAge);
+			}
 		}
 		s_lastFrameTick = now;
 	}

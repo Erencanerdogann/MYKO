@@ -18,6 +18,8 @@ bool ischeatactive = false;
 // ---- DiagLog global durum (DiagLog.h extern) ----
 int  g_DiagEnabled = -1;          // -1=okunmadi, 0=kapali, 1=acik (INI'den)
 char g_DiagPath[MAX_PATH] = { 0 };
+char  g_DiagLastEvent[128] = "yok"; // donma anini tetikleyen son olay
+DWORD g_DiagLastEventTick = 0;
 
 // CRASH yakalama filtresi — client cokerse adres + kod + modul yaz, sonra zinciri bozma.
 LONG WINAPI DiagUnhandledFilter(EXCEPTION_POINTERS* ep)
@@ -2176,6 +2178,15 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 	{
 		lpPoint->x = -32000;
 		lpPoint->y = -32000;
+	}
+	// DiagLog WND: foreground DEGISIM anini isaretle (her cagri degil, sadece arka<->on gecisi).
+	// alt-tab donmasi bu olayla eslesir mi -> FREEZE "son olay: foreground=arka" gosterir.
+	{
+		static int s_lastArka = -1;
+		if ((int)arka != s_lastArka) {
+			DiagMark(arka ? "foreground -> ARKA PLAN (alt-tab)" : "foreground -> ON PLAN");
+			s_lastArka = (int)arka;
+		}
 	}
 	return r;
 }

@@ -25,6 +25,21 @@
 extern int  g_DiagEnabled;
 extern char g_DiagPath[MAX_PATH];
 
+// SON OLAY izleme: donma anini tetikleyen sebebi bulmak icin. Her onemli hook
+// (D3D Reset, SetScissorRect/UI, foreground degisimi) buraya "ne oldu + ne zaman" yazar.
+// FREEZE kaydi bu son olayi etikete ekler -> "6797ms (son olay: D3D Reset 12ms once)".
+extern char  g_DiagLastEvent[128];
+extern DWORD g_DiagLastEventTick;
+
+// Son olayi damgala (hook'lar cagirir). GetTickCount DiagLog.h icinde windows.h'tan gelir.
+static inline void DiagMark(const char* ev)
+{
+	if (g_DiagEnabled <= 0) return; // kapaliyken yazma
+	strncpy(g_DiagLastEvent, ev, sizeof(g_DiagLastEvent) - 1);
+	g_DiagLastEvent[sizeof(g_DiagLastEvent) - 1] = '\0';
+	g_DiagLastEventTick = GetTickCount();
+}
+
 // INI'den oku (ilk DIAG cagrisinda 1 kez). Option.ini code.guard ile ayni klasorde.
 static inline void DiagLoadConfig()
 {
