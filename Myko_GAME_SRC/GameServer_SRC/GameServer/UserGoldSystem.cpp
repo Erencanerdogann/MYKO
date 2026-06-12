@@ -96,13 +96,21 @@ void CUser::GoldGain(uint32 gold, bool bSendPacket /*= true*/, bool bApplyBonus 
 			gold += (gold * perkCoin) / 100;
 	}
 
+	int64 goldBefore = 0, goldAfter = 0;
 	{ // CHI-AUDIT: Gold lock — race condition fix
 		std::lock_guard<std::recursive_mutex> lock(m_goldLock);
+		goldBefore = (int64)m_iGold;
 		if (m_iGold + gold > COIN_MAX)
 			m_iGold = COIN_MAX;
 		else
 			m_iGold += gold;
+		goldAfter = (int64)m_iGold;
 	}
+
+	// #LOG (2026-06-13): gold akisi DB log (dupe/RMT izi). Lock DISINDA (AddLogRequest async, deadlock yok).
+	// gold>0 ise yaz (0 degisim atla, log sismesin). reason="GAIN" (cagiran detayi ileride eklenebilir).
+	if (gold > 0)
+		GoldChangeInsertLog("GAIN", goldBefore, goldAfter, "");
 
 	if (bSendPacket)
 	{
@@ -139,12 +147,19 @@ void CUser::LuaGoldGain(uint32 gold, bool bSendPacket /*= true*/)
 
 bool CUser::GoldLose(uint32 gold, bool bSendPacket /*= true*/)
 {
+	int64 goldBefore = 0, goldAfter = 0;
 	{ // CHI-AUDIT: Gold lock — race condition fix
 		std::lock_guard<std::recursive_mutex> lock(m_goldLock);
 		if (m_iGold < gold)
 			return false;
+		goldBefore = (int64)m_iGold;
 		m_iGold -= gold;
+		goldAfter = (int64)m_iGold;
 	}
+
+	// #LOG (2026-06-13): gold harcama DB log (lock disinda, async). gold>0 ise yaz.
+	if (gold > 0)
+		GoldChangeInsertLog("LOSE", goldBefore, goldAfter, "");
 
 	if (bSendPacket)
 	{

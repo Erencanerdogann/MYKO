@@ -35,7 +35,10 @@ void AdiniFerihaKoydum::tKnightLogger()
 				"KILLING_NPCS", "KILLING_USERS", "EXP_CHANGE", "UPGRADE", "TRADE",
 				"PUS_SHOPPING", "NPC_DROP_RECEIVED", "PREMIUM", "LOYALTY_CHANGE",
 				"CLAN_BANK", "USER_NAME_CHANGE", "CLAN_NAME_CHANGE", "NATION_TRANSFER",
-				"JOB_CHANGE", "ITEMREMOVE"
+				"JOB_CHANGE", "ITEMREMOVE",
+				// #LOG (2026-06-13, mig131): yeni eksik log kanallari — whitelist'te YOKTU =
+				// INSERT engellenip siliniyordu (bos kalma sebebi). MATRIX tablo+izin hazir.
+				"GOLD_CHANGE", "QUEST_LOG", "MAIL_LOG"
 			};
 			if (validLogTables.find(tablename) == validLogTables.end()) goto retdelete;
 		}
@@ -297,6 +300,50 @@ void CUser::PusShoppingInsertLog(uint32 itemid, uint16 itemcount, uint32 itemcas
 	Packet newpkt(0);
 	newpkt << std::string("PUS_SHOPPING");
 	newpkt << string_format("'%s','%s','%s', GETDATE(),%d,%d,%d,%d", regex_quotes(GetAccountName()).c_str(), regex_quotes(GetName()).c_str(), regex_quotes(GetRemoteIP()).c_str(), itemid, itemcount, itemcashcount, GetZoneID());
+	g_pMain->AddLogRequest(newpkt);
+}
+#pragma endregion
+
+#pragma region CUser::GoldChangeInsertLog
+// #LOG (2026-06-13, mig131): gold/noah akisi (dupe/RMT izi). GoldGain/GoldLose tek noktadan cagrilir.
+// Kolonlar (MATRIX birebir): strAccountID,strCharID,strClientIP,strReason,nGoldBefore,nGoldAfter,nDelta,strDetail,nZone
+void CUser::GoldChangeInsertLog(const std::string& reason, int64 goldBefore, int64 goldAfter, const std::string& detail) {
+	int64 delta = goldAfter - goldBefore;
+	Packet newpkt(0);
+	newpkt << std::string("GOLD_CHANGE");
+	newpkt << string_format("'%s','%s','%s','%s',%lld,%lld,%lld,'%s',%d",
+		regex_quotes(GetAccountName()).c_str(), regex_quotes(GetName()).c_str(), regex_quotes(GetRemoteIP()).c_str(),
+		regex_quotes(reason).c_str(), (long long)goldBefore, (long long)goldAfter, (long long)delta,
+		regex_quotes(detail).c_str(), GetZoneID());
+	g_pMain->AddLogRequest(newpkt);
+}
+#pragma endregion
+
+#pragma region CUser::QuestInsertLog
+// #LOG (2026-06-13, mig131): quest tamamlama + odul (exploit izi).
+// Kolonlar: strAccountID,strCharID,nQuestID,strType,nRewardItem,nRewardCount,nRewardGold,nRewardExp,nZone
+void CUser::QuestInsertLog(uint32 questid, const std::string& type, uint32 rewardItem, uint16 rewardCount, uint32 rewardGold, uint32 rewardExp) {
+	Packet newpkt(0);
+	newpkt << std::string("QUEST_LOG");
+	newpkt << string_format("'%s','%s',%d,'%s',%d,%d,%d,%d",
+		regex_quotes(GetAccountName()).c_str(), regex_quotes(GetName()).c_str(),
+		questid, regex_quotes(type).c_str(), rewardItem, rewardCount, rewardGold, rewardExp);
+	g_pMain->AddLogRequest(newpkt);
+}
+#pragma endregion
+
+#pragma region CUser::MailInsertLog
+// #LOG (2026-06-13, mig131): mail/post ile item+gold transfer (dupe kacis yolu).
+// Kolonlar: strType,strFromAccount,strFromChar,strToAccount,strToChar,strClientIP,nItemID,nItemCount,nItemSerial,nGold,strSubject
+void CUser::MailInsertLog(const std::string& type, CUser* pTarget, uint32 itemid, uint16 itemcount, uint64 itemserial, uint32 gold, const std::string& subject) {
+	std::string toAcc = pTarget ? pTarget->GetAccountName() : std::string("-");
+	std::string toChar = pTarget ? pTarget->GetName() : std::string("-");
+	Packet newpkt(0);
+	newpkt << std::string("MAIL_LOG");
+	newpkt << string_format("'%s','%s','%s','%s','%s','%s',%d,%d,%llu,%d,'%s'",
+		regex_quotes(type).c_str(), regex_quotes(GetAccountName()).c_str(), regex_quotes(GetName()).c_str(),
+		regex_quotes(toAcc).c_str(), regex_quotes(toChar).c_str(), regex_quotes(GetRemoteIP()).c_str(),
+		itemid, itemcount, (unsigned long long)itemserial, gold, regex_quotes(subject).c_str());
 	g_pMain->AddLogRequest(newpkt);
 }
 #pragma endregion

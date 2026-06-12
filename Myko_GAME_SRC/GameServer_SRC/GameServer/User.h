@@ -794,6 +794,10 @@ public:
 	void NationTransferInsertLog(uint8 oldnation, uint8 newnation);
 	void JobChangeInsertLog(uint16 oldClass, uint16 newClass, uint16 oldRace, uint16 newRace);
 	void PusShoppingInsertLog(uint32 itemid, uint16 itemcount, uint32 itemcashcount);
+	// #LOG (2026-06-13, mig131): eksik log kanallari
+	void GoldChangeInsertLog(const std::string& reason, int64 goldBefore, int64 goldAfter, const std::string& detail);
+	void QuestInsertLog(uint32 questid, const std::string& type, uint32 rewardItem, uint16 rewardCount, uint32 rewardGold, uint32 rewardExp);
+	void MailInsertLog(const std::string& type, CUser* pTarget, uint32 itemid, uint16 itemcount, uint64 itemserial, uint32 gold, const std::string& subject);
 	void ChatInsertLog(uint8 chattype, std::string descp, std::string message, CUser* ptarget);
 	void NpcShoppingLog(std::vector<ITEMS> p, uint16 protoid, uint8 Type);
 	void LoginInsertLog();

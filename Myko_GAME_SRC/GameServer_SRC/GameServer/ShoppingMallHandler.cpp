@@ -112,7 +112,14 @@ void CUser::ReqLoadWebItemMall()
 	// as it's handled by STORE_CLOSE.
 
 	foreach(itr, itemList)
+	{
 		GiveItem("WebItemMall", itr->nNum, itr->sCount, true, itr->nExpirationTime);
+		// #LOG (2026-06-13): PUS_SHOPPING cash satin alma logu — su ana kadar HIC yazilmiyordu
+		// (tablo 0 satir). Cash dususu web tarafinda olur, server item'i WebItemMall ile teslim
+		// eder. Burasi teslim noktasi -> kim hangi PUS item'i aldi DB'ye yazilir (dupe/RMT izi).
+		// cashcount=0 (web'de dustu, server bilmiyor); item+oyuncu+IP+zone kayda gecer.
+		PusShoppingInsertLog(itr->nNum, itr->sCount, 0);
+	}
 
 	for (int i = SLOT_MAX; i < INVENTORY_TOTAL; i++)
 	{
