@@ -399,7 +399,7 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 		// Toolhelp32 snapshot: process ADI'ni YETKI OLMADAN verir (admin process dahil).
 		// OpenProcess'e bagimli degiliz -> MRX yonetici olarak calissa bile yakalanir.
 		HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (hSnap == INVALID_HANDLE_VALUE) continue;
+		if (hSnap == INVALID_HANDLE_VALUE) goto mrx_scan_done; // #KASMA: dongu yok -> continue yerine cik
 		PROCESSENTRY32 pe;
 		pe.dwSize = sizeof(PROCESSENTRY32);
 		if (Process32First(hSnap, &pe))
@@ -456,6 +456,7 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 			} while (Process32Next(hSnap, &pe));
 		}
 		CloseHandle(hSnap);
+	mrx_scan_done: // #KASMA: snapshot acilamazsa buraya atlar (dongu yok -> tek-gecis cikis)
 		MRXLog("--- acilis taramasi bitti (tek-gecis, dongu kapali) ---");
 		// #KASMA: sureklı tarama dongusu KAPATILDI (yorum, KURAL 0-B). Geri acmak icin
 		// yukaridaki while(g_bPearlRunning)'i ve asagidaki Sleep+devam'i yorumdan cikar.
