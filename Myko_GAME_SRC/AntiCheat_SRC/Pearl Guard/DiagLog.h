@@ -68,9 +68,30 @@ static inline void DiagLoadConfig()
 
 	g_DiagEnabled = GetPrivateProfileIntA("Diag", "Enabled", 0, iniFull); // default KAPALI
 
+	char basePath[MAX_PATH];
 	char defPath[MAX_PATH];
 	sprintf(defPath, "%sdiag.log", iniPath); // default: client klasoru\diag.log
-	GetPrivateProfileStringA("Diag", "Path", defPath, g_DiagPath, MAX_PATH, iniFull);
+	GetPrivateProfileStringA("Diag", "Path", defPath, basePath, MAX_PATH, iniFull);
+
+	// MULTI-CLIENT: her client kendi dosyasina yazsin -> dosya adina PID ekle (diag.log ->
+	// diag_<PID>.log). 2 client ayni dosyaya yazarsa satirlar karisir/bozulur (write race) +
+	// hangisi arka planda ayirt edilemez (multibox/DC testi icin SART). [Diag] SplitPerPid=0
+	// ile kapatilabilir (tek dosya). Default ACIK.
+	int splitPid = GetPrivateProfileIntA("Diag", "SplitPerPid", 1, iniFull);
+	if (splitPid)
+	{
+		// uzantidan once "_<PID>" enjekte et: ...\diag.log -> ...\diag_1234.log
+		char* dot = strrchr(basePath, '.');
+		DWORD pid = GetCurrentProcessId();
+		if (dot) {
+			size_t headLen = (size_t)(dot - basePath);
+			char head[MAX_PATH];
+			strncpy(head, basePath, headLen); head[headLen] = '\0';
+			sprintf(g_DiagPath, "%s_%u%s", head, pid, dot); // diag + _PID + .log
+		}
+		else sprintf(g_DiagPath, "%s_%u", basePath, pid);
+	}
+	else strcpy(g_DiagPath, basePath);
 }
 
 // Merkezi log fonksiyonu. Kapaliyken aninda doner (no-op).

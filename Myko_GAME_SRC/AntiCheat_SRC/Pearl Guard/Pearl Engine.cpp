@@ -4191,7 +4191,8 @@ uint8 channelY = 63;
 	// DiagLog: INI oku + CRASH yakalayici kur (test PC'de [Diag]Enabled=1 ise aktif).
 	DiagLoadConfig();
 	DiagInstallCrashHandler();
-	DIAG("INFO", "code.guard yuklendi, hook kurulumu basladi (PID=%u)", GetCurrentProcessId());
+	DIAG("INFO", "code.guard yuklendi, hook kurulumu basladi (PID=%u) — bu dosya SADECE bu client'a ait",
+		GetCurrentProcessId());
 
 #if ANTICHEAT_MODE == 1
 	e->ScanThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)DriverScan, NULL, NULL, NULL);
