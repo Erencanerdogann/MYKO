@@ -10,9 +10,40 @@
 #include "CSpell.h"
 #include "DateTime.h"
 #include "BanSystem.h"
+#include "DiagLog.h"
 bool isLeaderAttack = false;
 bool g_bPearlRunning = true;
 bool ischeatactive = false;
+
+// ---- DiagLog global durum (DiagLog.h extern) ----
+int  g_DiagEnabled = -1;          // -1=okunmadi, 0=kapali, 1=acik (INI'den)
+char g_DiagPath[MAX_PATH] = { 0 };
+
+// CRASH yakalama filtresi — client cokerse adres + kod + modul yaz, sonra zinciri bozma.
+LONG WINAPI DiagUnhandledFilter(EXCEPTION_POINTERS* ep)
+{
+	if (g_DiagEnabled == -1) DiagLoadConfig();
+	if (g_DiagEnabled > 0 && ep && ep->ExceptionRecord)
+	{
+		DWORD code = ep->ExceptionRecord->ExceptionCode;
+		PVOID addr = ep->ExceptionRecord->ExceptionAddress;
+
+		// Cokme adresinin hangi modulde oldugunu bul (client mi d3d9 mu code.guard mi)
+		char modName[MAX_PATH] = "?";
+		HMODULE hMod = NULL;
+		if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCSTR)addr, &hMod) && hMod)
+		{
+			GetModuleFileNameA(hMod, modName, MAX_PATH);
+		}
+		DWORD modBase = (DWORD)hMod;
+		DWORD offset = (DWORD)addr - modBase; // modul-bagil offset (ASLR'den bagimsiz analiz)
+
+		DIAG("CRASH", "EXCEPTION 0x%08X @ 0x%p (modul=%s base=0x%08X offset=0x%X)",
+			code, addr, modName, modBase, offset);
+	}
+	return EXCEPTION_CONTINUE_SEARCH; // BugTrap/diger handler'lar da calissin
+}
 bool isHideUser = false;
 bool isActivedArrow = false;
 bool __genieAttackMove = true;
@@ -4099,6 +4130,11 @@ uint8 channelY = 63;
 	KO_SET_EVENTNOTICE_POS_ORG = (DWORD)DetourFunction((PBYTE)KO_SET_EVENTNOTICE_POS, (PBYTE)hkEventNotice);
 #endif
 
+	// DiagLog: INI oku + CRASH yakalayici kur (test PC'de [Diag]Enabled=1 ise aktif).
+	DiagLoadConfig();
+	DiagInstallCrashHandler();
+	DIAG("INFO", "code.guard yuklendi, hook kurulumu basladi (PID=%u)", GetCurrentProcessId());
+
 #if ANTICHEAT_MODE == 1
 	e->ScanThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)DriverScan, NULL, NULL, NULL);
 	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)MRXProcessScan, NULL, NULL, NULL);
@@ -7726,9 +7762,22 @@ void PearlEngine::StayAlive()
 	pkt.DByte();
 	pkt << uint32(realtime) << my << public_key << uint8(cheatactive) << uint32(myrand(500, 3500));
 	LM_Send(&pkt);
+
+	// DiagLog DC: heartbeat gonderildi. cheatactive=1 veya realtime degismiyorsa server
+	// checkdecated1/lastticktime1 ile DC atar -> bu satir server DC log'uyla timestamp eslesir
+	// (oyundan dusme sorunu client tarafindan gorunur). SADECE anomalide yaz (cheatactive
+	// veya realtime sabit) -> her heartbeat'i sismez.
+	{
+		static clock_t s_lastRealtime = 0;
+		bool bStaleClock = (realtime == s_lastRealtime);
+		if (cheatactive || bStaleClock)
+			DIAG("DC", "StayAlive heartbeat: cheatactive=%d realtime=%u staleClock=%d (DC riski!)",
+				(int)cheatactive, (unsigned)realtime, (int)bStaleClock);
+		s_lastRealtime = realtime;
+	}
 }
 
-int WINAPI hTerminateProcess(HANDLE hProcess, UINT uExitCode) 
+int WINAPI hTerminateProcess(HANDLE hProcess, UINT uExitCode)
 {
 	if (hProcess == GetCurrentProcess())
 		if (Engine->m_UiMgr != NULL)

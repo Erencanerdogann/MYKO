@@ -5,6 +5,7 @@
 #include "CSpell.h"
 #include "FunctionGuard.h"
 #include "../resource.h"
+#include "DiagLog.h"
 using namespace std;
 extern bool ischeatactive;
 HRESULT WINAPI HookCreateDevice();
@@ -91,12 +92,21 @@ HRESULT WINAPI hkReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* Present
 
 	Present->Windowed = Engine->m_SettingsMgr->m_iRealFullScreen == 1 ? false : true;
 	Present->PresentationInterval = Engine->m_SettingsMgr->m_iVsync == 1 ? D3DPRESENT_INTERVAL_ONE : D3DPRESENT_INTERVAL_IMMEDIATE;
-	
+
 	if (Engine->m_SettingsMgr->m_iVsync == 1)
 		Present->FullScreen_RefreshRateInHz = D3DPRESENT_RATE_DEFAULT;
 
+	// DiagLog D3D: device Reset = alt-tab/resize/fullscreen-gecis/device-lost. Acilista
+	// kapanma + alt-tab donma burada gorunur (Reset basarisiz olursa siyah ekran/crash).
+	DIAG("D3D", "Reset cagrildi: %ux%u Windowed=%d Vsync=%d (alt-tab/resize/device-lost)",
+		Present->BackBufferWidth, Present->BackBufferHeight,
+		(int)Present->Windowed, Engine->m_SettingsMgr->m_iVsync);
+
 	reset = true;
-	return oReset(pDevice, Present);
+	HRESULT hrReset = oReset(pDevice, Present);
+	if (FAILED(hrReset))
+		DIAG("D3D", "Reset BASARISIZ hr=0x%08X (siyah ekran/kapanma riski!)", hrReset);
+	return hrReset;
 }
 
 extern CSpell* GetSkillBase(int iSkillID);
@@ -105,6 +115,19 @@ DWORD adresdd = 0x33C;
 ULONGLONG thtime = GetTickCount64();
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
+	// DiagLog FREEZE dedektoru: iki frame arasi gecen sure. Donma = render durur =
+	// EndScene gec gelir. >300ms ise donma kaydet (chat resize donmasi + genel takilma).
+	{
+		static DWORD s_lastFrameTick = 0;
+		DWORD now = GetTickCount();
+		if (s_lastFrameTick != 0) {
+			DWORD delta = now - s_lastFrameTick;
+			if (delta > 300) // 60fps'te frame ~16ms; 300ms = gozle gorulur donma
+				DIAG("FREEZE", "EndScene %ums takildi (onceki frame'den beri)", delta);
+		}
+		s_lastFrameTick = now;
+	}
+
 	/*if (GetAsyncKeyState(VK_RETURN) & 1 && Engine->Adress > 0)
 	{
 		POINT pt;
