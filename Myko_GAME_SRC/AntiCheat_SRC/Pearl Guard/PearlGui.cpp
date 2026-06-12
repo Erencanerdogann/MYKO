@@ -132,6 +132,37 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 			}
 		}
 		s_lastFrameTick = now;
+
+		// FPS: her saniye bir kez ortalama FPS + dususte uyari. Trend gormek icin.
+		{
+			static DWORD s_fpsWindowStart = 0;
+			static DWORD s_frameCount = 0;
+			s_frameCount++;
+			if (s_fpsWindowStart == 0) s_fpsWindowStart = now;
+			DWORD elapsed = now - s_fpsWindowStart;
+			if (elapsed >= 1000) {
+				DWORD fps = (s_frameCount * 1000) / elapsed;
+				if (fps < 20) // dusuk FPS = kasma; sadece dusukte yaz (sismesin)
+					DIAG("FPS", "DUSUK fps=%u (son olay: %s)", fps, g_DiagLastEvent);
+				s_frameCount = 0;
+				s_fpsWindowStart = now;
+			}
+		}
+
+		// D3D DEVICE LOST: cihaz kaybedildiyse render durur -> siyah ekran/donma. Reset'in
+		// SEBEBI burada gorunur (alt-tab/fullscreen-cakisma/surucu reset). Durum DEGISIMINDE yaz.
+		if (pDevice) {
+			static HRESULT s_lastCoop = D3D_OK;
+			HRESULT coop = pDevice->TestCooperativeLevel();
+			if (coop != s_lastCoop) {
+				const char* durum = (coop == D3DERR_DEVICELOST) ? "DEVICE LOST (kayip)" :
+					(coop == D3DERR_DEVICENOTRESET) ? "DEVICE NOT RESET (reset bekliyor)" :
+					(coop == D3D_OK) ? "OK (geri geldi)" : "bilinmeyen";
+				DIAG("D3D", "TestCooperativeLevel degisti: %s (hr=0x%08X, son olay: %s)",
+					durum, coop, g_DiagLastEvent);
+				s_lastCoop = coop;
+			}
+		}
 	}
 
 	/*if (GetAsyncKeyState(VK_RETURN) & 1 && Engine->Adress > 0)

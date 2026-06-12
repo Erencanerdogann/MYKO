@@ -41,8 +41,35 @@ LONG WINAPI DiagUnhandledFilter(EXCEPTION_POINTERS* ep)
 		DWORD modBase = (DWORD)hMod;
 		DWORD offset = (DWORD)addr - modBase; // modul-bagil offset (ASLR'den bagimsiz analiz)
 
-		DIAG("CRASH", "EXCEPTION 0x%08X @ 0x%p (modul=%s base=0x%08X offset=0x%X)",
-			code, addr, modName, modBase, offset);
+		DIAG("CRASH", "EXCEPTION 0x%08X @ 0x%p (modul=%s base=0x%08X offset=0x%X) | son olay: %s",
+			code, addr, modName, modBase, offset, g_DiagLastEvent);
+
+		// Stack walk: son 8 donus adresini yaz (EBP zinciri). Hangi cagri zinciri cokmeye
+		// goturdu -> client packed olsa da adres+modul ile kaba yer bulunur.
+		if (ep->ContextRecord)
+		{
+			DWORD* framePtr = (DWORD*)ep->ContextRecord->Ebp;
+			for (int i = 0; i < 8 && framePtr; i++)
+			{
+				// guvenli oku (gecersiz EBP'de patlamayalim)
+				if (IsBadReadPtr(framePtr, sizeof(DWORD) * 2)) break;
+				DWORD retAddr = framePtr[1];
+				if (retAddr == 0) break;
+				char m[MAX_PATH] = "?";
+				HMODULE hm = NULL;
+				if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+					(LPCSTR)retAddr, &hm) && hm)
+				{
+					char* sl = strrchr(m, '\\');
+					GetModuleFileNameA(hm, m, MAX_PATH);
+					sl = strrchr(m, '\\');
+					DIAG("CRASH", "  stack[%d] 0x%08X (%s +0x%X)", i, retAddr,
+						sl ? sl + 1 : m, retAddr - (DWORD)hm);
+				}
+				else DIAG("CRASH", "  stack[%d] 0x%08X (?)", i, retAddr);
+				framePtr = (DWORD*)framePtr[0]; // bir ust frame
+			}
+		}
 	}
 	return EXCEPTION_CONTINUE_SEARCH; // BugTrap/diger handler'lar da calissin
 }
@@ -502,10 +529,26 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 DWORD WINAPI AliveSend(LPVOID lParam)
 {
 	VIRTUALIZER_START
+	unsigned int s_aliveTurn = 0;
 	while (g_bPearlRunning) {
 
 		CheckAliveTime = clock();
 		Engine->StayAlive();
+
+		// DiagLog MEMORY: her ~63sn (9 tur) RAM + handle sayisi. Surekli ARTIYORSA sizinti
+		// (uzun oynayinca kasma/crash kaynagi). PROCESS_MEMORY_COUNTERS + GetProcessHandleCount.
+		if ((s_aliveTurn++ % 9) == 0)
+		{
+			PROCESS_MEMORY_COUNTERS pmc; pmc.cb = sizeof(pmc);
+			DWORD handleCount = 0;
+			GetProcessHandleCount(GetCurrentProcess(), &handleCount);
+			if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+			{
+				DIAG("MEM", "WorkingSet=%lu MB, Handle=%lu (sizinti kontrol: surekli artiyor mu)",
+					(unsigned long)(pmc.WorkingSetSize / (1024 * 1024)), (unsigned long)handleCount);
+			}
+		}
+
 		Sleep(7000);
 	}
 	VIRTUALIZER_END
@@ -4155,6 +4198,10 @@ uint8 channelY = 63;
 	e->AliveThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)AliveSend, NULL, NULL, NULL);
 	e->m_bCheckSleep = GetTickCount();
 	e->m_LoginPlugInjected = true;
+	// DiagLog ASAMA: hook'lar kuruldu, login asamasina gecildi. INFO'dan sonra bu YOKSA
+	// = D3D/login plug enjeksiyonunda takildi (acilista kapanma adayi).
+	DiagMark("ASAMA: login plug enjekte");
+	DIAG("ASAMA", "LOGIN PLUG ENJEKTE (hook'lar kuruldu, login ekrani hazir)");
 	
 	while (true)
 	{
@@ -6858,6 +6905,10 @@ void PearlEngine::HandleGameStart(Packet &pkt)
 	m_bGameStart = true;
 	LoadingControl = false;
 	gameStarted = true;
+	// DiagLog ASAMA: oyuna GIRILDI (karakter sec -> oyun). "Ilk girişte nerede takiliyor"
+	// sorusunun cevabi: bu satir log'da YOKSA oyuncu oyuna giremeden takildi/coktu.
+	DiagMark("ASAMA: oyuna girildi (GameStart)");
+	DIAG("ASAMA", "OYUNA GIRILDI (karakter secimi -> in-game basarili)");
 	if (Engine->dc) Engine->dc->Update(true);
 }
 
@@ -6865,6 +6916,10 @@ void PearlEngine::HandleZoneChange(Packet &pkt)
 {
 	uint8 subCode;
 	pkt >> subCode;
+
+	// DiagLog ASAMA: zone degisimi (harita gecisi). Donma/crash hangi gecişte oldu netlesir.
+	DiagMark("ASAMA: zone degisimi");
+	DIAG("ASAMA", "ZONE DEGISIMI (subCode=%d, harita yukleme)", subCode);
 
 	if (Engine->dc) Engine->dc->Update(true);
 
@@ -6934,6 +6989,20 @@ bool WINAPI hkRECV(RECV_DATA* pRecv, void* pParam)
 {
 	if (pRecv->Size < 1)
 		return true;
+
+	// DiagLog NET: her paketi yazmak kasar -> SADECE recv ARASI anormal buyukse yaz (sunucudan
+	// veri kesildi = DC/lag oncesi). Opcode + bosluk suresi. g_DiagLastEvent'i de gunceller.
+	{
+		static DWORD s_lastRecvTick = 0;
+		DWORD now = GetTickCount();
+		if (s_lastRecvTick != 0) {
+			DWORD gap = now - s_lastRecvTick;
+			if (gap > 3000) // 3sn+ sunucudan paket yok = lag/DC oncesi
+				DIAG("NET", "recv %ums bekledi (sunucu veri kesik? lag/DC oncesi) size=%d",
+					gap, pRecv->Size);
+		}
+		s_lastRecvTick = now;
+	}
 
 	pktRet = rdwordExt(KO_DLG);
 
