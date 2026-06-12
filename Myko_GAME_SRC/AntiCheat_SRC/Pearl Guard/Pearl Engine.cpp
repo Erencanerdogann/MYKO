@@ -2226,13 +2226,29 @@ BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
 		lpPoint->x = -32000;
 		lpPoint->y = -32000;
 	}
-	// DiagLog WND: foreground DEGISIM anini isaretle (her cagri degil, sadece arka<->on gecisi).
+	// DiagLog WND + INPUT: foreground DEGISIM anini isaretle (her cagri degil, sadece arka<->on gecisi).
 	// alt-tab donmasi bu olayla eslesir mi -> FREEZE "son olay: foreground=arka" gosterir.
+	// INPUT SIZMASI (#242): arka plandayken mouse BASTIRILDI mi? Bastirma calismiyorsa -> sizma!
 	{
 		static int s_lastArka = -1;
 		if ((int)arka != s_lastArka) {
 			DiagMark(arka ? "foreground -> ARKA PLAN (alt-tab)" : "foreground -> ON PLAN");
+			if (arka)
+				DIAG("INPUT", "Bu client ARKA PLANA gecti -> mouse bastiriliyor (sizma engeli AKTIF)");
+			else
+				DIAG("INPUT", "Bu client ON PLANA gecti -> mouse serbest (normal oynaniyor)");
 			s_lastArka = (int)arka;
+		}
+		// SIZMA ANOMALI KONTROL: arka planda olmasina ragmen imlec bastirilmadiysa (x/y -32000 degil)
+		// = bastirma calismiyor = SIZMA RISKI. Sadece anomalide yaz (her cagri degil, kasmasin).
+		if (arka && lpPoint && (lpPoint->x != -32000 || lpPoint->y != -32000)) {
+			static DWORD s_lastSizmaLog = 0;
+			DWORD now = GetTickCount();
+			if (now - s_lastSizmaLog > 2000) { // 2sn'de max 1 (sismesin)
+				DIAG("INPUT", "SIZMA RISKI! arka planda ama mouse bastirilmadi (x=%d y=%d)",
+					lpPoint->x, lpPoint->y);
+				s_lastSizmaLog = now;
+			}
 		}
 	}
 	return r;

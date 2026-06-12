@@ -164,6 +164,29 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 			}
 		}
 
+		// DiagLog INPUT (klavye sizmasi #242): arka plandayken hareket TUSU basili mi?
+		// GetAsyncKeyState SADECE OKUMA (detour YOK -> SIGSEGV riski yok, S116 ders). Arka planda
+		// olmasina ragmen WASD/ok/space basili gorunuyorsa -> klavye sizmasi (arka karakter hareket eder).
+		{
+			extern HWND gameWindow;
+			bool arkaPlan = (gameWindow != NULL && GetForegroundWindow() != gameWindow);
+			if (arkaPlan) {
+				// hareket tuslari: W A S D + ok tuslari + space (oyun-ici hareket)
+				static const int hareketTuslari[] = { 'W','A','S','D', VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT, VK_SPACE };
+				bool basili = false; int tus = 0;
+				for (int k = 0; k < (int)(sizeof(hareketTuslari)/sizeof(int)); k++) {
+					if (GetAsyncKeyState(hareketTuslari[k]) & 0x8000) { basili = true; tus = hareketTuslari[k]; break; }
+				}
+				if (basili) {
+					static DWORD s_lastKbLog = 0;
+					if (now - s_lastKbLog > 2000) { // 2sn'de max 1 (sismesin)
+						DIAG("INPUT", "KLAVYE SIZMA RISKI! arka planda ama hareket tusu basili (vk=0x%02X)", tus);
+						s_lastKbLog = now;
+					}
+				}
+			}
+		}
+
 		// D3D DEVICE LOST: cihaz kaybedildiyse render durur -> siyah ekran/donma. Reset'in
 		// SEBEBI burada gorunur (alt-tab/fullscreen-cakisma/surucu reset). Durum DEGISIMINDE yaz.
 		if (pDevice) {
