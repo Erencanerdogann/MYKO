@@ -426,9 +426,13 @@ DWORD WINAPI MRXProcessScan(LPVOID lParam)
 		if (bDeepScan)
 		{
 			const char* probePaths[] = {
-				"C:\\Windows\\System32\\drivers\\keyboard.sys",
-				"C:\\Windows\\System32\\drivers\\mouse.sys",
-				"C:\\Windows\\System32\\interception.dll",
+				// #FP FIX (2026-06-13, DEMIR vakasi): keyboard.sys/mouse.sys KALDIRILDI (yorum, KURAL 0-B).
+				// Bu dosyalar bazi Windows/OEM sistemlerinde MESRU olarak var -> DEMIR/Boran gibi makro
+				// KULLANMAYAN temiz PC'ler ban yiyordu (FALSE POSITIVE). Interception'a OZGU degil.
+				// Geri acmak icin yorumdan cikar (imza dogrulamasiz acma = FP geri gelir):
+				// "C:\\Windows\\System32\\drivers\\keyboard.sys",
+				// "C:\\Windows\\System32\\drivers\\mouse.sys",
+				"C:\\Windows\\System32\\interception.dll",   // spesifik ad, FP yok
 				"C:\\Windows\\SysWOW64\\interception.dll"
 			};
 			for (const char* p : probePaths) {
