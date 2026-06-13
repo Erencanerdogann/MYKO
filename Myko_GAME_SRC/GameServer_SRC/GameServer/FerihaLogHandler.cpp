@@ -38,7 +38,9 @@ void AdiniFerihaKoydum::tKnightLogger()
 				"JOB_CHANGE", "ITEMREMOVE",
 				// #LOG (2026-06-13, mig131): yeni eksik log kanallari — whitelist'te YOKTU =
 				// INSERT engellenip siliniyordu (bos kalma sebebi). MATRIX tablo+izin hazir.
-				"GOLD_CHANGE", "QUEST_LOG", "MAIL_LOG"
+				"GOLD_CHANGE", "QUEST_LOG", "MAIL_LOG",
+			// #LOG (S133): kisisel depo (warehouse) deposit/withdraw item+gold (dupe izi #1).
+			"WAREHOUSE_LOG"
 			};
 			if (validLogTables.find(tablename) == validLogTables.end()) goto retdelete;
 		}
@@ -344,6 +346,21 @@ void CUser::MailInsertLog(const std::string& type, CUser* pTarget, uint32 itemid
 		regex_quotes(type).c_str(), regex_quotes(GetAccountName()).c_str(), regex_quotes(GetName()).c_str(),
 		regex_quotes(toAcc).c_str(), regex_quotes(toChar).c_str(), regex_quotes(GetRemoteIP()).c_str(),
 		itemid, itemcount, (unsigned long long)itemserial, gold, regex_quotes(subject).c_str());
+	g_pMain->AddLogRequest(newpkt);
+}
+#pragma endregion
+
+#pragma region CUser::WarehouseInsertLog
+// #LOG (S133): kisisel depo (warehouse/inn) item+gold deposit/withdraw — dupe izi + GM restore.
+// Tablo WAREHOUSE_LOG: id IDENTITY + dtTime DEFAULT var -> NPC_DROP deseni (GETDATE() literal, id atla, 10 deger).
+// Kolonlar: strAccountID,strCharID,dtTime,strType(INPUT/OUTPUT),nItemID,nCount,nDurability,nSerial,nMoney,strClientIP
+void CUser::WarehouseInsertLog(const std::string& type, uint32 itemid, uint32 count, uint16 durability, uint64 serial, uint32 money) {
+	Packet newpkt(0);
+	newpkt << std::string("WAREHOUSE_LOG");
+	newpkt << string_format("'%s','%s',GETDATE(),'%s',%d,%d,%d,%llu,%d,'%s'",
+		regex_quotes(GetAccountName()).c_str(), regex_quotes(GetName()).c_str(),
+		regex_quotes(type).c_str(), itemid, count, durability,
+		(unsigned long long)serial, money, regex_quotes(GetRemoteIP()).c_str());
 	g_pMain->AddLogRequest(newpkt);
 }
 #pragma endregion

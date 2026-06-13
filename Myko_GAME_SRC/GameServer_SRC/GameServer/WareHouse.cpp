@@ -137,6 +137,7 @@ void CUser::WarehouseProcess(Packet & pkt)
 			m_iGold -= nCount;
 			m_goldLock.unlock();
 			UserDataSaveToAgent();
+			WarehouseInsertLog("INPUT", ITEM_GOLD, 0, 0, 0, nCount); // #LOG gold deposit
 			resultOpCode = ResultOpCodes::OpenWarehouse;
 			break;
 		}
@@ -203,6 +204,7 @@ void CUser::WarehouseProcess(Packet & pkt)
 		if ((!pSrcItem->sCount) || (!pTable.m_bCountable) || (pTable.m_bKind == 255 && !pTable.m_bCountable))
 			memset(pSrcItem, 0, sizeof(_ITEM_DATA));
 
+		WarehouseInsertLog("INPUT", nItemID, nCount, pDstItem->sDuration, pDstItem->nSerialNum, 0); // #LOG item deposit
 		SetUserAbility(false);
 		SendItemWeight();
 	}
@@ -228,6 +230,7 @@ void CUser::WarehouseProcess(Packet & pkt)
 			m_iBank -= nCount;
 			m_goldLock.unlock();
 			UserDataSaveToAgent();
+			WarehouseInsertLog("OUTPUT", ITEM_GOLD, 0, 0, 0, nCount); // #LOG gold withdraw
 			resultOpCode = ResultOpCodes::OpenWarehouse;
 			break;
 		}
@@ -287,6 +290,7 @@ void CUser::WarehouseProcess(Packet & pkt)
 		if (!pSrcItem->sCount || !pTable.m_bCountable || (pTable.m_bKind == 255 && !pTable.m_bCountable))
 			memset(pSrcItem, 0, sizeof(_ITEM_DATA));
 
+		WarehouseInsertLog("OUTPUT", nItemID, nCount, pDstItem->sDuration, pDstItem->nSerialNum, 0); // #LOG item withdraw
 		SetUserAbility(false);
 		SendItemWeight();
 	}

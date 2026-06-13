@@ -813,6 +813,7 @@ public:
 	void KillingNpcInsertLog(CNpc* pdeadnpc);
 	void UpgradeInsertLog(uint32 itemid, uint32 money, uint8 uptype, bool status, uint32 reqitemid[9], uint16 reqitemcount[9]);
 	void NpcDropReceivedInsertLog(uint32 itemid, uint16 itemcount, uint16 npcid);
+	void WarehouseInsertLog(const std::string& type, uint32 itemid, uint32 count, uint16 durability, uint64 serial, uint32 money);
 	void PremiumInsertLog(uint8 premiumtype, uint32 premiumtime);
 	void TradeInsertLog(CUser* ptarget, uint32 money, uint32 tmoney, uint32 itemid[9], uint16 itemcount[9], uint32 titemid[9], uint16 titemcount[9]);
 	void LoyaltyChangeInsertLog(std::string placeowned, uint32 currentloyalty, uint32 amount, uint32 amountend, uint32 finalloyalty);
