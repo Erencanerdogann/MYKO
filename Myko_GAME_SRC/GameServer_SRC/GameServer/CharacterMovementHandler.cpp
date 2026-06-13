@@ -113,7 +113,15 @@ void CUser::MoveProcess(Packet & pkt)
 	if (!GetMap()->IsValidPosition(real_x, real_z, real_y))
 		return;
 
-	// G22: Y ekseni fly hack tespiti — zone bazli max Y limiti
+	// G22: Y ekseni fly hack tespiti — DUZELTILDI (S133, canli FLY_DIAG kaniti)
+	// KANIT: client movement paketinin will_y(3.deger) YUKSEKLIK DEGIL — yatay-olcek artigi/0xFFFF
+	// (bilinmiyor). Canli log: will_y=65530 sabit, GetY()=0-4 (gercek zemin), karakter X/Z'de geziyor.
+	// Eski kod real_y(=will_y/10=6553) > maxY ile HERKESI FP damgaliyordu + real_y'yi SetPosition'a
+	// yazip Y'yi bozuyordu (sonra GetY()'ye geri-cekiyordu = surekli 0'a ezme). Dogru yukseklik kaynagi
+	// = GetY() (m_cury, server-side gercek). Paket will_y'sine ASLA guvenme.
+	// will_y paket-bozuk oldugu icin real_y'yi Y olarak KULLANMA — gercek yukseklikle devam et.
+	real_y = GetY();
+
 	if (!isGM() && real_y > 0.0f)
 	{
 		float maxY = 200.0f; // varsayilan max yukseklik (cogu zone)
@@ -136,6 +144,7 @@ void CUser::MoveProcess(Packet & pkt)
 			|| zoneID == ZONE_MORADON4 || zoneID == ZONE_MORADON5)
 			maxY = 280.0f; // Moradon tepeleri + GENIE altitude
 
+		// Artik GERCEK yukseklik (GetY) maxY'yi gecerse hile. Paket will_y'sine bakmiyoruz.
 		if (!m_bGenieStatus
 			&& (UNIXTIME2 - m_lastZoneChangeTime) > 2000
 			&& real_y > maxY)
@@ -144,15 +153,11 @@ void CUser::MoveProcess(Packet & pkt)
 			ULONGLONG now = UNIXTIME2;
 			if (now - s_lastFlyLogTime > 5000)
 			{
-				// TESHIS (gecici, S133): will_y'nin yukseklik mi yatay mi oldugunu kanitla.
-				// will_y/curY1 = paket ham (uint16), real_y=will_y/10, GetY()=gercek karakter yuksekligi (m_cury).
-				// Eger GetY() ~0 iken real_y ~655 ise -> will_y YUKSEKLIK DEGIL -> dogru kaynak GetY().
-				LOG_HACK("[FLY_DIAG] User=%s Zone=%u will_y=%u curY1=%u real_y=%.1f GetY=%.2f X=%.1f Z=%.1f MaxY=%.1f IP=%s",
-					GetName().c_str(), zoneID, will_y, curY1, real_y, GetY(), real_x, real_z, maxY, GetRemoteIP().c_str());
-				LOG_HACK("[FLY_HACK] User=%s Zone=%u Y=%.1f MaxY=%.1f IP=%s", GetName().c_str(), zoneID, real_y, maxY, GetRemoteIP().c_str());
+				LOG_HACK("[FLY_HACK] User=%s Zone=%u Y=%.1f MaxY=%.1f X=%.1f Z=%.1f IP=%s",
+					GetName().c_str(), zoneID, real_y, maxY, real_x, real_z, GetRemoteIP().c_str());
 				s_lastFlyLogTime = now;
 			}
-			real_y = GetY(); // eski Y'ye geri dondur
+			// gercekten yuksekteyse hareketi reddetme (real_y zaten GetY = mevcut yukseklik)
 		}
 	}
 
