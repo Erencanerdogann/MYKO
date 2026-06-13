@@ -52,6 +52,111 @@ void LogAction(const std::string& action, const std::string& result) {
 }
 
 // =====================================================================
+// UploadDiagLogs (S133) — client diag_*.log dosyalarini sunucuya yollar.
+// Multipart/form-data POST -> http://<IP>:8091/api/diag_upload.php
+//   field'lar: account(text), hwid(text), log_dosyasi(file, .log, max 500KB).
+// Launcher acilisinda arka planda cagrilir (onceki oturum loglarini yakalar).
+// Fail-safe (KURAL 1): hata/timeout -> sessiz doner, oyun/Launcher ETKILENMEZ.
+// Basarili (HTTP 200) upload edilen dosya SILINIR (tekrar gonderilmez).
+// =====================================================================
+static bool UploadOneDiagFile(const std::wstring& wHost, const std::string& filePath,
+                              const std::string& account, const std::string& hwid)
+{
+    // Dosyayi oku (max 500KB — endpoint limiti)
+    std::ifstream in(filePath, std::ios::binary | std::ios::ate);
+    if (!in.is_open()) return false;
+    std::streamsize sz = in.tellg();
+    if (sz <= 0 || sz > 500 * 1024) { in.close(); return false; } // bos veya >500KB atla
+    in.seekg(0, std::ios::beg);
+    std::string content((size_t)sz, '\0');
+    in.read(&content[0], sz);
+    in.close();
+
+    // dosya adini al (yoldan ayir)
+    std::string fname = filePath;
+    size_t slash = fname.find_last_of("\\/");
+    if (slash != std::string::npos) fname = fname.substr(slash + 1);
+
+    // multipart/form-data govde olustur
+    const std::string boundary = "----MalaysiaKODiag7e3b91c2";
+    std::string body;
+    auto addField = [&](const std::string& name, const std::string& val) {
+        body += "--" + boundary + "\r\n";
+        body += "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n";
+        body += val + "\r\n";
+    };
+    addField("account", account.empty() ? std::string("unknown") : account);
+    addField("hwid", hwid.empty() ? std::string("unknown") : hwid);
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"log_dosyasi\"; filename=\"" + fname + "\"\r\n";
+    body += "Content-Type: text/plain\r\n\r\n";
+    body += content + "\r\n";
+    body += "--" + boundary + "--\r\n";
+
+    HINTERNET hSession = WinHttpOpen(L"MalaysiaKO-Diagnostic/1.0",
+        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession, 3000, 3000, 5000, 8000);
+
+    HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(), 8091, 0); // site portu
+    if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
+
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/diag_upload.php",
+        NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+
+    std::wstring ctype = L"Content-Type: multipart/form-data; boundary=" +
+        std::wstring(boundary.begin(), boundary.end());
+
+    bool ok = false;
+    if (WinHttpSendRequest(hRequest, ctype.c_str(), (DWORD)-1L,
+            (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
+        WinHttpReceiveResponse(hRequest, NULL)) {
+        DWORD status = 0, statusSize = sizeof(status);
+        if (WinHttpQueryHeaders(hRequest,
+                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+            ok = (status == 200);
+        }
+    }
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    return ok;
+}
+
+void UploadDiagLogs(const std::string& gamePath, const std::string& hwid, const std::string& serverIP)
+{
+    std::string ip = serverIP.empty() ? std::string("104.238.23.99") : serverIP;
+    std::wstring wHost(ip.begin(), ip.end());
+
+    // diag_*.log ara: oncelik gamePath, yoksa C:\MalaysiaKO (DiagLog default klasoru)
+    std::string base = gamePath.empty() ? std::string("C:\\MalaysiaKO") : gamePath;
+    if (!base.empty() && (base.back() == '\\' || base.back() == '/')) base.pop_back();
+    std::string pattern = base + "\\diag_*.log";
+
+    WIN32_FIND_DATAA fd;
+    HANDLE hFind = FindFirstFileA(pattern.c_str(), &fd);
+    if (hFind == INVALID_HANDLE_VALUE) return; // log yok -> sessiz cik (normal)
+
+    int uploaded = 0, failed = 0;
+    do {
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        std::string full = base + "\\" + fd.cFileName;
+        if (UploadOneDiagFile(wHost, full, hwid, hwid)) {
+            DeleteFileA(full.c_str()); // basarili -> sil (tekrar gonderilmesin)
+            uploaded++;
+        } else {
+            failed++; // basarisiz -> dokunma, sonraki acilista tekrar denenir
+        }
+    } while (FindNextFileA(hFind, &fd));
+    FindClose(hFind);
+
+    if (uploaded > 0 || failed > 0)
+        LogAction("UploadDiagLogs", "uploaded=" + std::to_string(uploaded) + " failed=" + std::to_string(failed));
+}
+
+// =====================================================================
 // IsEnabled — Launcher.ini [SelfHeal] Enabled=1 kontrol
 // Dosya yoksa veya flag yoksa default ENABLED (acik)
 // =====================================================================

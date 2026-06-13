@@ -87,6 +87,14 @@ bool RepairServerIni(const std::string& gamePath);
 void LogAction(const std::string& action, const std::string& result);
 
 // ---------------------------------------------------------------------
+// DiagLog UPLOAD (S133): oyuncu client diag_*.log'larini sunucuya yollar.
+// Launcher acilisinda arka planda cagrilir (bir onceki oturumdan kalan loglari yakalar).
+// gamePath: C:\MalaysiaKO (diag_*.log buradadir), hwid: Launcher HWID, serverIP: hedef.
+// Fail-safe: sunucu kapali/timeout -> sessiz doner, Launcher/oyun ETKILENMEZ (KURAL 1).
+// Basarili upload edilen dosya silinir (tekrar gonderilmez).
+void UploadDiagLogs(const std::string& gamePath, const std::string& hwid, const std::string& serverIP);
+
+// ---------------------------------------------------------------------
 // FAZ 5c: Diagnostik Dialog'u goster (modal popup)
 // hwndParent: Launcher ana penceresi
 // gamePath: Game klasor yolu
