@@ -337,6 +337,7 @@ void CUser::VIPhouseProcess(Packet & pkt)
 		if (!pSrcItem->sCount || (pTable.GetKind() == 255 && !pTable.m_bCountable))
 			memset(pSrcItem, 0, sizeof(_ITEM_DATA));
 
+		WarehouseInsertLog("VIP_INPUT", nItemID, nCount, pDstItem->sDuration, pDstItem->nSerialNum, 0); // #LOG VIP depo yatir
 		SetUserAbility(false);
 		SendItemMove(1, 1);
 		SendItemWeight();
@@ -414,6 +415,7 @@ void CUser::VIPhouseProcess(Packet & pkt)
 		if (!pSrcItem->sCount || (pTable.GetKind() == 255 && !pTable.m_bCountable))
 			memset(pSrcItem, 0, sizeof(_ITEM_DATA));
 
+		WarehouseInsertLog("VIP_OUTPUT", nItemID, nCount, pDstItem->sDuration, pDstItem->nSerialNum, 0); // #LOG VIP depo cek
 		SetUserAbility(false);
 		SendItemMove(1, 1);
 		SendItemWeight();
