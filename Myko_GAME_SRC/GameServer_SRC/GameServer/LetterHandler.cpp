@@ -259,6 +259,10 @@ void CUser::ReqLetterSend(Packet & pkt)
 		pUser->Send(&notification);
 	}
 
+	// #LOG MAIL_LOG (S133): mail ile item/gold gonderimi basariyla tamamlandi (dupe/kacis izi).
+	// pUser offline ise null -> MailInsertLog toChar/toAcc "-" yazar; alici adi strRecipient'tir (log subject'inde degil ama from/to kaydi yeterli).
+	MailInsertLog("SEND", pUser, nItemID, pItem != nullptr ? 1 : 0, (uint64)Serial, nCoins != 0 ? (nCoinRequirement + nCoins) : nCoinRequirement, strSubject);
+
 send_packet:
 	result	<< uint8(LetterOpcodes::LETTER_SEND) << uint8(bResult);
 	Send(&result);
@@ -360,6 +364,11 @@ void CUser::ReqLetterGetItem(Packet & pkt)
 		GoldGain(nCoins);
 
 	g_DBAgent.SetItemFromLetter(m_strUserID, nLetterID);
+
+	// #LOG MAIL_LOG (S133): mail'den item/gold ALMA basariyla tamamlandi (teslim izi, dupe takibi).
+	// Alan = gonderen kayitta from oldugu icin pTarget=null ("-"); itemid/serial/gold teslim degerleri.
+	MailInsertLog("GET", nullptr, nItemID, sCount, nSerialNum, nCoins, std::string("-"));
+
 	result << bResult;
 	Send(&result);
 }
