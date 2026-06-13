@@ -66,7 +66,10 @@ static inline void DiagLoadConfig()
 	char iniFull[MAX_PATH];
 	sprintf(iniFull, "%sOption.ini", iniPath);
 
-	g_DiagEnabled = GetPrivateProfileIntA("Diag", "Enabled", 0, iniFull); // default KAPALI
+	// BETA (S133, patron karari): default ACIK (1) — herkes log uretsin, "kim ne yapmis" ogrenelim.
+	// Option.ini [Diag]Enabled=0 yazan KAPATABILIR. Lansman sonrasi production'da 0'a cekilecek (geri-acma kolay).
+	// Log hafif (Boran ornegi 37KB/2sa), throttle'li -> kasma yok. account=HWID -> TB_HWID_LOG join ile gercek hesap.
+	g_DiagEnabled = GetPrivateProfileIntA("Diag", "Enabled", 1, iniFull); // BETA default ACIK
 
 	char basePath[MAX_PATH];
 	char defPath[MAX_PATH];

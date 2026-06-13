@@ -7058,16 +7058,31 @@ bool WINAPI hkRECV(RECV_DATA* pRecv, void* pParam)
 	if (pRecv->Size < 1)
 		return true;
 
-	// DiagLog NET: her paketi yazmak kasar -> SADECE recv ARASI anormal buyukse yaz (sunucudan
-	// veri kesildi = DC/lag oncesi). Opcode + bosluk suresi. g_DiagLastEvent'i de gunceller.
+	// DiagLog NET: her paketi yazmak kasar -> throttle'li. (1) recv ARASI 3sn+ bosluk = lag/DC oncesi (aninda yaz).
+	// (2) S133: LAG PATTERN ozeti — 30sn'de bir: ortalama recv araligi + buyuk-gap sayisi (jitter). Boylece
+	// "FPS dusuk mu LAG mi" ayirt edilir (dusuk FPS=client yavas, buyuk recvgap=network lag). Hafif (sayac+30sn ozet),
+	// memory/D3D'ye DOKUNMAZ (sadece zaman olcumu) -> kasma/anti-tamper riski YOK.
 	{
 		static DWORD s_lastRecvTick = 0;
+		static DWORD s_windowStart = 0;
+		static DWORD s_recvCount = 0, s_gapSum = 0, s_bigGaps = 0, s_maxGap = 0;
 		DWORD now = GetTickCount();
 		if (s_lastRecvTick != 0) {
 			DWORD gap = now - s_lastRecvTick;
-			if (gap > 3000) // 3sn+ sunucudan paket yok = lag/DC oncesi
-				DIAG("NET", "recv %ums bekledi (sunucu veri kesik? lag/DC oncesi) size=%d",
-					gap, pRecv->Size);
+			if (gap > 3000) // 3sn+ sunucudan paket yok = lag/DC oncesi (aninda)
+				DIAG("NET", "recv %ums bekledi (sunucu veri kesik? lag/DC oncesi) size=%d", gap, pRecv->Size);
+			// lag pattern istatistik (30sn pencere)
+			s_recvCount++; s_gapSum += gap;
+			if (gap > 500) s_bigGaps++;          // 500ms+ = belirgin lag spike
+			if (gap > s_maxGap) s_maxGap = gap;
+		}
+		if (s_windowStart == 0) s_windowStart = now;
+		if (now - s_windowStart >= 30000 && s_recvCount > 0) { // 30sn'de 1 ozet
+			DWORD avgGap = s_gapSum / s_recvCount;
+			if (s_bigGaps > 0 || avgGap > 200) // sadece lag VARSA yaz (temizse sessiz, log sismez)
+				DIAG("NET", "LAG ozeti(30sn): ort_recv=%ums maxGap=%ums spike(>500ms)=%u paket=%u",
+					avgGap, s_maxGap, s_bigGaps, s_recvCount);
+			s_windowStart = now; s_recvCount = 0; s_gapSum = 0; s_bigGaps = 0; s_maxGap = 0;
 		}
 		s_lastRecvTick = now;
 	}
