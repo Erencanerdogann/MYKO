@@ -55,7 +55,8 @@
 //       basilabiliyordu, cakisma penceresi 5sn->1.5sn) + 'Guncellemeler kontrol ediliyor...' yazisi
 //       (patron: 5sn dondu saniliyor). START KILITLENMEDI (FIX-H sonsuz kilit regresyonu tekrarlanmaz).
 #define LAUNCHER_BUILD_VERSION_MAJOR 4
-#define LAUNCHER_BUILD_VERSION_MINOR 3
+#define LAUNCHER_BUILD_VERSION_MINOR 4
+// v4.4 (S133): DiagLog upload eklendi (acilista diag_*.log -> sunucu). Auto-update icin version.txt=4.4 olmali.
 
 class Launcher
 {
