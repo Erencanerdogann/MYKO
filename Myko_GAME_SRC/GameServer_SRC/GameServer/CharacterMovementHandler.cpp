@@ -144,6 +144,11 @@ void CUser::MoveProcess(Packet & pkt)
 			ULONGLONG now = UNIXTIME2;
 			if (now - s_lastFlyLogTime > 5000)
 			{
+				// TESHIS (gecici, S133): will_y'nin yukseklik mi yatay mi oldugunu kanitla.
+				// will_y/curY1 = paket ham (uint16), real_y=will_y/10, GetY()=gercek karakter yuksekligi (m_cury).
+				// Eger GetY() ~0 iken real_y ~655 ise -> will_y YUKSEKLIK DEGIL -> dogru kaynak GetY().
+				LOG_HACK("[FLY_DIAG] User=%s Zone=%u will_y=%u curY1=%u real_y=%.1f GetY=%.2f X=%.1f Z=%.1f MaxY=%.1f IP=%s",
+					GetName().c_str(), zoneID, will_y, curY1, real_y, GetY(), real_x, real_z, maxY, GetRemoteIP().c_str());
 				LOG_HACK("[FLY_HACK] User=%s Zone=%u Y=%.1f MaxY=%.1f IP=%s", GetName().c_str(), zoneID, real_y, maxY, GetRemoteIP().c_str());
 				s_lastFlyLogTime = now;
 			}
