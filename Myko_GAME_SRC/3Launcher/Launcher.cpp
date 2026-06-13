@@ -583,12 +583,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Engine->window = mainWindow;
     Engine->cmd = lpCmdLine;
 
-    // S133: DiagLog upload — onceki oturumdan kalan C:\MalaysiaKO\diag_*.log'lari sunucuya yolla.
-    // Arka plan thread (UI bloklamasin) + fail-safe (sunucu kapali -> sessiz). HWID async, ~2sn bekle.
+    // S133: DiagLog upload — onceki oturumdan kalan diag_*.log'lari sunucuya yolla.
+    // KLASOR: SABIT DEGIL -> Launcher'in kendi calistigi klasor (WorkingPath). Oyuncu oyunu
+    // istedigi yere kurabilir (C:\MalaysiaKO1, D:\... vb) -> launcher=oyun ayni klasorde, log orada.
+    // Arka plan thread (UI bloklamasin) + fail-safe (log yok/kapali/sunucu kapali -> SESSIZ, hata yok). HWID async ~2sn.
     std::thread([]() {
         Sleep(2500); // HWID hesaplanmasini bekle (LauncherEngine async ComputeHwidA)
         std::string hwid = (Engine ? Engine->m_hwidA : std::string());
-        LauncherDiagnostic::UploadDiagLogs("C:\\MalaysiaKO", hwid, "104.238.23.99");
+        std::string gameDir = (Engine && Engine->WorkingPath[0]) ? std::string(Engine->WorkingPath) : std::string();
+        LauncherDiagnostic::UploadDiagLogs(gameDir, hwid, "104.238.23.99");
     }).detach();
 
     if (m_font == NULL)

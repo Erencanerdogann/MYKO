@@ -127,17 +127,18 @@ static bool UploadOneDiagFile(const std::wstring& wHost, const std::string& file
 
 void UploadDiagLogs(const std::string& gamePath, const std::string& hwid, const std::string& serverIP)
 {
+    if (gamePath.empty()) return; // klasor bilinmiyor -> SESSIZ cik (yanlis klasore bakma, hata yok)
     std::string ip = serverIP.empty() ? std::string("104.238.23.99") : serverIP;
     std::wstring wHost(ip.begin(), ip.end());
 
-    // diag_*.log ara: oncelik gamePath, yoksa C:\MalaysiaKO (DiagLog default klasoru)
-    std::string base = gamePath.empty() ? std::string("C:\\MalaysiaKO") : gamePath;
+    // diag_*.log ara: Launcher'in calistigi klasor (oyun klasoru). Sabit yol YOK.
+    std::string base = gamePath;
     if (!base.empty() && (base.back() == '\\' || base.back() == '/')) base.pop_back();
     std::string pattern = base + "\\diag_*.log";
 
     WIN32_FIND_DATAA fd;
     HANDLE hFind = FindFirstFileA(pattern.c_str(), &fd);
-    if (hFind == INVALID_HANDLE_VALUE) return; // log yok -> sessiz cik (normal)
+    if (hFind == INVALID_HANDLE_VALUE) return; // log yok (DiagLog kapali/hic uretmemis) -> SESSIZ cik, hata YOK
 
     int uploaded = 0, failed = 0;
     do {
