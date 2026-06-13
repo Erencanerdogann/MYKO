@@ -87,10 +87,10 @@ static bool UploadOneDiagFile(const std::wstring& wHost, const std::string& file
     };
     addField("account", account.empty() ? std::string("unknown") : account);
     addField("hwid", hwid.empty() ? std::string("unknown") : hwid);
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"log_dosyasi\"; filename=\"" + fname + "\"\r\n";
-    body += "Content-Type: text/plain\r\n\r\n";
-    body += content + "\r\n";
+    // ENDPOINT BEKLENTISI (WEBRA MSG6762): log_dosyasi = $_POST TEXT FIELD (raw log icerigi), $_FILES DEGIL.
+    // Bu yuzden filename= header'i KULLANMA -> normal text field olarak gonder (addField). client_ver opsiyonel.
+    addField("log_dosyasi", content);
+    addField("client_ver", "l4.6_" + fname); // launcher versiyon + orijinal dosya adi (panelde PID gorunur)
     body += "--" + boundary + "--\r\n";
 
     HINTERNET hSession = WinHttpOpen(L"MalaysiaKO-Diagnostic/1.0",

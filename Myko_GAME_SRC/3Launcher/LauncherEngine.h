@@ -55,9 +55,9 @@
 //       basilabiliyordu, cakisma penceresi 5sn->1.5sn) + 'Guncellemeler kontrol ediliyor...' yazisi
 //       (patron: 5sn dondu saniliyor). START KILITLENMEDI (FIX-H sonsuz kilit regresyonu tekrarlanmaz).
 #define LAUNCHER_BUILD_VERSION_MAJOR 4
-#define LAUNCHER_BUILD_VERSION_MINOR 5
-// v4.5 (S133): DiagLog upload klasor=WorkingPath (sabit C:\MalaysiaKO degil, oyuncu nereye kurarsa) +
-//   log yok/kapali -> tamamen sessiz (hata yok). v4.4: ilk DiagLog upload. version.txt=4.5 olmali.
+#define LAUNCHER_BUILD_VERSION_MINOR 6
+// v4.6 (S133): DiagLog upload log_dosyasi $_POST TEXT field (file DEGIL — endpoint $_POST okuyor, 400 fix).
+//   v4.5: klasor=WorkingPath + sessiz fail-safe. v4.4: ilk upload. version.txt=4.6 olmali.
 
 class Launcher
 {
