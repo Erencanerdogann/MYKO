@@ -302,9 +302,15 @@ std::string forbiddenModules[] = {
 	xorstr("SharpOD"), xorstr("HyperDbg"), xorstr("kdcom_replaced"),
 	xorstr("ProcessHacker"), xorstr("kprocesshacker"),
 	xorstr("VBoxDrv"), xorstr("VBoxNetAdp"), xorstr("VBoxNetFlt"),
-	// MRX Makro tespiti — interception kernel mouse/keyboard driver (en guclu yakalama:
+	// MRX Makro tespiti — interception kernel driver (en guclu yakalama:
 	// oyuncu MRX.exe'yi silse/yeniden adlandirsa bile bu driver yukluyse cokertir)
-	xorstr("interception"), xorstr("keyboard.sys"), xorstr("mouse.sys")
+	// #FP FIX (2026-06-13, BORAN vakasi — KURAL 0-B yorum): keyboard.sys/mouse.sys driver-enum
+	// taramasindan da KALDIRILDI. DriverScan EnumDeviceDrivers ile TUM driver'lari tarayip adinda
+	// 'keyboard.sys'/'mouse.sys' GECEN her seyi yakaliyordu (.find substring) -> Boran gibi temiz PC'de
+	// meshru/3rd-party driver yakalanip 'An 3rd party tools detected: keyboard.sys' + Shutdown = FALSE POSITIVE.
+	// interception'a OZGU degil (Windows = kbdclass.sys/i8042prt.sys). Sadece spesifik 'interception' kalsin.
+	// (Onceki fix 429. satir disk-tarama icindi; bu AYRI driver-enum noktasiydi, atlanmis.)
+	xorstr("interception") /*, xorstr("keyboard.sys"), xorstr("mouse.sys") -- FP, KAPATILDI */
 };
 
 DWORD WINAPI DriverScan(LPVOID lParam)
