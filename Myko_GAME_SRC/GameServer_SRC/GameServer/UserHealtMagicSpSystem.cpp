@@ -834,6 +834,43 @@ void CUser::CheckRespawnScroll()
 }
 #pragma endregion
 
+#pragma region CUser::RegeneByScroll()
+// #FIX (S133): Resurrection Scroll respawn butonu client'ta yanlislikla WIZ_LOGOUT(0x0F) gonderiyor
+// (CLIENT bug, packed/source yok). User.cpp WIZ_LOGOUT case'i isDead() ise buraya yonlendirir.
+// Envanterde scroll bul -> skill'iyle Regene(magicid) cagir -> EXP %X geri (AttackHandler magicid yolu) + yerinde diril.
+// Scroll yoksa hicbir sey yapmaz (donmayi bitirir, char asili kalmaz). Tas yolu (Stone of life) AYRI -> ETKILENMEZ.
+void CUser::RegeneByScroll()
+{
+	if (!isDead())
+		return;
+
+	// scroll item ID -> tetikledigi skill ID (DB Effect1 + MAGIC_TYPE5 ExpRecover, dogrulandi S133):
+	// 910022000->480002(%50), 800036000->480003(%60), 800039000->480004(%100), 810036000->480006(%60),
+	// 900136000->480010(%80), 810277000->480015(%80), 900699000->480017(%60), 910948000->488031(%80)
+	struct { uint32 item; uint32 skill; } scrolls[] = {
+		{910022000, 480002}, {800036000, 480003}, {800039000, 480004}, {810036000, 480006},
+		{900136000, 480010}, {810277000, 480015}, {900699000, 480017}, {910948000, 488031}
+	};
+
+	for (int i = SLOT_MAX; i < SLOT_MAX + HAVE_MAX; i++) {
+		_ITEM_DATA *pItem = GetItem(i);
+		if (pItem == nullptr || pItem->sCount < 1)
+			continue;
+		for (auto& s : scrolls) {
+			if (pItem->nNum == s.item) {
+				// scroll'u tuket
+				if (!RobItem(s.item, 1))
+					return; // tuketilemedi (guvenlik), donma yine biter (char dirilmez ama asili kalmaz)
+				// skill'iyle diril -> magicid!=0 -> AttackHandler:406-418 EXP geri verir (MAGIC_TYPE5 ExpRecover)
+				Regene(INOUT_IN, s.skill);
+				return;
+			}
+		}
+	}
+	// scroll yok -> hicbir sey yapma (char donmasin diye sadece return; Town butonu zaten WIZ_REGENE kullanir)
+}
+#pragma endregion
+
 #pragma region CUser::SpChange(int amount)
 void CUser::SpChange(int amount)
 {

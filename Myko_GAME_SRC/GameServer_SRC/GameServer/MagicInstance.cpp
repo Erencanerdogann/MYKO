@@ -981,13 +981,8 @@ SkillUseResult MagicInstance::UserCanCast()
 			else if (pSkill.iUseItem == 379062000 && pSkillCaster->isPlayer() && TO_USER(pSkillCaster)->isPriest() && TO_USER(pSkillCaster)->CheckExistItem(479062000)) {
 				/*continue*/
 			}
-			else {
-				// #RESDIAG (S133 gecici): scroll cast burada kesiliyor mu — CanUseItem fail
-				if (bType == RESURRECTION_SELF || (pSkill.bType[0]==5))
-					LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CanUseItem-1 FAIL skill=%d item=%d bType=%d dead=%d -> SkillUseFail",
-						(int)pSkill.iNum, (int)pSkill.iUseItem, (int)bType, pSkillCaster && pSkillCaster->isPlayer() ? (int)TO_USER(pSkillCaster)->isDead() : -1);
+			else
 				return SkillUseResult::SkillUseFail;
-			}
 		}
 
 		if (pSkill.nBeforeAction >= (uint32)ClassType::ClassWarrior && pSkill.nBeforeAction <= (uint32)ClassType::ClassPriest)
@@ -4164,16 +4159,8 @@ bool MagicInstance::ExecuteType5()
 		return false;
 
 	_MAGIC_TYPE5* pType = g_pMain->m_Magictype5Array.GetData(nSkillID);
-	if (pType == nullptr) {
-		// #RESDIAG (S133 gecici): TYPE5 kaydi yok
-		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] ExecuteType5 pType5 NULL skill=%d", (int)nSkillID);
+	if (pType == nullptr)
 		return false;
-	}
-
-	// #RESDIAG (S133 gecici): scroll cast ExecuteType5'e ULASTI — bType + target + dead durumu
-	if (pType->bType == RESURRECTION_SELF)
-		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] ExecuteType5 GIRDI skill=%d bType=%d sTargetID=%d casterDead=%d",
-			(int)nSkillID, (int)pType->bType, (int)sTargetID, pSkillCaster->isPlayer() ? (int)TO_USER(pSkillCaster)->isDead() : -1);
 
 	vector<CUser *> casted_member;
 
@@ -4221,13 +4208,6 @@ bool MagicInstance::ExecuteType5()
 
 		casted_member.push_back(TO_USER(pSkillTarget));
 	}
-
-	// #RESDIAG (S133 gecici): casted_member boş mu (target seçilemedi mi) — scroll dirilme için kritik
-	if (pType->bType == RESURRECTION_SELF)
-		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] casted_member=%d skill=%d sTargetID=%d targetNull=%d targetDead=%d",
-			(int)casted_member.size(), (int)nSkillID, (int)sTargetID,
-			(pSkillTarget == nullptr) ? 1 : 0,
-			(pSkillTarget && pSkillTarget->isPlayer()) ? (int)TO_USER(pSkillTarget)->isDead() : -1);
 
 	foreach(itr, casted_member)
 	{
@@ -4297,9 +4277,6 @@ bool MagicInstance::ExecuteType5()
 		break;
 		case RESURRECTION_SELF:
 		{
-			// #RESDIAG (S133 gecici): case'e GIRDI — caster==target mi
-			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] RESURRECTION_SELF case skill=%d caster==target=%d",
-				(int)nSkillID, (pSkillCaster == pTUser) ? 1 : 0);
 			if (pSkillCaster != pTUser)
 				continue;
 

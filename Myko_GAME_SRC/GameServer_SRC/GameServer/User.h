@@ -1409,6 +1409,7 @@ public:
 
 	uint16 GetItemCount(uint32 nItemID);
 	void CheckRespawnScroll();
+	void RegeneByScroll(); // #FIX S133: olu oyuncu scroll-respawn (client WIZ_LOGOUT yolluyor) -> scroll tuket+EXP geri+diril
 	bool CheckGiveSlot(uint8 sSlot);
 	bool LuaCheckGiveSlot(uint8 sSlot);
 	void MonsterStoneTimerScreen(uint16 Time);

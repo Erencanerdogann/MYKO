@@ -1255,12 +1255,17 @@ bool CUser::HandlePacket(Packet & pkt)
 			ChatTargetSelect(pkt);
 			break;
 		case WIZ_REGENE:
-		{
-			uint8 _rt = pkt.read<uint8>();
-			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] WIZ_REGENE paket GELDI type=%d (respawn butonu bu paketi yolladi)", (int)_rt);
-			Regene(_rt); // respawn type
+			Regene(pkt.read<uint8>()); // respawn type
 			break;
-		}
+		case WIZ_LOGOUT:
+			// #FIX (S133): Resurrection Scroll respawn butonu client'ta WIZ_LOGOUT(0x0F) gönderiyor (CLIENT bug,
+			// packed/source yok — Town butonu WIZ_REGENE gönderir, scroll butonu yanlışlıkla LOGOUT). Eskiden bu
+			// paketin handler'ı YOKTU -> ölü oyuncu donuyordu (canlı RESDIAG kanıt: "ISLENMEYEN paket opcode=0xF dead=1").
+			// ÇÖZÜM: ölüyken WIZ_LOGOUT = "scroll ile diril" demek. RegeneByScroll scroll varsa tüket+EXP geri+yerinde diril.
+			// CANLI oyuncu (ölü DEĞİL) için WIZ_LOGOUT'a dokunma (zaten paket switch'te işlenmiyordu, socket kapanışı logout yapar).
+			if (isDead())
+				RegeneByScroll();
+			break;
 		case WIZ_REQ_USERIN:
 			RequestUserIn(pkt);
 			break;
@@ -1478,9 +1483,6 @@ bool CUser::HandlePacket(Packet & pkt)
 		case WIZ_REPORT_BUG:
 			break;
 		default:
-			// #RESDIAG (S133 gecici): islenmeyen paket — olu oyuncu scroll butonuna basinca hangi opcode geliyor?
-			// Olu isek ve bilinmeyen paket geldiyse = respawn butonu islenmeyen bir opcode yolluyor (kok burada).
-			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] ISLENMEYEN paket opcode=0x%X dead=%d (olu+bilinmeyen=respawn butonu olabilir)", (unsigned)command, (int)isDead());
 			printf("isInGame [SID=%s] Unknown packet %X AccountName:%s\n", GetName().c_str(), command,GetAccountName().c_str());
 			return false;
 		}
