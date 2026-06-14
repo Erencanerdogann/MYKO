@@ -841,12 +841,10 @@ void CUser::CheckRespawnScroll()
 // Scroll yoksa hicbir sey yapmaz (donmayi bitirir, char asili kalmaz). Tas yolu (Stone of life) AYRI -> ETKILENMEZ.
 void CUser::RegeneByScroll()
 {
+	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] RegeneByScroll GIRDI dead=%d lostExp=%lld", (int)isDead(), (long long)m_iLostExp);
 	if (!isDead())
 		return;
 
-	// scroll item ID -> tetikledigi skill ID (DB Effect1 + MAGIC_TYPE5 ExpRecover, dogrulandi S133):
-	// 910022000->480002(%50), 800036000->480003(%60), 800039000->480004(%100), 810036000->480006(%60),
-	// 900136000->480010(%80), 810277000->480015(%80), 900699000->480017(%60), 910948000->488031(%80)
 	struct { uint32 item; uint32 skill; } scrolls[] = {
 		{910022000, 480002}, {800036000, 480003}, {800039000, 480004}, {810036000, 480006},
 		{900136000, 480010}, {810277000, 480015}, {900699000, 480017}, {910948000, 488031}
@@ -858,16 +856,19 @@ void CUser::RegeneByScroll()
 			continue;
 		for (auto& s : scrolls) {
 			if (pItem->nNum == s.item) {
-				// scroll'u tuket
-				if (!RobItem(s.item, 1))
-					return; // tuketilemedi (guvenlik), donma yine biter (char dirilmez ama asili kalmaz)
-				// skill'iyle diril -> magicid!=0 -> AttackHandler:406-418 EXP geri verir (MAGIC_TYPE5 ExpRecover)
+				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] scroll BULUNDU item=%d skill=%d slot=%d count=%d", (int)s.item, (int)s.skill, i, (int)pItem->sCount);
+				if (!RobItem(s.item, 1)) {
+					LOG(LogCategory::LOG_GENERAL, "[RESDIAG] RobItem FAIL item=%d", (int)s.item);
+					return;
+				}
+				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene cagriliyor skill=%d lostExp(once)=%lld", (int)s.skill, (long long)m_iLostExp);
 				Regene(INOUT_IN, s.skill);
+				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene DONDU lostExp(sonra)=%lld dead(sonra)=%d", (long long)m_iLostExp, (int)isDead());
 				return;
 			}
 		}
 	}
-	// scroll yok -> hicbir sey yapma (char donmasin diye sadece return; Town butonu zaten WIZ_REGENE kullanir)
+	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] scroll YOK envanterde (hicbiri bulunamadi)");
 }
 #pragma endregion
 

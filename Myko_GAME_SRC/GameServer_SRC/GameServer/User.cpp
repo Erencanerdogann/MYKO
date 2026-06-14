@@ -1258,11 +1258,7 @@ bool CUser::HandlePacket(Packet & pkt)
 			Regene(pkt.read<uint8>()); // respawn type
 			break;
 		case WIZ_LOGOUT:
-			// #FIX (S133): Resurrection Scroll respawn butonu client'ta WIZ_LOGOUT(0x0F) gönderiyor (CLIENT bug,
-			// packed/source yok — Town butonu WIZ_REGENE gönderir, scroll butonu yanlışlıkla LOGOUT). Eskiden bu
-			// paketin handler'ı YOKTU -> ölü oyuncu donuyordu (canlı RESDIAG kanıt: "ISLENMEYEN paket opcode=0xF dead=1").
-			// ÇÖZÜM: ölüyken WIZ_LOGOUT = "scroll ile diril" demek. RegeneByScroll scroll varsa tüket+EXP geri+yerinde diril.
-			// CANLI oyuncu (ölü DEĞİL) için WIZ_LOGOUT'a dokunma (zaten paket switch'te işlenmiyordu, socket kapanışı logout yapar).
+			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] WIZ_LOGOUT GELDI dead=%d lostExp=%lld", (int)isDead(), (long long)m_iLostExp);
 			if (isDead())
 				RegeneByScroll();
 			break;

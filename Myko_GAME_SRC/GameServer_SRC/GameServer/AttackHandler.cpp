@@ -405,16 +405,23 @@ void CUser::Regene(uint8 regene_type, uint32 magicid /*= 0*/)
 	}
 	else // we're respawning using a resurrect skill.
 	{
-		_MAGIC_TYPE5 * pType = g_pMain->m_Magictype5Array.GetData(magicid);     
-		if (pType == nullptr)
+		_MAGIC_TYPE5 * pType = g_pMain->m_Magictype5Array.GetData(magicid);
+		if (pType == nullptr) {
+			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene RET: pType5 NULL magicid=%d (skill RAM'de yok)", (int)magicid);
 			return;
+		}
+
+		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene magic-yol magicid=%d ExpRecover=%d lostExp=%lld whoKilledMe=%d zone=%d",
+			(int)magicid, (int)pType->bExpRecover, (long long)m_iLostExp, (int)m_sWhoKilledMe, (int)GetZoneID());
 
 		if (GetZoneID() != ZONE_UNDER_CASTLE)
 		{
-			MSpChange(-((int32)m_MaxMp)); // reset us to 0 MP. 
+			MSpChange(-((int32)m_MaxMp)); // reset us to 0 MP.
 
 			if (m_sWhoKilledMe == -1)
-				ExpChange("restore back", (m_iLostExp * pType->bExpRecover) / 100, true); // Restore 
+				ExpChange("restore back", (m_iLostExp * pType->bExpRecover) / 100, true); // Restore
+			else
+				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] EXP ATLANDI: whoKilledMe=%d (!=-1) -> EXP geri verilmedi (KOK BU OLABILIR)", (int)m_sWhoKilledMe);
 		}
 
 		m_bResHpType = USER_STANDING;
