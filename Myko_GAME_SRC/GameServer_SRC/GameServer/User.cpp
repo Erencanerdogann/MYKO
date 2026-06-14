@@ -1255,8 +1255,12 @@ bool CUser::HandlePacket(Packet & pkt)
 			ChatTargetSelect(pkt);
 			break;
 		case WIZ_REGENE:
-			Regene(pkt.read<uint8>()); // respawn type
+		{
+			uint8 _rt = pkt.read<uint8>();
+			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] WIZ_REGENE paket GELDI type=%d (respawn butonu bu paketi yolladi)", (int)_rt);
+			Regene(_rt); // respawn type
 			break;
+		}
 		case WIZ_REQ_USERIN:
 			RequestUserIn(pkt);
 			break;
@@ -1474,6 +1478,9 @@ bool CUser::HandlePacket(Packet & pkt)
 		case WIZ_REPORT_BUG:
 			break;
 		default:
+			// #RESDIAG (S133 gecici): islenmeyen paket — olu oyuncu scroll butonuna basinca hangi opcode geliyor?
+			// Olu isek ve bilinmeyen paket geldiyse = respawn butonu islenmeyen bir opcode yolluyor (kok burada).
+			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] ISLENMEYEN paket opcode=0x%X dead=%d (olu+bilinmeyen=respawn butonu olabilir)", (unsigned)command, (int)isDead());
 			printf("isInGame [SID=%s] Unknown packet %X AccountName:%s\n", GetName().c_str(), command,GetAccountName().c_str());
 			return false;
 		}

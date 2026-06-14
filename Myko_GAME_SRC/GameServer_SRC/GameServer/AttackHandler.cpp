@@ -280,24 +280,38 @@ void CUser::Attack(Packet & pkt)
 
 void CUser::Regene(uint8 regene_type, uint32 magicid /*= 0*/)
 {
-	if(GetMap() == nullptr)
+	// #RESDIAG (S133 gecici): Regene'e GIRDI — buton bu yola mi geliyor + type + magicid
+	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene GIRDI type=%d magicid=%d dead=%d level=%d",
+		(int)regene_type, (int)magicid, (int)isDead(), (int)GetLevel());
+
+	if(GetMap() == nullptr) {
+		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene RET: GetMap NULL");
 		return;
+	}
 
 	_OBJECT_EVENT* pEvent = nullptr;
 	_START_POSITION* pStartPosition = nullptr;
 	float x = 0.0f, z = 0.0f;
 
-	if (!isDead())
+	if (!isDead()) {
+		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene RET: isDead=FALSE (oyuncu olu degil)");
 		return;
+	}
 
 	if (regene_type != 1 && regene_type != 2)
 		regene_type = 1;
 
 	if (regene_type == 2)
 	{
+		// #RESDIAG: type=2 = TAS yolu (Stone of life 379006000). Scroll butonu buraya mi geliyor?
+		bool tasVar = CheckExistItem(379006000, 3 * GetLevel());
+		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene type=2 (TAS yolu) level=%d gereken_tas=%d tasVar=%d",
+			(int)GetLevel(), (int)(3 * GetLevel()), (int)tasVar);
 		if (GetLevel() <= 5
-			|| !RobItem(379006000, 3 * GetLevel()))
+			|| !RobItem(379006000, 3 * GetLevel())) {
+			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene RET: type=2 tas YOK/level<=5 -> SCROLL BUTONU BURADA OLUYOR");
 			return;
+		}
 	}
 
 	// If we're in a home zone, we'll want the coordinates from there. Otherwise, assume our own home zone.
