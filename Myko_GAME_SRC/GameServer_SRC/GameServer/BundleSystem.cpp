@@ -277,7 +277,11 @@ void CUser::ISTIRAPAutoLooter(_LOOT_BUNDLE* pBundle) {
 
 			pReceiver->NpcDropReceivedInsertLog(pBundle->Items[i].nItemID, pBundle->ItemsCount, pBundle->npcid);
 		}
-		pMap->RegionItemRemove(pBundle, i);
+		// #FIX C1/C3 (S133): RegionItemRemove son item'i alınca pBundle'ı DELETE eder. Eskiden döngü devam
+		// edip silinmiş belleğe (pBundle->Items[i]) erişiyordu = use-after-free → heap crash (100+ oyuncuda).
+		// Artık silindiyse (true) HEMEN break → freed pointer'a bir daha dokunma.
+		if (pMap->RegionItemRemove(pBundle, i))
+			break;
 	}
 }
 

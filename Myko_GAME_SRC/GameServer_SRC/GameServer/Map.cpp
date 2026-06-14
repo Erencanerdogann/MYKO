@@ -140,18 +140,21 @@ bool C3DMap::RegionItemAdd(_LOOT_BUNDLE * pBundle)
 }
 
 
-void C3DMap::RegionItemRemove(_LOOT_BUNDLE * pBundle, uint16 slotid)
+// #FIX (S133): void->bool. Bundle SİLİNDİYSE (son item) true döner. AutoLooter döngüsü true alınca break
+// (silinen pBundle'a tekrar erişim = use-after-free crash C1/C3). null/OOB güvenli.
+bool C3DMap::RegionItemRemove(_LOOT_BUNDLE * pBundle, uint16 slotid)
 {
 
-	if(!pBundle || slotid >= NPC_HAVE_ITEM_LIST) return;
+	if(!pBundle || slotid >= NPC_HAVE_ITEM_LIST) return false;
 
 	if (pBundle->ItemsCount > 0)pBundle->ItemsCount--;
 	pBundle->Items[slotid].nItemID = 0;
 	pBundle->Items[slotid].sCount = 0;
 	pBundle->Items[slotid].slotid = 0;
 
-	if (pBundle->ItemsCount > 0) return;
-	m_RegionItemArray.DeleteData(pBundle->nBundleID);
+	if (pBundle->ItemsCount > 0) return false;  // hâlâ item var, bundle DURUYOR
+	m_RegionItemArray.DeleteData(pBundle->nBundleID);  // son item → bundle DELETE edildi
+	return true;  // çağıran pBundle'a ARTIK erişmemeli
 }
 
 bool C3DMap::CheckEvent(float x, float z, CUser* pUser)

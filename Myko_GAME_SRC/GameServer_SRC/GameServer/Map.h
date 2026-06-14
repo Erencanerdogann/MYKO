@@ -40,7 +40,9 @@ public:
 	void Initialize2();
 	CRegion * GetRegion(uint16 regionX, uint16 regionZ);
 	bool CheckEvent( float x, float z, CUser* pUser = nullptr );
-	void RegionItemRemove(_LOOT_BUNDLE * pBundle, uint16 slotid);
+	// #FIX (S133): bool döndürür — bundle SİLİNDİYSE (ItemsCount=0 → DeleteData/delete) true.
+	// Çağıran (AutoLooter döngüsü) true alınca pBundle'a BİR DAHA ERİŞMEMELİ (use-after-free önle) → break.
+	bool RegionItemRemove(_LOOT_BUNDLE * pBundle, uint16 slotid);
 	bool RegionItemAdd(_LOOT_BUNDLE * pBundle);
 	ZoneItemArray	m_RegionItemArray;
 	virtual ~C3DMap();
