@@ -811,6 +811,7 @@ void CUser::InitOnDeath(Unit *pKiller)
 */
 void CUser::CheckRespawnScroll()
 {
+	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CheckRespawnScroll GIRDI dead=%d (respawn penceresi acmaya calisiyor)", (int)isDead());
 	// Search for the existance of all items in the player's inventory storage and onwards (includes magic bags)
 	for (int i = SLOT_MAX; i < SLOT_MAX + HAVE_MAX; i++) {
 		_ITEM_DATA *pItem = GetItem(i);
@@ -818,19 +819,23 @@ void CUser::CheckRespawnScroll()
 			continue;
 
 		// This implementation fixes a bug where it ignored the possibility for multiple stacks.
+		// #FIX (S133): 810277000 (Scroll 80) listede EKSIKTI -> eklendi (o scroll'da pencere acilmiyordu).
 		if ((pItem->nNum == 800036000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 800039000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 910022000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 900699000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 810036000 && pItem->sCount >= 1)
+			|| (pItem->nNum == 810277000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 900136000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 910948000 && pItem->sCount >= 1)) {
+			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CheckRespawnScroll: scroll BULUNDU item=%d count=%d -> pencere ACILIYOR (WIZ_DEAD)", (int)pItem->nNum, (int)pItem->sCount);
 			Packet result2(WIZ_DEAD);
 			result2 << uint32(GetID()) << uint32(18483) << uint64(0);
 			Send(&result2);
-			break;
+			return;
 		}
 	}
+	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CheckRespawnScroll: scroll YOK -> pencere ACILMADI (sadece Town secenegi)");
 }
 #pragma endregion
 
