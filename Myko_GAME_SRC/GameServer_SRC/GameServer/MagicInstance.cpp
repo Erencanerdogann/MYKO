@@ -4285,22 +4285,25 @@ bool MagicInstance::ExecuteType5()
 		break;
 		case RESURRECTION_SELF:
 		{
-			printf("[SCROLL] RESURRECTION_SELF: nSkillID=%d pTUser=%s caster==target=%d isDead=%d\n", nSkillID, pTUser->GetName().c_str(), (pSkillCaster == pTUser), pTUser->isDead());
 			if (pSkillCaster != pTUser)
 				continue;
 
+			// #FIX (S133): Resurrection Scroll(80) item 810277000 -> skill 480015 whitelist'te EKSIKTI ->
+			// succes=false -> diril CALISMIYORDU (diger 7 scroll calisiyordu). 480015 eklendi.
+			// 480015 MAGIC_TYPE5'te tanimli (Type4, ExpRecover=80, NeedStone=0, DB dogrulandi) -> EXP %80 geri.
+			// Tas yolu (Regene type=2, Stone of life) AYRI kod -> ETKILENMEZ. Debug printf'ler temizlendi.
 			bool succes = false;
 			if (nSkillID == 480003 ||
 				nSkillID == 480004 ||
 				nSkillID == 480006 ||
 				nSkillID == 480010 ||
+				nSkillID == 480015 ||   // Resurrection Scroll(80) item 810277000 — eksikti, eklendi (S133)
 				nSkillID == 480017 ||
 				nSkillID == 480002 ||
 				nSkillID == 488031) {
 				succes = true;
 			}
 			if (!succes) continue;
-			printf("[SCROLL] Calling Regene(INOUT_IN=%d, %d)\n", INOUT_IN, nSkillID);
 			pTUser->Regene(INOUT_IN, nSkillID);
 		}
 		break;

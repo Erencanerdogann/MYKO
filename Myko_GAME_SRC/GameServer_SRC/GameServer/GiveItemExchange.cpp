@@ -183,7 +183,10 @@ bool CUser::RunGiveItemExchange(int nExchangeID, uint8 Type)
 	if (pExchange == nullptr)
 		return false;
 
-	uint32 temp_nRobItemCount[10];
+	// #FIX K2 (S133): buffer 10'du ama nRobItemID/nRobItemCount[25] + asagidaki donguler i=0..24 ->
+	// temp_nRobItemCount[i] i>=10'da STACK OOB (over-read) -> hasCoins/GoldLose/RobItem'a garbage miktar
+	// -> bellek bozulmasi/yanlis kesim. 25'e cikarildi (dizi boyutuyla esitlendi).
+	uint32 temp_nRobItemCount[ITEMS_IN_GIVE_ITEM_GROUP_LUA] = { 0 };
 	int holder = 0;
 	for (uint32 &x : temp_nRobItemCount)
 	{
