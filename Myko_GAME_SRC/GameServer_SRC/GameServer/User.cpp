@@ -956,6 +956,11 @@ bool CUser::HandlePacket(Packet & pkt)
 	//TRACE("[CLIENT - GAMESERVER] - [SID=%d] Packet: [%02X] (len=%d)\n", GetSocketID(), pkt.GetOpcode(), pkt.size());
 	uint8 command = pkt.GetOpcode();
 
+	// #RESDIAG (S133 gecici): OLU oyuncunun HER paketi — scroll butonu hangi opcode yolluyor (catch-all, hicbir sey atlanmaz).
+	// XSafe (heartbeat) ve cok-sik paketler haric (spam onle): sadece olu + XSafe-disi.
+	if (isDead() && command != XSafe)
+		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] OLU-PAKET opcode=0x%X dead=1 selected=%d ingame=%d", (unsigned)command, (int)m_bSelectedCharacter, (int)isInGame());
+
 	// #242: XSafe (guard heartbeat) DISINDAKI her paket = gercek client aktivitesi.
 	// XSafe_StayAlive idle-FP/gercek-hile ayriminda kapi olarak kullanilir.
 	if (command != XSafe)
