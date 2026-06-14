@@ -4154,20 +4154,13 @@ bool MagicInstance::ExecuteType4()
 
 bool MagicInstance::ExecuteType5()
 {
-	if (nSkillID == 480003)
-		printf("[SCROLL] ExecuteType5 ENTERED: caster=%p isPlayer=%d skill=%d\n", pSkillCaster, pSkillCaster ? pSkillCaster->isPlayer() : -1, nSkillID);
-
 	// Disallow anyone that isn't a player.
 	if (!pSkillCaster  || !pSkillCaster->isPlayer() || pSkill.isnull())
 		return false;
 
 	_MAGIC_TYPE5* pType = g_pMain->m_Magictype5Array.GetData(nSkillID);
-	if (pType == nullptr) {
-		if (nSkillID == 480003) printf("[SCROLL] TYPE5 NULL for 480003!\n");
+	if (pType == nullptr)
 		return false;
-	}
-	if (nSkillID == 480003)
-		printf("[SCROLL] pType5 OK: bType=%d targetID=%d\n", pType->bType, sTargetID);
 
 	vector<CUser *> casted_member;
 

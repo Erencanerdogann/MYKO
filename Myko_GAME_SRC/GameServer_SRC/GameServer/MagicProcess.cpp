@@ -39,8 +39,6 @@ void CMagicProcess::MagicPacket(Packet & pkt, Unit * pCaster /*= nullptr*/)
 	}
 
 	if (instance.sCasterID >= NPC_BAND || instance.sCasterID != pCaster->GetID()) {
-		if (instance.nSkillID == 480003)
-			printf("[SCROLL] REJECTED: casterID=%d >= NPC_BAND(%d) or != pCasterID(%d)\n", instance.sCasterID, NPC_BAND, pCaster->GetID());
 		return;
 	}
 
