@@ -6987,13 +6987,15 @@ void PearlEngine::HandleZoneChange(Packet &pkt)
 
 	// DiagLog ASAMA: zone degisimi (harita gecisi). Donma/crash hangi gecişte oldu netlesir.
 	DiagMark("ASAMA: zone degisimi");
-	DIAG("ASAMA", "ZONE DEGISIMI (subCode=%d, harita yukleme)", subCode);
 
 	if (Engine->dc) Engine->dc->Update(true);
 
 	switch (subCode)
 	{
 	case 2:
+		// FAZ2 #2.1 (S134): subCode=2 = onceki zone ID hala gecerli (case 3'te set edildi).
+		// Eskiden sadece "subCode=2" yazardik -> HANGI haritada donuyor belirsizdi. Artik zone ID yaz.
+		DIAG("ASAMA", "ZONE DEGISIMI (subCode=2, harita YUKLENDI, zone=%u)", (unsigned)Player.ZoneID);
 		LoadingControl = false;
 		Player.isTeleporting = false;
 		break;
@@ -7003,6 +7005,8 @@ void PearlEngine::HandleZoneChange(Packet &pkt)
 		uint16 newZone;
 		pkt >> newZone;
 		Player.ZoneID = newZone;
+		// FAZ2 #2.1 (S134): gercek zone ID logla. Donma/kasma HANGI zone'a girerken oldu netlesir.
+		DIAG("ASAMA", "ZONE DEGISIMI (subCode=3, harita YUKLENIYOR, zone %u -> %u)", (unsigned)oldzone, (unsigned)newZone);
 		Player.isTeleporting = false;
 		LoadingControl = false;
 

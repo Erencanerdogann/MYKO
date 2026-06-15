@@ -124,7 +124,7 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 		DWORD now = GetTickCount();
 		if (s_lastFrameTick != 0) {
 			DWORD delta = now - s_lastFrameTick;
-			if (delta > 300) { // 60fps'te frame ~16ms; 300ms = gozle gorulur donma
+			if (delta > 500) { // FAZ1 #1.2 (S134): 300->500ms. 300 zayif-PC mikro-takilmayi cok yakaliyordu (3262 spam); 500=gercek donma kalir, gurultu gider
 				// Donmadan ONCE en son ne oldu? SADECE donmaya YAKIN (son 2sn) olayi goster.
 				// Bayat etiket (8dk onceki foreground) yaniltiyor -> 2sn disindaki "yakin olay yok".
 				DWORD evAge = (g_DiagLastEventTick != 0) ? (now - g_DiagLastEventTick) : 999999;
@@ -141,9 +141,14 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 				if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
 					memMB = (DWORD)(pmc.WorkingSetSize / (1024 * 1024));
 
-				DIAG("FREEZE", "Oyun %ums dondu | oncesi: %s (%ums) | son cg-thread: %s (%ums once) | RAM=%uMB",
+				// FAZ2 #2.2 (S134): "son cg-thread" YANILTICIYDI -> okuyan SuspendCheck'i SUCLU saniyordu.
+				// Gercekte DiagThreadTick sadece "son tick atan thread"i yazar; SuspendCheck 1sn'de bir
+				// tick attigi icin freeze'lerin %85'inde dogal olarak "en son" gorunur = istatistik artefakti,
+				// NEDENSELLIK DEGIL. Etikete "(suclu degil)" notu + thrAge cok eskiyse "ilgisiz" diye isaretle.
+				const char* thrNot = (thrAge > 1500) ? "(ilgisiz/bayat)" : "(sadece son tick, suclu degil)";
+				DIAG("FREEZE", "Oyun %ums dondu | oncesi: %s (%ums) | son tick cg-thread: %s %s (%ums once) | RAM=%uMB",
 					delta, yakin, (evAge <= 2000 ? evAge : 0),
-					g_DiagThreadActivity, thrAge, memMB);
+					g_DiagThreadActivity, thrNot, thrAge, memMB);
 			}
 		}
 		s_lastFrameTick = now;
@@ -157,8 +162,14 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 			DWORD elapsed = now - s_fpsWindowStart;
 			if (elapsed >= 1000) {
 				DWORD fps = (s_frameCount * 1000) / elapsed;
-				if (fps < 20) // dusuk FPS = kasma; sadece dusukte yaz (sismesin)
+				// FAZ1 #1.1 (S134): eskiden her saniye fps<20 yazardi -> 3.5sa oturumda 9579 satir
+				// = 1.3MB dosya sismesi. Artik SADECE fps<15 (gercek kasma) VE son FPS-log'dan
+				// >=10sn gectiyse yaz. Trend yine gorunur (10sn'de 1 ornek), gurultu ~10x duser.
+				static DWORD s_lastFpsLog = 0;
+				if (fps < 15 && (now - s_lastFpsLog >= 10000)) {
 					DIAG("FPS", "DUSUK fps=%u (son olay: %s)", fps, g_DiagLastEvent);
+					s_lastFpsLog = now;
+				}
 				s_frameCount = 0;
 				s_fpsWindowStart = now;
 			}
