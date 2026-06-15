@@ -1093,10 +1093,6 @@ void CUser::ReqCreateNewChar(Packet & pkt)
 	pkt >> bCharIndex >> strCharID >> bRace >> sClass >> bFace >> nHair >> bStr >> bSta >> bDex >> bInt >> bCha;
 
 	uint8 sonuc = g_DBAgent.CreateNewChar(m_strAccountID, bCharIndex, strCharID, bRace, sClass, nHair, bFace, bStr, bSta, bDex, bInt, bCha);
-	// #CHIPDIAG: char create SP'ye giden tum parametreler + SP sonucu (sonuc!=0 ise DB reddetti)
-	printf("[NEWCHAR_DIAG] acc=%s idx=%d charID=%s race=%d class=%d hair=%u face=%d | STR=%d STA=%d DEX=%d INT=%d CHA=%d | SP_SONUC=%d (toplam=%d)\n",
-		m_strAccountID.c_str(), (int)bCharIndex, strCharID.c_str(), (int)bRace, (int)sClass, nHair, (int)bFace,
-		(int)bStr, (int)bSta, (int)bDex, (int)bInt, (int)bCha, (int)sonuc, (int)(bStr+bSta+bDex+bInt+bCha));
 	Packet result(WIZ_NEW_CHAR);
 	result << sonuc;
 	if (sonuc == 0) {
