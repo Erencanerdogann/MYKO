@@ -1206,7 +1206,10 @@ bool CDBAgent::InsertCurrentUser(string & strAccountID, string & strCharID, cons
 	dbCommand->AddParameter(SQL_PARAM_INPUT, strServerIP.c_str(), strServerIP.length());
 	dbCommand->AddParameter(SQL_PARAM_INPUT, strClientIP.c_str(), strClientIP.length());
 	// CHI-AUDIT: Hardcoded IP fix — now uses actual server/client IPs
-	if (!dbCommand->Execute(_T("INSERT INTO CURRENTUSER VALUES (?,?,1,?,?)")))
+	// #CHIP FIX (S134): CURRENTUSER'a last_heartbeat (6.kolon, DEFAULT getdate()) eklendi (MATRIX askida-char TTL).
+	//   Kolon-listesiz 'VALUES(?,?,1,?,?)' 5 deger -> 6 kolonlu tabloda 'column count mismatch' -> login takilir.
+	//   Cozum: KOLON-LISTELI INSERT -> 5 deger ilk 5 kolona, last_heartbeat DEFAULT alir. (Trigger gecici, bu kalici.)
+	if (!dbCommand->Execute(_T("INSERT INTO CURRENTUSER (strAccountID, strCharID, nServerNo, strServerIP, strClientIP) VALUES (?,?,1,?,?)")))
 	{
 		ReportSQLError(m_AccountDB->GetError());
 		return false;
