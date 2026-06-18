@@ -592,6 +592,26 @@ bool Launcher::Start()
         }
     }
 
+    // v4.7 FIX (patron S134, 2026-06-18): SELF-UPDATE EN BASTA + SENKRON (asset-patch'ten ONCE).
+    // KOK NEDEN: eski kod CheckForUpdate'i PARALEL thread'de kosturuyordu (asagida yorumda). Self-update
+    //   bitince LaunchUpdaterAndExit() launcher'i KAPATIP restart ediyor; ama o an asset-patch (DXT/FX
+    //   indirme, HandlePacket case 0x2) HALA suruyordu -> patch ORTASINDA launcher kapaniyor -> DXT
+    //   dosyalari eksik kaliyor (kanit: client log 'Cant open texture .dxt' selleri).
+    // COZUM (Yontem A): once self-update KONTROL et. Guncelleme varsa burada indir+restart (asset-patch
+    //   HIC BASLAMAZ -> kesilecek sey yok). Guncelse false doner -> normal akis devam, patch eksiksiz iner.
+    //   WinHTTP (HttpGet) WinSock socket'ten BAGIMSIZ -> RequestVersion/connect'i beklemeye gerek yok,
+    //   ayrica eski 'WinHTTP+WinSock ayni anda race' sorunu da biter (artik sirali, cakisma penceresi 0).
+    SetState(xorstr("Guncellemeler kontrol ediliyor..."));
+    try {
+        if (CheckForUpdate()) {
+            // true = yeni surum indirildi, LaunchUpdaterAndExit cagrildi, launcher kapaniyor.
+            // Asset-patch akisina GIRME (restart sonrasi yeni launcher devralir, patch'i bastan eksiksiz ceker).
+            return false;
+        }
+    } catch (...) {
+        // Self-update fail oldu — sessizce gec, mevcut surumle normal akis devam.
+    }
+
     RequestVersion();
     // S114 K3 FIX: ReportHwid ASYNC (Launcher acilis bloklamasin)
     std::thread([this]() {
@@ -599,6 +619,9 @@ bool Launcher::Start()
         this->ReportHwid();
     }).detach();
 
+    /* KAPATILDI (v4.7, 2026-06-18 — patron S134): eski PARALEL self-update thread'i.
+       Patch ortasinda launcher'i kapatip DXT patch'ini yarida birakiyordu (yukaridaki senkron
+       cagri ile en basa alindi). Geri acmak icin yorumdan cikar + yukaridaki senkron blogu kaldir.
     // S115 v2.7+ FIX: AUTO-UPDATE thread Constructor'dan buraya tasindi.
     // SEBEP: Constructor'da WinHTTP thread + WinSock connect ayni anda baslayinca
     //        race yaratip 'Connection failed' veriyordu (patron PC test S115).
@@ -618,6 +641,7 @@ bool Launcher::Start()
         // NOT (faz-sonu H1): FIX-H (m_bUpdateChecked START gate) v3.6'da GERI ALINDI (sonsuz kilit
         // regresyonu). m_bUpdateChecked artik OKUNMUYOR -> set kaldirildi (olu kod temizligi).
     }).detach();
+    */
 
     // TODO#241 FIX-A (S127 v3.2): version-wait busy-loop -> CPU spin + sonsuz donma duzeltmesi.
     // ESKI: while(true) bos dongu (Sleep yok) -> CPU %100 spin; version cevabi (0x1) gelmezse
