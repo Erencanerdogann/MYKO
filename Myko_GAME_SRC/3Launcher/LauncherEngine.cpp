@@ -827,10 +827,13 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 		std::string versionFromFile = m_currentFile.substr(0, m_currentFile.length() - 4);
 		m_settingsVersion = atoi(versionFromFile.c_str());
 		WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"), std::to_string(m_settingsVersion).c_str(), (std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
-		if (m_settingsVersion == m_iVersion)
-			return true;
-		else
-			return false;
+		// v5.0 FIX (patron S134): DONUS DEGERI DUZELTILDI. Eski kod burada
+		//   "if(m_settingsVersion==m_iVersion) return true; else return false;" yapiyordu -> server BIRDEN
+		//   FAZLA patch dosyasi gonderince (orn 2375,2380,2391) son-olmayan her dosya BASARIYLA inse bile
+		//   FALSE donuyordu. case 0x2'deki yeni bAllOk kontrolu bunu "indirme hatasi" sanip patch'i hep
+		//   "eksik" damgalardi. Gercek = bu dosya BASARIYLA indi+extract oldu -> TRUE don. Gercek hata
+		//   (download/hash/extract fail) zaten yukarida return false ile ayriliyor.
+		return true;
 	}
 	return true;
 }
@@ -842,18 +845,21 @@ void Launcher::Download()
 	//   (m_iVersion) BUYUK olabiliyor (orn LOCAL klasor Files=4857 vs server=2391, sisme/bayat deger).
 	//   Eski kod bu durumda "Version invalid" deyip SESSIZCE duruyordu -> patch HIC baslamiyor (RequestPatch
 	//   cagrilmaz). Option save Server.ini'yi yeniden yazinca deger duzeliyordu -> "save'den sonra calisti".
-	// COZUM: m_settingsVersion > m_iVersion ise sessizce DURMA. Server.ini'yi server degerine GERI SAR
-	//   (self-heal, satir 213 ile ayni pattern) -> patch yine denenir, eksik dosyalar server versiyonuna
-	//   gore yeniden cekilir. Boylece ilk acilista da patch baslar, Option save'e gerek kalmaz.
+	// COZUM: m_settingsVersion > m_iVersion ise sessizce DURMA -> m_settingsVersion'i 0'a sar.
+	//   ONEMLI (server kod kaniti LoginSession.cpp:264 "if(pInfo->sVersion > version)"): server, launcher'in
+	//   gonderdigi version'DAN BUYUK dosyalari yollar. Eger m_iVersion'a (2391) esitlersek server "buyuk dosya
+	//   yok" deyip BOS liste doner -> sisik Files'li ama EKSIK DXT'li kullanicinin dosyalari INMEZ. 0'a sarinca
+	//   server TUM patch listesini yollar -> eksik dosyalar tamamlanir. RequestPatch sonunda DownloadPatch
+	//   her dosyada Server.ini Files'i kendi dogru degerine yazar (satir 826-829), sisik deger temizlenir.
 	if (m_settingsVersion > m_iVersion)
 	{
 		SetState(xorstr("Surum hizalaniyor..."));
-		// Server.ini Files'i server'in versiyonuna esitle (sisme/bayat degeri duzelt)
-		m_settingsVersion = m_iVersion;
+		// Sisik/bayat Files -> 0 (server TUM patch'i yollasin, eksik dosyalar tamamlansin)
+		m_settingsVersion = 0;
 		WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"),
 			std::to_string(m_settingsVersion).c_str(),
 			(std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
-		// Devam et -> RequestPatch (m_settingsVersion == m_iVersion oldu, patch gerekirse ceker)
+		// Devam et -> RequestPatch (m_settingsVersion=0, server tum dosyalari listeler)
 	}
 
     RequestPatch();
