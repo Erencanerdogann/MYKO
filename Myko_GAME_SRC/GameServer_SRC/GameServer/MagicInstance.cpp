@@ -3994,15 +3994,16 @@ bool MagicInstance::ExecuteType4()
 			continue;
 		}
 
-		// v5.0 FIX (patron S134): SADECE SC scroll'lari (isLockableScroll) persist olur.
-		//   PATRON KURALI: karakterde SC HARIC her sey (basilan skill, kitap, item buff, EXP/premium/noah
-		//   scroll dahil) olunce + zone degisince + oyundan cikinca (relog) SILINIR. SC kalir.
-		//   ESKI: bShouldPersist = (nSkillID>500000) -> 500000+ olan TUM scroll/item buff persist oluyordu
-		//   -> olum/zone/relog'da geri geliyordu (yanlis). nSkillID>500000 genel kapisi KALDIRILDI.
-		//   Artik SADECE isLockableScroll buff'lari (HP_MP/AC/DAMAGE/SPEED/STATS/FISHING/BATTLE_CRY) saved
-		//   olur -> sadece SC her yerde korunur, gerisi her durumda gider.
+		// v5.0 FIX (patron S134): SADECE SC scroll'lari persist olur.
+		//   PATRON KURALI: karakterde SC HARIC her sey (basilan class skill, kitap, item buff, EXP/premium/
+		//   noah scroll dahil) olunce + zone degisince + oyundan cikinca (relog) SILINIR. SADECE SC kalir.
+		//   AYRIM (KRITIK, DB kaniti): isLockableScroll buff type'lari (HP_MP/AC/DAMAGE/SPEED/STATS/FISHING/
+		//   BATTLE_CRY) HEM class skill'de (iNum<500000, ~412 skill) HEM scroll'da (iNum>=500000) var.
+		//   Sadece buff type'a bakmak class skill'leri de SC sanip tutardi (YANLIS). Bu yuzden SC =
+		//   isLockableScroll buff type VE nSkillID>=500000 (scroll/item kaynakli). Class skill (<500000)
+		//   ayni type'ta olsa bile SC DEGIL -> her durumda silinir.
 		bool bShouldPersist = false;
-		if (pTarget->isPlayer())
+		if (pTarget->isPlayer() && nSkillID >= 500000)
 		{
 			CUser* pTUser = TO_USER(pTarget);
 			if (pTUser != nullptr && pTUser->isLockableScroll(pType->bBuffType) && pType->isBuff())
