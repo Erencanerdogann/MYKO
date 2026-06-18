@@ -224,17 +224,21 @@ std::string FileDirGet(std::string FileName)
     x = string_format(name, GetDir().c_str(), FileName.c_str());
     return x;
 }
-void CodeGuardEncrypt()
+// v5.0 (patron S134): OLU FONKSIYONLAR — bos govde, hicbir is yapmiyor. CodeGuardEncrypt/t hicbir
+// yerden cagrilmiyor. WebLinkAdded icindeki URL atamalari zaten yorumda (URL'ler UIXSettings.ini'den
+// geliyor). KURAL 0-B: govdeler korundu (calisan kod degil, bos), referans olsun diye birakildi.
+// WebLinkAdded() cagrisi (LoadTextures) kaldirildi -> gereksiz no-op cagri yok.
+void CodeGuardEncrypt()  // OLU — kullanilmiyor
 {
-  
+
 }
 
-void CodeGuardEncryptt()
+void CodeGuardEncryptt() // OLU — kullanilmiyor
 {
-   
+
 }
 
-void WebLinkAdded()
+void WebLinkAdded()      // OLU — bos govde (URL'ler UIXSettings.ini'den)
 {
     //Address_HomePage = "https://mykozone.com/";
     //Address_Forum = "https://forum.mykozone.com/";
@@ -335,7 +339,7 @@ bool LoadTextures()
     D3DXCreateTextureFromFileEx(g_pd3dDevice, xorstr("CodeGuard\\Launcher\\RepairMouseClick.code"), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_DEFAULT, D3DCOLOR_ARGB(128, 128, 128, 128), 0, 0, &RepairButtonDownTexture);
 
     launcherdir = GetDir();
-    WebLinkAdded();
+    // WebLinkAdded(); // v5.0 (S134): OLU no-op cagri kaldirildi (URL'ler UIXSettings.ini'den)
 
     if (textureFail)
     {
@@ -835,6 +839,12 @@ HWND hLoadHwnd;
 LRESULT CALLBACK WndProc222(HWND, UINT, WPARAM, LPARAM);
 const int IMAGE_WIDTH = 175;
 const int IMAGE_HEIGHT = 263;
+// v5.0 FIX (patron S134): GIF banner RACE guard. SetupBanner global GIF state'ine (g_currentGifResId
+//   vb) + global hLoadHwnd pencereye yazar; iki banner ayni anda acilirsa (orn Compact arka-thread GIF'i
+//   donerken kullanici START'a basinca) GDIHelper singleton statikleri (m_pImage) ezilir -> birinin
+//   Destroy()'u digerinin run() thread'inin pointer'ini delete eder = use-after-free (gecmis kanit:
+//   GDIHelper::run 0xc0000005 x6). Guard: bir banner aktifken ikinci SetupBanner reddedilir.
+static volatile bool g_bannerActive = false;
 // S114: Aktif GIF resource ID + loop flag (SetupBanner cagrisi oncesi set edilir)
 static int g_currentGifResId = IDB_LOADING;
 static bool g_currentGifLooped = false;
@@ -916,6 +926,14 @@ LRESULT CALLBACK WndProc222(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 
 int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool askConfirm)
 {
+    // v5.0 FIX (patron S134): RACE guard. Bir banner zaten aciksa ikinci SetupBanner'i REDDET
+    //   (GDIHelper singleton statikleri + global hLoadHwnd ezilmesin -> use-after-free crash onlenir).
+    //   BANNED GIF (kapanis) haric — o oncelikli, her zaman gosterilmeli. Reddedilen cagri 0 doner;
+    //   caller (Compact/StartClick) zaten kendi guard'i (g_compactRunning / state) ile korunuyor.
+    if (g_bannerActive && gifResId != IDB_LOADING_BANNED)
+        return 0;
+    g_bannerActive = true;
+
     // S114: Caller'in istegine gore GIF + davranis konfigure
     g_currentGifResId = gifResId;
     g_currentGifLooped = true;
@@ -958,6 +976,8 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool ask
         DWORD err = GetLastError();
         if (err != ERROR_CLASS_ALREADY_EXISTS) {
             MessageBox(NULL, _T("Call to RegisterClassEx failed!"), szTitle, NULL);
+            g_bannerActive = false; // v5.0 FIX: erken cikis -> flag takili kalmasin (sonsuz kilit onle)
+            GdiplusShutdown(gdiplusToken);
             return 1;
         }
     }
@@ -967,6 +987,9 @@ int thyke_Test::SetupBanner(int gifResId, DWORD minMs, bool launchGame, bool ask
 
     if (!hwnd) {
         MessageBox(NULL, _T("Call to CreateWindow failed!"), szTitle, NULL);
+        g_bannerActive = false; // v5.0 FIX: erken cikis -> flag takili kalmasin
+        ::UnregisterClass(wcex.lpszClassName, wcex.hInstance);
+        GdiplusShutdown(gdiplusToken);
         return 1;
     }
 
@@ -1042,6 +1065,7 @@ end:
     if (IsWindow(hwnd)) ::DestroyWindow(hwnd);
     ::UnregisterClass(wcex.lpszClassName, wcex.hInstance);
     GdiplusShutdown(gdiplusToken); //dont forget to shut down the gdi+ token.
+    g_bannerActive = false; // v5.0 FIX: banner kapandi -> race guard serbest (tum cikis yollari buradan gecer)
 
     // S115 FIX v3: Compact GIF veya compact-sonu SAFE kapandiktan sonra ana Launcher
     // penceresini one al. Compact akisi Launcher'i kapatmaz.

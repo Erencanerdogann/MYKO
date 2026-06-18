@@ -736,7 +736,13 @@ bool Launcher::KnightOnlineCheck()
     entry.dwSize = sizeof(PROCESSENTRY32);
 
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+    // v5.0 FIX (patron S134): (1) INVALID_HANDLE_VALUE guard — snapshot olusmazsa (dusuk bellek/yetki)
+    //   Process32First INVALID handle ile cagrilmasin. (2) HANDLE LEAK — eski kod CloseHandle YAPMIYORDU;
+    //   bu fn her DownloadPatch'te (her patch dosyasi) cagrilir -> cok dosyali patch'te onlarca handle sizar.
+    if (snapshot == INVALID_HANDLE_VALUE)
+        return false;
 
+    bool bFound = false;
     if (Process32First(snapshot, &entry) == TRUE)
     {
         while (Process32Next(snapshot, &entry) == TRUE)
@@ -745,11 +751,15 @@ bool Launcher::KnightOnlineCheck()
             std::size_t pos = a.find(xorstr("KnightOnLine.exe"));
 
             if (pos != -1)
-                return true;
+            {
+                bFound = true;
+                break;
+            }
         }
     }
 
-    return false;
+    CloseHandle(snapshot); // leak fix — her cagrida snapshot kapatilir
+    return bFound;
 }
 
 bool Launcher::DownloadPatch(std::string server, std::string path, std::string file, std::string expectedHash)

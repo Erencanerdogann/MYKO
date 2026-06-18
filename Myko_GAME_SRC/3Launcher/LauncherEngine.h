@@ -55,7 +55,7 @@
 //       basilabiliyordu, cakisma penceresi 5sn->1.5sn) + 'Guncellemeler kontrol ediliyor...' yazisi
 //       (patron: 5sn dondu saniliyor). START KILITLENMEDI (FIX-H sonsuz kilit regresyonu tekrarlanmaz).
 #define LAUNCHER_BUILD_VERSION_MAJOR 5
-#define LAUNCHER_BUILD_VERSION_MINOR 0
+#define LAUNCHER_BUILD_VERSION_MINOR 1
 // v4.6 (S133): DiagLog upload log_dosyasi $_POST TEXT field (file DEGIL — endpoint $_POST okuyor, 400 fix).
 // v4.7 (S134, 2026-06-18): SELF-UPDATE EN BASTA + SENKRON. Eski paralel thread self-update'i asset-patch
 //       ORTASINDA launcher'i kapatip DXT patch'ini yarida birakiyordu (eksik texture). Artik update
