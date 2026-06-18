@@ -485,7 +485,8 @@ void CUser::Regene(uint8 regene_type, uint32 magicid /*= 0*/)
 		&& GetZoneID() != ZONE_KNIGHT_ROYALE)
 	{
 		InitType4();
-		RecastSavedMagic();
+		// v5.0 FIX (patron S134): olum-revive'da SADECE SC geri gelsin (SC-disi EXP/premium/noah gitsin).
+		RecastSavedMagic(0, true);
 	}
 
 	if(GetZoneID() == ZONE_CHAOS_DUNGEON)

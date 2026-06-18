@@ -565,7 +565,8 @@ void CUser::RecvZoneChange(Packet & pkt)
 		if (GetZoneID() != ZONE_CHAOS_DUNGEON && !IsCindIn())
 		{
 			InitType4();
-			RecastSavedMagic();
+			// v5.0 FIX (patron S134): zone degisince SADECE SC geri gelsin (SC-disi EXP/premium/noah gitsin).
+			RecastSavedMagic(0, true);
 		}
 
 		if (isDead())
