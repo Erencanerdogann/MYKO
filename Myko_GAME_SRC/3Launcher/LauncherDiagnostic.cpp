@@ -34,6 +34,13 @@ static std::string GetLogPath() {
 }
 
 void LogAction(const std::string& action, const std::string& result) {
+    // v5.0 (patron S134 — 0 LOG): selfheal.log artik oyuncu PC'sinde URETILMEZ. Bu fonksiyon TEK kalici
+    //   normal/debug log dosyasini (%LOCALAPPDATA%\MalaysiaKO\selfheal.log) yaziyordu -> no-op yapildi.
+    //   DiagLog upload (UploadDiagLogs/diag_*.log -> web panel) ETKILENMEZ: o crash teshis akisi ayri,
+    //   sadece bu fonksiyonun selfheal.log'a yazan satirini (UploadDiagLogs:157 cagrisi dahil) susturur.
+    //   KURAL 0-B: govde SILINMEDI, yorum satirina alindi (geri acmak icin yorumdan cikar).
+    return;
+    /*
     std::string logPath = GetLogPath();
     if (logPath.empty()) return;
 
@@ -49,6 +56,7 @@ void LogAction(const std::string& action, const std::string& result) {
 
     f << timeBuf << " | " << action << " | " << result << "\n";
     f.close();
+    */
 }
 
 // =====================================================================

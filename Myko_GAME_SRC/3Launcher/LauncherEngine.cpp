@@ -797,6 +797,22 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 				return false;
 			}
 		}
+		else
+		{
+			// v5.0 FIX (patron S134): hash BOS ise (DB'de girilmemis) en azindan ZIP imzasi kontrol et.
+			//   Patch dosyalari .zip; ilk 4 byte "PK\x03\x04" olmali. 404/HTML hata govdesi veya bozuk
+			//   indirme bu imzayi tasimaz -> extract'e gitmeden yakalanir (hash + FAILONERROR ikinci hat).
+			std::ifstream zsig(file.c_str(), std::ios::binary);
+			char sig[4] = { 0 };
+			bool bZipOk = (bool)zsig.read(sig, 4);
+			zsig.close();
+			if (!bZipOk || !(sig[0] == 'P' && sig[1] == 'K' && sig[2] == 0x03 && sig[3] == 0x04))
+			{
+				SetState(xorstr("Patch bozuk (gecersiz dosya): ") + file);
+				std::remove(file.c_str());
+				return false;
+			}
+		}
 
         Sleep(50);
 		// S113: zip_extract return value KONTROL et — fail ise Server.ini'ye YAZMA, dosya kalsin (retry icin)
@@ -821,11 +837,23 @@ bool Launcher::DownloadPatch(std::string server, std::string path, std::string f
 
 void Launcher::Download()
 {
+	// v5.0 FIX (patron S134): "ILK ACILISTA PATCH BASLAMIYOR, OPTION SAVE'DEN SONRA CALISIYOR" bugu.
+	// KOK (kanitli): Server.ini [Version]Files (m_settingsVersion) server'in dondurdugu versiyondan
+	//   (m_iVersion) BUYUK olabiliyor (orn LOCAL klasor Files=4857 vs server=2391, sisme/bayat deger).
+	//   Eski kod bu durumda "Version invalid" deyip SESSIZCE duruyordu -> patch HIC baslamiyor (RequestPatch
+	//   cagrilmaz). Option save Server.ini'yi yeniden yazinca deger duzeliyordu -> "save'den sonra calisti".
+	// COZUM: m_settingsVersion > m_iVersion ise sessizce DURMA. Server.ini'yi server degerine GERI SAR
+	//   (self-heal, satir 213 ile ayni pattern) -> patch yine denenir, eksik dosyalar server versiyonuna
+	//   gore yeniden cekilir. Boylece ilk acilista da patch baslar, Option save'e gerek kalmaz.
 	if (m_settingsVersion > m_iVersion)
 	{
-		SetState(xorstr("Version invalid."));
-		ready = false;
-		return;
+		SetState(xorstr("Surum hizalaniyor..."));
+		// Server.ini Files'i server'in versiyonuna esitle (sisme/bayat degeri duzelt)
+		m_settingsVersion = m_iVersion;
+		WritePrivateProfileStringA(xorstr("Version"), xorstr("Files"),
+			std::to_string(m_settingsVersion).c_str(),
+			(std::string(WorkingPath) + xorstr("\\Server.ini")).c_str());
+		// Devam et -> RequestPatch (m_settingsVersion == m_iVersion oldu, patch gerekirse ceker)
 	}
 
     RequestPatch();
@@ -898,11 +926,25 @@ bool Launcher::HandlePacket(Packet& pkt)
 		std::string ftpURL, ftpPATH;
 		uint16 fileCount = 0;
 		pkt >> ftpURL >> ftpPATH >> fileCount;
+		// v5.0 FIX (patron S134): DownloadPatch DONUS DEGERI kontrol et. Eski kod donusu YOK SAYIYORDU
+		//   -> bir dosya inmese/hash-fail/extract-fail olsa bile dongu devam, Pack()+ready=true KOSULSUZ
+		//   calisiyordu -> oyuncu EKSIK DXT ile "Update Completed" gorup oyuna giriyordu ("Cant open texture").
+		//   Artik en az bir dosya fail ise: Pack ATLA, ready=true VERME, kullaniciya soyle + retry (sonraki
+		//   acilista L1 self-heal / yeniden indirme devreye girer). START-gate: ready zaten "Version invalid"de
+		//   false set ediliyordu, sonsuz kilit YOK (kullanici tekrar acabilir).
+		bool bAllOk = true;
 		for (int i = 0; i < fileCount; i++)
 		{
 			std::string file, fileHash;
 			pkt >> file >> fileHash;
-			DownloadPatch(ftpURL, ftpPATH, file, fileHash);
+			if (!DownloadPatch(ftpURL, ftpPATH, file, fileHash))
+				bAllOk = false;
+		}
+		if (!bAllOk)
+		{
+			SetState(xorstr("Patch eksik indirildi. Lutfen launcher'i tekrar acin."));
+			ready = false;
+			break;
 		}
         SetState(xorstr("Files are being packed..."));
         CHDRSystem* hdrPacker = new CHDRSystem;

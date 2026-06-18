@@ -661,6 +661,11 @@ const bool CFTPClient::DownloadFile(const std::string& strLocalFile, const std::
       curl_easy_setopt(m_pCurlSession, CURLOPT_URL, strFile.c_str());
       curl_easy_setopt(m_pCurlSession, CURLOPT_WRITEFUNCTION, WriteToFileCallback);
       curl_easy_setopt(m_pCurlSession, CURLOPT_WRITEDATA, &ofsOutput);
+      // v5.0 FIX (patron S134): HTTP 404/403/500 hatasinda curl varsayilan olarak CURLE_OK doner ve
+      //   hata HTML govdesini 'patch dosyasi' diye diske yazardi -> bozuk DXT extract'e giderdi (sessiz
+      //   basarisizlik). FAILONERROR=1 -> HTTP>=400 artik CURLE_HTTP_RETURNED_ERROR doner, bRet=false olur,
+      //   dosya silinir (678-679). Boylece 404 'patch indi' sanilmaz. (Patch CDN HTTP uzerinden, FTP degil.)
+      curl_easy_setopt(m_pCurlSession, CURLOPT_FAILONERROR, 1L);
 
       CURLcode res = Perform();
 
