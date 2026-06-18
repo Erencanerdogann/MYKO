@@ -3994,11 +3994,15 @@ bool MagicInstance::ExecuteType4()
 			continue;
 		}
 
-		// Only players can store persistent skills.
-		// B1 fix: SC scroll'lari (isLockableScroll buff type'lari) da SavedMagic'e kaydedilmeli
-		// yoksa zone gecisinde buff kaybolur ve recast edilemez
-		bool bShouldPersist = (nSkillID > 500000);
-		if (!bShouldPersist && pTarget->isPlayer())
+		// v5.0 FIX (patron S134): SADECE SC scroll'lari (isLockableScroll) persist olur.
+		//   PATRON KURALI: karakterde SC HARIC her sey (basilan skill, kitap, item buff, EXP/premium/noah
+		//   scroll dahil) olunce + zone degisince + oyundan cikinca (relog) SILINIR. SC kalir.
+		//   ESKI: bShouldPersist = (nSkillID>500000) -> 500000+ olan TUM scroll/item buff persist oluyordu
+		//   -> olum/zone/relog'da geri geliyordu (yanlis). nSkillID>500000 genel kapisi KALDIRILDI.
+		//   Artik SADECE isLockableScroll buff'lari (HP_MP/AC/DAMAGE/SPEED/STATS/FISHING/BATTLE_CRY) saved
+		//   olur -> sadece SC her yerde korunur, gerisi her durumda gider.
+		bool bShouldPersist = false;
+		if (pTarget->isPlayer())
 		{
 			CUser* pTUser = TO_USER(pTarget);
 			if (pTUser != nullptr && pTUser->isLockableScroll(pType->bBuffType) && pType->isBuff())

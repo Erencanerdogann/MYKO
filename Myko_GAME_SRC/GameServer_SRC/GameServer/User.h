@@ -1489,7 +1489,7 @@ public:
 	void ShowEffect(uint32 nSkillID);
 	void ShowNpcEffect(uint32 nEffectID, bool bSendToRegion = false);
 	void SendAnvilRequest(uint16 sNpcID, uint8 bType = ITEM_UPGRADE_REQ);
-	void RecastSavedMagic(uint8 buffType = 0, bool bScOnly = false);
+	void RecastSavedMagic(uint8 buffType = 0);
 	void RecastLockableScrolls(uint8 buffType);
 	void SetMaxSp();
 	void HealMagic();

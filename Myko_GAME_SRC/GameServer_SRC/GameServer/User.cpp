@@ -4633,13 +4633,12 @@ int16 CUser::GetSavedMagicDuration(uint32 nSkillID)
 /**
 * @brief	Recasts any saved skills on login/zone change.
 */
-void CUser::RecastSavedMagic(uint8 buffType /* = 0*/, bool bScOnly /* = false*/)
+void CUser::RecastSavedMagic(uint8 buffType /* = 0*/)
 {
-	// v5.0 FIX (patron S134): bScOnly=true -> SADECE SC scroll'lari (isLockableScroll buff type'lari)
-	//   geri yukle, SC-disi saved buff'lari (EXP/premium/noah/weapon vb, nSkillID>500000) ATLA.
-	//   Kullanim: olum-revive (Regene/AttackHandler) + zone change'de cagrilir -> char'da olunce/zone'da
-	//   SADECE SC kalir, gerisi gider (patron kurali). Login restore bScOnly=false (varsayilan) ile cagrilir
-	//   -> relog'da TUM saved buff geri gelir (orijinal davranis, m_savedMagicMap relog icin tek kaynak).
+	// v5.0 (patron S134): m_savedMagicMap'e artik SADECE SC scroll'lari giriyor (MagicInstance:4000
+	//   bShouldPersist = isLockableScroll). Dolayisiyla recast zaten yalnizca SC'yi geri getirir;
+	//   ayri SC-only filtreye gerek yok. SC-disi buff (EXP/premium/skill/kitap) saved'e hic girmez ->
+	//   olum/zone/relog hepsinde gider. SC kalir.
 	m_savedMagicLock.lock();
 	UserSavedMagicMap castSet;
 	foreach(itr, m_savedMagicMap)
@@ -4654,19 +4653,14 @@ void CUser::RecastSavedMagic(uint8 buffType /* = 0*/, bool bScOnly /* = false*/)
 
 	foreach(itr, castSet)
 	{
-		if (buffType > 0 || bScOnly)
+		if (buffType > 0)
 		{
 			_MAGIC_TYPE4 * pType = g_pMain->m_Magictype4Array.GetData(itr->first);
 
 			if (pType == nullptr)
 				continue;
 
-			// buffType filtresi (belirli tek tip icin)
-			if (buffType > 0 && pType->bBuffType != buffType)
-				continue;
-
-			// SC-only filtresi (olum/zone): isLockableScroll DISI buff'lari atla
-			if (bScOnly && !isLockableScroll(pType->bBuffType))
+			if (pType->bBuffType != buffType)
 				continue;
 		}
 

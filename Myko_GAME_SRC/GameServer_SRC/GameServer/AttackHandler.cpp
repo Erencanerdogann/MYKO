@@ -485,8 +485,9 @@ void CUser::Regene(uint8 regene_type, uint32 magicid /*= 0*/)
 		&& GetZoneID() != ZONE_KNIGHT_ROYALE)
 	{
 		InitType4();
-		// v5.0 FIX (patron S134): olum-revive'da SADECE SC geri gelsin (SC-disi EXP/premium/noah gitsin).
-		RecastSavedMagic(0, true);
+		// v5.0 (patron S134): saved magic'e artik SADECE SC giriyor (MagicInstance:4000) -> recast zaten
+		// sadece SC'yi getirir. Normal cagri yeterli.
+		RecastSavedMagic();
 	}
 
 	if(GetZoneID() == ZONE_CHAOS_DUNGEON)
