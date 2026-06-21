@@ -145,7 +145,7 @@ void CUser::ItemReturnSendErrorOpcode(pusrefunopcode opcode) {
 void CUser::PUSGiftPurchase(Packet &pkt) {
 
 	if (pCindWar.isEventUser() && g_pMain->isCindirellaZone(GetZoneID())) {
-		g_pMain->SendHelpDescription(this, "You can't use power-up-store while Fun Class event.");
+		g_pMain->SendHelpDescription(this, "Fun Class etkinligi sirasinda magazayi kullanamazsiniz.");
 		return;
 	}
 
@@ -153,45 +153,45 @@ void CUser::PUSGiftPurchase(Packet &pkt) {
 	pkt >> pusid >> name;
 
 	if (m_pusgifttime > UNIXTIME2) {
-		g_pMain->SendHelpDescription(this, "Please wait for a while before sending a gift.");
+		g_pMain->SendHelpDescription(this, "Hediye gondermek icin biraz bekleyin.");
 		return;
 	}
 	m_pusgifttime = UNIXTIME2 + 5000;
 
 	if (name.empty() || name.length() > MAX_ID_SIZE) {
-		g_pMain->SendHelpDescription(this, "Username is wrong.");
+		g_pMain->SendHelpDescription(this, "Kullanici adi hatali.");
 		return;
 	}
 
 	if (isMerchanting() || isTrading()) {
-		g_pMain->SendHelpDescription(this, "You cannot send gifts while shopping.");
+		g_pMain->SendHelpDescription(this, "Alisveris sirasinda hediye gonderemezsiniz.");
 		return;
 	}
 
 	if (isDead()) {
-		g_pMain->SendHelpDescription(this, "You cannot send gifts while you are dead.");
+		g_pMain->SendHelpDescription(this, "Olu iken hediye gonderemezsiniz.");
 		return;
 	}
 
 	_PUS_ITEM* item = g_pMain->m_PusItemArray.GetData(pusid);
 	if (item == nullptr) {
-		g_pMain->SendHelpDescription(this, "server no1.");
+		g_pMain->SendHelpDescription(this, "Urun bulunamadi.");
 		return;
 	}
 
 	uint32 totalCash = item->Price;
 	if (m_nKnightCash < totalCash) {
-		g_pMain->SendHelpDescription(this, "Your cash amount is not enough.");
+		g_pMain->SendHelpDescription(this, "Yeterli bakiyeniz yok.");
 		return;
 	}
 
 	CUser* pUser = g_pMain->GetUserPtr(name, NameType::TYPE_CHARACTER);
 	if (!pUser || !pUser->isInGame()) {
-		g_pMain->SendHelpDescription(this, "The player is not in the game.");
+		g_pMain->SendHelpDescription(this, "Oyuncu oyunda degil.");
 		return;
 	}
 
-	g_pMain->SendHelpDescription(this, "Your gift request has been added to the system for processing.");
+	g_pMain->SendHelpDescription(this, "Hediye talebiniz islenmek uzere sisteme eklendi.");
 	Packet newpkt(WIZ_DB_SAVE_USER, uint8(ProcDbType::PusGiftSendLetter));
 	newpkt << item->ItemID << item->Price << name;
 	g_pMain->AddDatabaseRequest(newpkt, this);

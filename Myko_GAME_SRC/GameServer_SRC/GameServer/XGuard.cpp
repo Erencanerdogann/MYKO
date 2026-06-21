@@ -956,7 +956,7 @@ void CUser::XSafe_Merchant(Packet & pkt)
 
 		uint16 minreqcash = g_pMain->pServerSetting.MinKnightCash;
 		if (isKC && minreqcash && nGold < minreqcash) {
-			g_pMain->SendHelpDescription(this, string_format("You must enter a minimum of %d Knight Cash to establish a market.", minreqcash).c_str());
+			g_pMain->SendHelpDescription(this, string_format("Pazar acmak icin en az %d Cash girmelisiniz.", minreqcash).c_str());
 			goto fail_return;
 		}
 
@@ -1039,7 +1039,7 @@ void CUser::XSafe_ChaoticExchange(Packet & pkt)
 	bool multiple = count > 1 ? true : false;
 
 	if (!CheckExistItem(nExchangeItemID, count)) {
-		g_pMain->SendHelpDescription(this, "You are not equal to the sufficient number of items.");
+		g_pMain->SendHelpDescription(this, "Yeterli sayida esyaniz yok.");
 		return BifrostPieceSendFail(errorcode);
 	}
 
@@ -1306,7 +1306,7 @@ void CUser::XSafe_PUSPurchase(Packet & pkt)
 				m_nKnightCash -= item->Price;
 
 				if (notice)
-					g_pMain->SendHelpDescription(this, string_format("You have purchased %s for %d Knight Cash.", itemdata.m_sName.c_str(), item->Price).c_str());
+					g_pMain->SendHelpDescription(this, string_format("%s esyasini %d Cash karsiliginda satin aldiniz.", itemdata.m_sName.c_str(), item->Price).c_str());
 
 				Packet result(XSafe);
 				result << uint8(XSafeOpCodes::CASHCHANGE) << uint32(m_nKnightCash) << uint32(m_nTLBalance);
@@ -1349,7 +1349,7 @@ void CUser::XSafe_PUSPurchase(Packet & pkt)
 					Packet result(XSafe);
 					result << uint8(XSafeOpCodes::CASHCHANGE) << uint32(m_nKnightCash) << uint32(m_nTLBalance);
 					Send(&result);
-					g_pMain->SendHelpDescription(this, string_format("1_You have purchased Change %d Balance to %d knight cash",item->Price, item->BuyCount).c_str());
+					g_pMain->SendHelpDescription(this, string_format("%d Malaysia Bakiye -> %d Cash donusturuldu.",item->Price, item->BuyCount).c_str());
 					return;
 				}
 
@@ -1359,7 +1359,7 @@ void CUser::XSafe_PUSPurchase(Packet & pkt)
 				m_nTLBalance -= item->Price;
 
 				if (notice)
-					g_pMain->SendHelpDescription(this, string_format("You have purchased %s for %d Balance Cash.", itemdata.m_sName.c_str(), item->Price).c_str());
+					g_pMain->SendHelpDescription(this, string_format("%s esyasini %d Malaysia Bakiye karsiliginda satin aldiniz.", itemdata.m_sName.c_str(), item->Price).c_str());
 
 				Packet result(XSafe);
 				result << uint8(XSafeOpCodes::CASHCHANGE) << uint32(m_nKnightCash) << uint32(m_nTLBalance);
@@ -1831,7 +1831,7 @@ void CUser::HandleRightClickExchange(Packet& pkt)
 		_RIGHT_CLICK_EXCHANGE* pData = g_pMain->m_LoadRightClickExchange.GetData(nItemID);
 		if (pData == nullptr)
 		{
-			g_pMain->SendHelpDescription(this, "ItemID not-found database.");
+			g_pMain->SendHelpDescription(this, "Esya bulunamadi.");
 			break;
 		}
 		Packet result(XSafe, uint8(XSafeOpCodes::RIGHT_CLICK_EXCHANGE));
@@ -1855,7 +1855,7 @@ void CUser::HandleRightClickExchange(Packet& pkt)
 		_RIGHT_CLICK_EXCHANGE* pData = g_pMain->m_LoadRightClickExchange.GetData(nItemID);
 		if (pData == nullptr)
 		{
-			g_pMain->SendHelpDescription(this, "ItemID not-found database.");
+			g_pMain->SendHelpDescription(this, "Esya bulunamadi.");
 			break;
 		}
 		if (!CheckExistItem(pData->nBaseItemID, 1))
@@ -1866,7 +1866,7 @@ void CUser::HandleRightClickExchange(Packet& pkt)
 			pkt >> nSelectionItem;
 		if (pData->bSelection == 1 && nSelectionItem == 0) /*16.04.2024*/
 		{
-			g_pMain->SendHelpDescription(this, "Select ItemID not-found database.");
+			g_pMain->SendHelpDescription(this, "Secili esya bulunamadi.");
 			break;
 		}
 		if (pData->bSelection == 1) /*16.04.2024*/
