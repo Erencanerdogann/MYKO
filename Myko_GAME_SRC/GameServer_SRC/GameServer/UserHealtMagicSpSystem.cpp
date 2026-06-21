@@ -811,7 +811,6 @@ void CUser::InitOnDeath(Unit *pKiller)
 */
 void CUser::CheckRespawnScroll()
 {
-	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CheckRespawnScroll GIRDI dead=%d (respawn penceresi acmaya calisiyor)", (int)isDead());
 	// Search for the existance of all items in the player's inventory storage and onwards (includes magic bags)
 	for (int i = SLOT_MAX; i < SLOT_MAX + HAVE_MAX; i++) {
 		_ITEM_DATA *pItem = GetItem(i);
@@ -828,14 +827,12 @@ void CUser::CheckRespawnScroll()
 			|| (pItem->nNum == 810277000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 900136000 && pItem->sCount >= 1)
 			|| (pItem->nNum == 910948000 && pItem->sCount >= 1)) {
-			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CheckRespawnScroll: scroll BULUNDU item=%d count=%d -> pencere ACILIYOR (WIZ_DEAD)", (int)pItem->nNum, (int)pItem->sCount);
 			Packet result2(WIZ_DEAD);
 			result2 << uint32(GetID()) << uint32(18483) << uint64(0);
 			Send(&result2);
 			return;
 		}
 	}
-	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] CheckRespawnScroll: scroll YOK -> pencere ACILMADI (sadece Town secenegi)");
 }
 #pragma endregion
 
@@ -846,7 +843,6 @@ void CUser::CheckRespawnScroll()
 // Scroll yoksa hicbir sey yapmaz (donmayi bitirir, char asili kalmaz). Tas yolu (Stone of life) AYRI -> ETKILENMEZ.
 void CUser::RegeneByScroll()
 {
-	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] RegeneByScroll GIRDI dead=%d lostExp=%lld", (int)isDead(), (long long)m_iLostExp);
 	if (!isDead())
 		return;
 
@@ -861,19 +857,14 @@ void CUser::RegeneByScroll()
 			continue;
 		for (auto& s : scrolls) {
 			if (pItem->nNum == s.item) {
-				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] scroll BULUNDU item=%d skill=%d slot=%d count=%d", (int)s.item, (int)s.skill, i, (int)pItem->sCount);
 				if (!RobItem(s.item, 1)) {
-					LOG(LogCategory::LOG_GENERAL, "[RESDIAG] RobItem FAIL item=%d", (int)s.item);
 					return;
 				}
-				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene cagriliyor skill=%d lostExp(once)=%lld", (int)s.skill, (long long)m_iLostExp);
 				Regene(INOUT_IN, s.skill);
-				LOG(LogCategory::LOG_GENERAL, "[RESDIAG] Regene DONDU lostExp(sonra)=%lld dead(sonra)=%d", (long long)m_iLostExp, (int)isDead());
 				return;
 			}
 		}
 	}
-	LOG(LogCategory::LOG_GENERAL, "[RESDIAG] scroll YOK envanterde (hicbiri bulunamadi)");
 }
 #pragma endregion
 

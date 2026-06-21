@@ -956,11 +956,6 @@ bool CUser::HandlePacket(Packet & pkt)
 	//TRACE("[CLIENT - GAMESERVER] - [SID=%d] Packet: [%02X] (len=%d)\n", GetSocketID(), pkt.GetOpcode(), pkt.size());
 	uint8 command = pkt.GetOpcode();
 
-	// #RESDIAG (S133 gecici): OLU oyuncunun HER paketi — scroll butonu hangi opcode yolluyor (catch-all, hicbir sey atlanmaz).
-	// XSafe (heartbeat) ve cok-sik paketler haric (spam onle): sadece olu + XSafe-disi.
-	if (isDead() && command != XSafe)
-		LOG(LogCategory::LOG_GENERAL, "[RESDIAG] OLU-PAKET opcode=0x%X dead=1 selected=%d ingame=%d", (unsigned)command, (int)m_bSelectedCharacter, (int)isInGame());
-
 	// #242: XSafe (guard heartbeat) DISINDAKI her paket = gercek client aktivitesi.
 	// XSafe_StayAlive idle-FP/gercek-hile ayriminda kapi olarak kullanilir.
 	if (command != XSafe)
@@ -1263,7 +1258,6 @@ bool CUser::HandlePacket(Packet & pkt)
 			Regene(pkt.read<uint8>()); // respawn type
 			break;
 		case WIZ_LOGOUT:
-			LOG(LogCategory::LOG_GENERAL, "[RESDIAG] WIZ_LOGOUT GELDI dead=%d lostExp=%lld", (int)isDead(), (long long)m_iLostExp);
 			if (isDead())
 				RegeneByScroll();
 			break;
@@ -3013,7 +3007,7 @@ void CUser::HandleTargetHP(Packet & pkt)
 	//		strNpcName.c_str(), pNpc->GetID(), pNpc->GetProtoID()));
 
 	//}
-	//GM YARATIK BİLGİSİ ALMA BİTİŞ
+	//GM YARATIK BİLGİSİ ALMA BİTİ�?
 }
 #pragma endregion
 
