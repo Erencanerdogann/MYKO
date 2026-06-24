@@ -1,2 +1,0 @@
--- ByNoisee
--- Kontrol Edilecek.
