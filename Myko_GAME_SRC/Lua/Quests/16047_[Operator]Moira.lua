@@ -1,7 +1,7 @@
 ﻿local NPC = 16047;
 
 if (EVENT == 240) then
-	SelectMsg(UID, 2, -1, 4031, NPC, 8942, 280, 4323, 300, 4324, 400, 40501, 2500, 8799, 800, 40206, 1000)
+	SelectMsg(UID, 2, -1, 4031, NPC, 8942, 280, 4323, 300, 4324, 400, 40501, 2500, 8799, 800, 40206, 1000, 46026, 900)
 end
 
 if EVENT == 280 then
@@ -538,6 +538,39 @@ if EVENT == 2504 then
 			RunRandomExchange(UID, found)
 		else
 			SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
+		end
+	end
+end
+
+-- Gem Exchange (5 box). Ana menu (240) -> 900 -> kutu basina onay/kirma.
+-- Mevcut 4 kutu kendi calisan onay event'lerine gider (Red 500, Green 286, Blue 285, Abyss 300).
+-- Malaysiako (Accessory Box 810347000) -> yeni 910/911. ITEM_EXCHANGE origin araligi 1705-1727.
+if EVENT == 900 then
+	SelectMsg(UID, 2, -1, 4035, NPC, 46021, 500, 46022, 286, 46023, 285, 46024, 300, 46025, 910, 27, -1)
+end
+
+if EVENT == 910 then
+	MALAY = HowmuchItem(UID, 810347000)
+	if MALAY < 1 then
+		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
+	else
+		SelectMsg(UID, 4, -1, 4034, NPC, 4006, 911, 27, -1)
+	end
+end
+
+if EVENT == 911 then
+	MALAY = HowmuchItem(UID, 810347000)
+	if MALAY < 1 then
+		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
+	else
+		SlotCheck = CheckGiveSlot(UID, 1)
+		if SlotCheck == true then
+			Check = CheckExchange(UID, 1727)
+			if Check == true then
+				Roll = RollDice(UID, 22)
+				found = Roll + 1705
+				RunRandomExchange(UID, found)
+			end
 		end
 	end
 end
