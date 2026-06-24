@@ -150,6 +150,7 @@ bool CGameServerDlg::Startup()
 	m_HardwareIDArray.push_back(899815182);			// HW ID 3
 	m_HardwareIDArray.push_back(165653399615179);	// HW ID 4
 	m_HardwareIDArray.push_back(3000015182);		// HW ID 5 — TEST sunucu 104.238.23.98 (2026-05-29)
+	m_HardwareIDArray.push_back(3342215182);		// HW ID 6 — YENI sunucu gecisi (2026-06-24, S135)
 
 	if (!g_HardwareInformation.IsValidHardwareID(m_HardwareIDArray))
 	{
