@@ -1,0 +1,33 @@
+﻿-- ==================================================================
+-- Bynoisee 
+-- Updated: 2026-04-19
+-- Knight Online Pvp 1098 & 1534 & v2 Server Files & AntiCheat System
+-- ==================================================================
+local NPC = 29026;
+
+if (EVENT == 100)then
+	QuestStatusCheck = GetQuestStatus(UID, 770)
+	ITEM = HowmuchItem(UID, 900290000)
+		if(QuestStatusCheck == 1 and ITEM > 0) then
+			EVENT = 101
+		else
+			SelectMsg(UID, 2, -1, 22279, NPC,10,-1);
+	end
+end
+
+if (EVENT == 101)then
+	SelectMsg(UID, 2, -1, 22279, NPC, 3000,102,3005,-1);
+end
+
+
+if(EVENT == 102) then
+	QuestStatusCheck = GetQuestStatus(UID, 770)
+	ITEM = HowmuchItem(UID, 900290000)
+		if(QuestStatusCheck == 1 and ITEM > 0) then
+			SpawnEventSystem(UID,9146,0,71,519,0,1515);
+			ShowEffect(UID, 300391);
+			RobItem(UID, 900290000, 1);
+		else
+			SelectMsg(UID, 2, -1, 22279, NPC,10,-1);
+	end
+end
