@@ -8,6 +8,15 @@
 !Myko_GAME_SRC/
 !.gitignore
 
+# Tafo ortak calisma — Quests Lua repoya dahil (S135, sadece quest scriptleri)
+!/OYUN_KOD/
+/OYUN_KOD/*
+!/OYUN_KOD/server/
+/OYUN_KOD/server/*
+!/OYUN_KOD/server/myko_server/
+/OYUN_KOD/server/myko_server/*
+!/OYUN_KOD/server/myko_server/Quests/
+
 # src icindeki build output
 *.pdb
 *.obj
