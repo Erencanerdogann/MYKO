@@ -6,7 +6,7 @@ CUIPowerUpStore::CUIPowerUpStore()
 	m_dVTableAddr = NULL;
 
 	vector<int>offsets;
-	offsets.push_back(0x348);   // re_rental_message Satýr : 115
+	offsets.push_back(0x348);   // re_rental_message Satï¿½r : 115
 	offsets.push_back(0);
 
 	m_dVTableAddr = Engine->rdword(KO_DLG, offsets);
@@ -707,7 +707,7 @@ void CUIPowerUpStore::SetItems(int p, int cat, string q)
 
 		pus_items[j].sItemID = tmpList[i].ItemID;
 		Engine->SetString(pus_items[j].name,tbl->strName);
-		Engine->SetString(pus_items[j].price,string_format(xorstr("%s %s"), Engine->StringHelper->NumberFormat(tmpList[i].Price).c_str(), (tmpList[i].isTlBalance == 1 ? "BLC" : "KC")));
+		Engine->SetString(pus_items[j].price,string_format(xorstr("%s %s"), Engine->StringHelper->NumberFormat(tmpList[i].Price).c_str(), (tmpList[i].isTlBalance == 1 ? "MB" : "KC")));
 		Engine->SetString(pus_items[j].quantitiy,string_format(xorstr("%s"), Engine->StringHelper->NumberFormat(tmpList[i].Quantitiy).c_str()));
 
 		bool enoughtMoney = true;
@@ -796,7 +796,7 @@ void CUIPowerUpStore::PurchaseItemAdd(uint32 ItemID, uint32 Price, uint8 PriceTy
 				purchase_items[i].sItemID = ItemID;
 				purchase_items[i].sCash = Price;
 
-				std::string ncash = string_format("%s %s", Engine->StringHelper->NumberFormat(Price).c_str(), (PriceType == 1 ? "BLC" : " KnightCash"));
+				std::string ncash = string_format("%s %s", Engine->StringHelper->NumberFormat(Price).c_str(), (PriceType == 1 ? "MB" : " KnightCash"));
 				Engine->SetString(purchase_items[i].price,ncash);
 				Engine->SetVisible(purchase_items[i].nBase,true);
 			}
@@ -817,7 +817,7 @@ void CUIPowerUpStore::PurchaseItemAdd(uint32 ItemID, uint32 Price, uint8 PriceTy
 				purchase_items[i].sItemID = ItemID;
 				purchase_items[i].sCash = Price;
 
-				std::string ncash = string_format("%s %s", Engine->StringHelper->NumberFormat(Price).c_str(), (PriceType == 1 ? "BLC" : " KnightCash"));
+				std::string ncash = string_format("%s %s", Engine->StringHelper->NumberFormat(Price).c_str(), (PriceType == 1 ? "MB" : " KnightCash"));
 				Engine->SetString(purchase_items[i].price,ncash);
 				Engine->SetVisible(purchase_items[i].nBase,true);
 			}
