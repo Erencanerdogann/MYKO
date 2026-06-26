@@ -550,7 +550,7 @@ if EVENT == 910 then
 	if MALAY < 1 then
 		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
 	else
-		SelectMsg(UID, 4, -1, 4034, NPC, 4006, 911, 27, -1)
+		SelectMsg(UID, 4, 1705, 4034, NPC, 4006, 911, 27, -1)
 	end
 end
 
