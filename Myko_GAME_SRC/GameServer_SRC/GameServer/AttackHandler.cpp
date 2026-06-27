@@ -41,8 +41,14 @@ void CUser::Attack(Packet & pkt)
 	pkt >> bType >> bResult >> tid >> delaytime >> distance >> unknown;
 
 	// Validate packet fields: reject negative/out-of-range values
-	if (delaytime < 0 || distance < 0 || distance > 5000)
+	// Point-blank (mob'a yapisik) durumunda client kenar-mesafeyi (DistanceExceptRadius =
+	// merkez_mesafe - birlesik_yaricap) NEGATIF gonderir. Eski "distance < 0 -> return" bu
+	// vurusu dusuruyordu (animasyon oynar, hasar gitmez). 0'a clamp et (degiyor say).
+	// Range-hack korumasi: ust sinir > 5000 + asagidaki m_sRange + isInAttackRange (server-side).
+	if (delaytime < 0 || distance > 5000)
 		return;
+	if (distance < 0)
+		distance = 0;   // point-blank/overlap: negatif edge-distance -> 0
 
 	if (tid < 0)
 	{
