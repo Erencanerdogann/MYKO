@@ -1505,8 +1505,9 @@ DWORD WINAPI PearlEngine::TitleCheck(PearlEngine* e)
 	VIRTUALIZER_START
 	while (true)
 	{
-		
-		Sleep(5000);
+		// PERF (patron S136): 5sn -> 15sn. Her 5sn ~1100 FindWindowA (pencere listesi taramasi) =
+		// ~10-20ms CPU spike -> periyodik tekleme. 15sn'de Cheat Engine yine yakalanir, koruma ayni.
+		Sleep(15000);
 		HWND hWnd = GetForegroundWindow();
 		int dwExStyle = (DWORD)GetWindowLong(hWnd, GWL_EXSTYLE);
 		if (dwExStyle == (int)65808)
@@ -2209,6 +2210,30 @@ time_t timeLapse = 0, guardCheck = 0;
 
 time_t inv_animtime = 0;
 
+// --- FPS cap: monitor refresh-rate esli (patron S136, 2026-06-27) ---
+// Eski: 1.0f/999.0f hardcoded -> motor frame-cap'siz sinirsiz render -> %100 CPU/GPU arka planda bile.
+// Yeni: birincil monitorun refresh rate'i kadar cap (60Hz->60, 144Hz->144). Israf yok, tearing yok.
+// 0xDE2B98 = frame suresi (saniye/frame) = 1.0f/FPS. Bir kez hesapla, cache'le, iki yerde de kullan.
+float g_fFrameCap = 0.0f;   // 0 = henuz hesaplanmadi
+float GetMonitorFrameCap()
+{
+    if (g_fFrameCap > 0.0f)
+        return g_fFrameCap;   // cache
+
+    int hz = 0;
+    DEVMODE dm = {};
+    dm.dmSize = sizeof(dm);
+    if (EnumDisplaySettingsA(NULL, ENUM_CURRENT_SETTINGS, &dm))
+        hz = (int)dm.dmDisplayFrequency;
+
+    // Bazi surucu/RDP 0 veya 1 dondurur (gecersiz) -> guvenli fallback.
+    if (hz < 30 || hz > 1000)
+        hz = 144;
+
+    g_fFrameCap = 1.0f / (float)hz;
+    return g_fFrameCap;
+}
+
 std::vector<CSpell*> archerSpells;
 std::vector<CSpell*> cureSpells;
 std::vector<CSpell*> stoneSpells;
@@ -2334,7 +2359,7 @@ void __fastcall myTick()
 		}
 	}
 
-	*(float*)0xDE2B98 = 1.0f / 999.0f;																	// -------------------- fps limiti kald�rma
+	*(float*)0xDE2B98 = GetMonitorFrameCap();															// -------------------- fps cap: monitor refresh-rate esli (eski 1.0f/999.0f)
 
 	if (DWORD target = Engine->GetTarget()) {
 		if (*(uint16*)(target + KO_OFF_ID) >= NPC_BAND) {
@@ -3964,7 +3989,7 @@ DWORD WINAPI PearlEngine::EngineMain(PearlEngine * e)
 	InitMultiClientInputHook(); // multi-client mouse sizmasi: GetCursorPos+GetAsyncKeyState detour + foreground gate
 	KO_MAGIC_SKILL_ANIMATION_ORG = (DWORD)DetourFunction((PBYTE)0x009A55E0, (PBYTE)GetAnimationSkill);
 	(tUIOnKeyPress)DetourFunction((PBYTE)0x40F0F0, (PBYTE)hkUIOnKeyPress);
-	*(float*)0xDE2B98 = 1.0f / 999.0f;																	// -------------------- fps limiti kald�rma
+	*(float*)0xDE2B98 = GetMonitorFrameCap();															// -------------------- fps cap: monitor refresh-rate esli (eski 1.0f/999.0f)
 	*(uint16*)0x007CBD55 = 0x4FEB;																		// -------------------- klan paras� client kontrol kapatma
 	nPlayerRenderOrg = (DWORD)DetourFunction((PBYTE)nPlayerRender, (PBYTE)hkPlayerRender);				// -------------------- PlayerRender Oyuncu Gizleme / Merchant Eye
 	DetourFunction((PBYTE)kontrolAdresi, (PBYTE)hkRank);												// -------------------- Zindanwar Rank 
@@ -4295,7 +4320,7 @@ uint8 channelY = 63;
 			e->m_recentdelete_time = getMSTime() + (30 * 1000) * 60;
 		}
 
-		Sleep(10);
+		Sleep(16);   // PERF (patron S136): 10->16ms. 100Hz->~60Hz thread wake-up. Tespit gecikmesi 10->16ms (onemsiz).
 	}
 	return TRUE;
 }
