@@ -5964,18 +5964,18 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 		if (Engine->DeathAll)
 		{
 			if (sType == 1)
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 			else if (sType == 2)
 				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 197, 209, 189), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 			else
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 
 			break;
 		}
 		else if (Engine->DeathParty)
 		{
 			if (sType == 1)
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 			else if (sType == 2)
 				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 197, 209, 189), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 
@@ -5984,7 +5984,7 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 		else if (Engine->DeathMe)
 		{
 			if (sType == 1)
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 
 			break;
 		}
@@ -6450,7 +6450,8 @@ bool __cdecl HandlePacket(Packet pkt)
 			if (first)
 			{
 				first = false;
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 254, 128, 254), false, msg.c_str());
+				// Welcome mesaji (patron S136): MOR (254,128,254) -> BEYAZ. "Isim , Welcome to MalaysiaKo"
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 255), false, msg.c_str());
 
 			}
 		}
