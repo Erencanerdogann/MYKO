@@ -2281,11 +2281,28 @@ static tGetCursorPos     g_origGetCursorPos = NULL;
 static tGetAsyncKeyState g_origGetAsyncKeyState = NULL;
 
 // arka plan mi? (oyun penceresi sistemde ONDE degil). gameWindow NULL ise GUVENLI taraf: arka plan DEGIL say.
+//
+// PERF (patron S136, 2026-06-27 — "input fix sonrasi oyun kasiyor, oncesi cam gibiydi"):
+// KO client mouse'u POLLING ile okuyor -> GetCursorPos HER FRAME (cok kez) cagriliyor. Eski kod
+// her cagrida ::GetForegroundWindow() (pahali USER32 syscall, window-manager global kilit) yapiyordu
+// -> saniyede yuzlerce-binlerce syscall -> FPS dustu. Foreground degisimi INSAN hizinda (alt-tab),
+// her frame kontrol gereksiz. Sonucu ~200ms cache'le -> syscall sikligi ~5/sn'ye duser.
+// SIZMA KORUMASI AYNEN: cache 200ms; alt-tab'da en fazla 200ms gecikmeyle arka-plan algilanir (insan
+// tikla-yuru hizi icin yeterli, multibox engeli korunur).
 static inline bool InputArkaPlanda()
 {
 	if (gameWindow == NULL)
 		return false; // henuz hazir degil -> input'a dokunma (login/char-secim kilitlenmesin)
-	return ::GetForegroundWindow() != gameWindow;
+
+	static DWORD s_lastCheck = 0;
+	static bool  s_lastArka  = false;
+	DWORD now = GetTickCount();
+	if (now - s_lastCheck >= 200) // 200ms cache: her mouse-poll'de degil, ~5/sn syscall
+	{
+		s_lastArka  = (::GetForegroundWindow() != gameWindow);
+		s_lastCheck = now;
+	}
+	return s_lastArka;
 }
 
 BOOL WINAPI Hook_GetCursorPos(LPPOINT lpPoint)
