@@ -5964,18 +5964,18 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 		if (Engine->DeathAll)
 		{
 			if (sType == 1)
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 			else if (sType == 2)
 				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 197, 209, 189), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 			else
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 
 			break;
 		}
 		else if (Engine->DeathParty)
 		{
 			if (sType == 1)
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 			else if (sType == 2)
 				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 197, 209, 189), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 
@@ -5984,7 +5984,7 @@ void __cdecl XSafeHandlePacket(Packet pkt)
 		else if (Engine->DeathMe)
 		{
 			if (sType == 1)
-				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 80, 80), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
+				Engine->WriteChatAddInfo(D3DCOLOR_ARGB(255, 255, 255, 0), false, string_format("%s defeat %s ( %d, %d )", kill.c_str(), Death.c_str(), X, Z).c_str());
 
 			break;
 		}
