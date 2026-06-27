@@ -30,7 +30,7 @@ typedef std::vector<_ZONE_ONLINE_REWARD> ZoneOnlineReward;
 // Time (in milliseconds) between each skill request (-1 sec).
 #define PLAYER_SKILL_REQUEST_INTERVAL	800 // milliseconds (ms)
 // Time (in milliseconds) between each r hit request (-1 sec).
-#define PLAYER_R_HIT_REQUEST_INTERVAL	900 // milliseconds (ms)
+#define PLAYER_R_HIT_REQUEST_INTERVAL	200 // milliseconds (ms) — S137: 900->200 (R-attack akicilik, silah m_sDelay gercek limit, bu sadece makro-spam tavani)
 // Time (in milliseconds) between each skill request (-1 sec).
 #define PLAYER_POTION_REQUEST_INTERVAL	2400 // milliseconds (ms)
 // Time (in minute) for daily operations
