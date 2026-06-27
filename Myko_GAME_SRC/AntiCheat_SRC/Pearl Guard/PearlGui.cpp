@@ -117,12 +117,15 @@ DWORD adresdd = 0x33C;
 ULONGLONG thtime = GetTickCount64();
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
-	// A/B TEST (patron S136, 2026-06-27): TUM diagnostic blok GECICI KAPALI (#if 0).
-	// Sebep: bu blok HER FRAME GetForegroundWindow + TestCooperativeLevel + GetAsyncKeyState x9 cagiriyor,
-	// DiagLog kapali olsa bile (g_DiagEnabled gate'i DISINDA) -> render thread'inde her-frame syscall =
-	// "alt-tab donma + mouse yavas" adayi. Kapaliyken DUZELIRSE -> kok kesin bu -> dogru fix (g_DiagEnabled gate).
-	// KURAL 0-B: kod silinmedi, #if 0 ile pasif. Render mantigi (217+) ETKILENMEZ.
-#if 0
+	// PERF FIX (patron S136, 2026-06-27): TUM diagnostic blok artik 'g_DiagEnabled > 0' GATE'inde.
+	// Eskiden bu blok HER FRAME GetForegroundWindow + TestCooperativeLevel + GetAsyncKeyState x9 cagiriyordu,
+	// DiagLog KAPALI olsa bile (gate yoktu) -> render thread'inde her-frame syscall = gereksiz yuk.
+	// Artik log kapaliyken (production, g_DiagEnabled=0) bu blok HIC calismaz -> render temiz. Log
+	// acilinca (test) tum teshis aynen calisir. A/B test: kapaliyken alt-tab frame-dususu DEGISMEDI ->
+	// bu blok asil kok DEGIL (kok = D3D Windowed arka-plan throttle, client davranisi) AMA yine de
+	// production'da her-frame gereksiz syscall = net kazanc, gate dogru cozum.
+	if (g_DiagEnabled > 0)
+	{
 	// DiagLog FREEZE dedektoru: iki frame arasi gecen sure. Donma = render durur =
 	// EndScene gec gelir. >300ms ise donma kaydet (chat resize donmasi + genel takilma).
 	{
@@ -219,7 +222,7 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 			}
 		}
 	}
-#endif // A/B TEST: diagnostic blok kapali (yukaridaki #if 0)
+	} // if (g_DiagEnabled > 0) — diagnostic blok gate'i (log kapaliyken her-frame syscall yok)
 
 	/*if (GetAsyncKeyState(VK_RETURN) & 1 && Engine->Adress > 0)
 	{

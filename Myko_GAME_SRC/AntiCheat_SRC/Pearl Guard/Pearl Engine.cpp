@@ -4003,11 +4003,9 @@ DWORD WINAPI PearlEngine::EngineMain(PearlEngine * e)
 	DetourFunction((PBYTE)KO_AUTO_ATTACK, (PBYTE)hkAttack);
 	//rtOrg = (DWORD)DetourFunction((PBYTE)KO_UIF_SET_FONT_STRING, (PBYTE)hkSetFontString);		// string kal�nla�t�rma.
 	TICK_ORG = (DWORD)DetourFunction((PBYTE)KO_GAME_TICK, (PBYTE)hkTick);
-	// A/B TEST (patron S136, 2026-06-27): input hook GECICI KAPATILDI — "alt-tab'da mouse yavas + oyun
-	// donuyor" sorununun bu hook'tan (GetCursorPos -32000 ezme) mi kaynaklandigini KESINLESTIRMEK icin.
-	// Kapaliyken alt-tab'da mouse/donma DUZELIRSE -> kok kesin bu hook -> dogru fix (pozisyon ezme yerine
-	// WH_MOUSE_LL tikla-yut) gelecek. Multibox sizma korumasi BU BUILD'de gecici YOK (test amacli). KURAL 0-B: kod kalir.
-	//InitMultiClientInputHook(); // multi-client mouse sizmasi: GetCursorPos+GetAsyncKeyState detour + foreground gate
+	// A/B test (S136) TAMAMLANDI: input hook kok DEGILDI (kapaliyken sorun duzelmedi) -> GERI ACILDI.
+	// Multibox sizma korumasi aktif. FPS kazanimi: InputArkaPlanda() GetForegroundWindow'u 200ms cache'liyor.
+	InitMultiClientInputHook(); // multi-client mouse sizmasi: GetCursorPos detour + foreground gate (cache'li)
 	KO_MAGIC_SKILL_ANIMATION_ORG = (DWORD)DetourFunction((PBYTE)0x009A55E0, (PBYTE)GetAnimationSkill);
 	(tUIOnKeyPress)DetourFunction((PBYTE)0x40F0F0, (PBYTE)hkUIOnKeyPress);
 	*(float*)0xDE2B98 = GetMonitorFrameCap();															// -------------------- fps cap: monitor refresh-rate esli (eski 1.0f/999.0f)
