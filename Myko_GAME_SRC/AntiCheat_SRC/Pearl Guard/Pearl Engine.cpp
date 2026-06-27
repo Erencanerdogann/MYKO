@@ -9172,6 +9172,9 @@ void __stdcall SetString_Hook(const std::string& szString)
 			Engine->Loading = true;
 			test = true;
 			Engine->LoadingControl = true;
+			// VERSIYON YAZISI (patron S136): sol-ustteki "Ver. X.Y" -> "MalaysiaKO v1098" (branding).
+			// Oyunun cizecegi metin burada yakalaniyor; degistirince ekrana yeni metin cizilir.
+			m_strReplaceString = "MalaysiaKO v1098";
 		}
 	}
 	else
