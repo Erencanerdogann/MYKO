@@ -140,7 +140,11 @@ void CGameServerDlg::ChaosExpansionManuelClosed()
 			remtime = uint16(pTempleEvent.SignRemainSeconds - UNIXTIME);
 
 		if (!pTempleEvent.isActive) {
-			printf("The event has %d seconds to start\n", remtime);
+			// Kayit (sign) asamasinda kapatma: savas baslamadan da event'i tamamen iptal et.
+			// Eskiden burada "X seconds to start" yazip return ediliyordu -> +chaosclose ise yaramiyordu.
+			printf("[Event] Chaos kayit asamasinda iptal ediliyor (%d sn kalmisti).\n", remtime);
+			KickOutZoneUsers(ZONE_CHAOS_DUNGEON);
+			TempleEventReset(EventOpCode::TEMPLE_EVENT_CHAOS);
 			return;
 		}
 		if (pTempleEvent.EventManuelClose) {
@@ -178,7 +182,11 @@ void CGameServerDlg::BorderDefenceWarManuelClosed()
 			remtime = uint16(pTempleEvent.SignRemainSeconds - UNIXTIME);
 
 		if (!pTempleEvent.isActive) {
-			printf("The event has %d seconds to start\n", remtime);
+			// Kayit (sign) asamasinda kapatma: savas baslamadan da event'i tamamen iptal et.
+			// Eskiden burada "X seconds to start" yazip return ediliyordu -> +borderclose ise yaramiyordu.
+			printf("[Event] Border Defence War kayit asamasinda iptal ediliyor (%d sn kalmisti).\n", remtime);
+			KickOutZoneUsers(ZONE_BORDER_DEFENSE_WAR);
+			TempleEventReset(EventOpCode::TEMPLE_EVENT_BORDER_DEFENCE_WAR);
 			return;
 		}
 		if (pTempleEvent.EventManuelClose) {
@@ -209,7 +217,11 @@ void CGameServerDlg::JuraidMountainManuelClosed()
 			remtime = uint16(pTempleEvent.SignRemainSeconds - UNIXTIME);
 
 		if (!pTempleEvent.isActive) {
-			printf("The event has %d seconds to start\n", remtime);
+			// Kayit (sign) asamasinda kapatma: savas baslamadan da event'i tamamen iptal et.
+			// Eskiden burada "X seconds to start" yazip return ediliyordu -> +juraidclose ise yaramiyordu.
+			printf("[Event] Juraid Mountain kayit asamasinda iptal ediliyor (%d sn kalmisti).\n", remtime);
+			KickOutZoneUsers(ZONE_JURAID_MOUNTAIN);
+			TempleEventReset(EventOpCode::TEMPLE_EVENT_JURAD_MOUNTAIN);
 			return;
 		}
 		if (pTempleEvent.EventManuelClose) {

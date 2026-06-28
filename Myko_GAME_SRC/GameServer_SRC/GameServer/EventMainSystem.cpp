@@ -3,11 +3,25 @@
 #pragma region CGameServerDlg::ForgettenTempleManuelOpening()
 void CGameServerDlg::ForgettenTempleManuelOpening(uint8 Type)
 {
-	if (pForgettenTemple.isActive) return;
+	// Teshis: sessiz return yerine NEDEN acilmadigini console'a yaz (S137 "FT acilmiyor" vakasi).
+	if (pForgettenTemple.isActive) {
+		printf("[FT] Acilamadi: event zaten aktif (isActive=1). Once /ftclose ile kapat.\n");
+		return;
+	}
 	ForgettenTempleReset();
 	auto& ppp = pForgettenTemple.ptimeopt;
-	if (!ppp.PlayingTime || !ppp.SummonTime || !ppp.MinLevel || !ppp.MaxLevel) return;
-	ForgettenTempleStart(1, ppp.MinLevel, ppp.MaxLevel);
+	if (!ppp.PlayingTime || !ppp.SummonTime || !ppp.MinLevel || !ppp.MaxLevel) {
+		printf("[FT] Acilamadi: EVENT_FT tablosu eksik/0 (Play=%u Summon=%u Min=%u Max=%u).\n",
+			ppp.PlayingTime, ppp.SummonTime, ppp.MinLevel, ppp.MaxLevel);
+		return;
+	}
+	if (m_ForgettenTempleMonsterArray.IsEmpty() || m_ForgettenTempleStagesArray.IsEmpty()) {
+		printf("[FT] Acilamadi: FT_STAGES veya FT_SUMMON_LIST yuklenmedi (Stages bos=%d, Summon bos=%d).\n",
+			m_ForgettenTempleStagesArray.IsEmpty(), m_ForgettenTempleMonsterArray.IsEmpty());
+		return;
+	}
+	ForgettenTempleStart(Type, ppp.MinLevel, ppp.MaxLevel);
+	printf("[FT] Event acildi (Type=%u Min=%u Max=%u).\n", Type, ppp.MinLevel, ppp.MaxLevel);
 }
 #pragma endregion
 

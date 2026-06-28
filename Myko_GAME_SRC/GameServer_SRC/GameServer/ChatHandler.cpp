@@ -3314,10 +3314,10 @@ COMMAND_HANDLER(CGameServerDlg::HandleReloadCindirellaCommand) {
 
 COMMAND_HANDLER(CGameServerDlg::HandleForgettenTempleEvent)
 {
-	if (vargs.size() < 1) { printf("Using Sample : /ftopen Type\n"); return true; }
-
-	uint8 Type = 0;
-	if (!vargs.empty()) { Type = SafeAtoi(vargs.front(), 0, 255); vargs.pop_front(); }
+	// Type opsiyonel: verilmezse 1 (manuel acmada ForgettenTempleStart zaten Type=1 kullanir).
+	// Eskiden parametre zorunluydu -> +ftopen yazinca "Using Sample" yazip aciliyordu sanilmiyordu.
+	uint8 Type = 1;
+	if (!vargs.empty()) { Type = SafeAtoi(vargs.front(), 1, 255); vargs.pop_front(); }
 	ForgettenTempleManuelOpening(Type);
 	return true;
 }
