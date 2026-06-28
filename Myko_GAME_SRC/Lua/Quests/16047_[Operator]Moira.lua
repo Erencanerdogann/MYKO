@@ -586,8 +586,12 @@ if EVENT == 913 then
 	else
 		SlotCheck = CheckGiveSlot(UID, 1)
 		if SlotCheck == true then
-			-- TODO: ITEM_EXCHANGE araligi MATRIX'ten bekleniyor
-			SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
+			Check = CheckExchange(UID, 6526)
+			if Check == true then
+				Roll = RollDice(UID, 25)
+				found = Roll + 6501
+				RunRandomExchange(UID, found)
+			end
 		end
 	end
 end
