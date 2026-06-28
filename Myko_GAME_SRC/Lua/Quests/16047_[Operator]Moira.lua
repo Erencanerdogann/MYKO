@@ -542,11 +542,10 @@ if EVENT == 2504 then
 	end
 end
 
--- Gem Exchange: 5 box DOGRUDAN ana menude (EVENT 240, submenu yok). Mevcut 4 kutu calisan
--- onay event'lerine gider (Red 500, Green 286, Blue 285, Abyss 300). Malaysiako (Accessory
--- Box 810347000) -> yeni 910/911, ITEM_EXCHANGE origin araligi 1705-1727.
+-- Gem Exchange: 6 box. MalaysiaKo BOX (810678000) -> 910/911, ITEM_EXCHANGE 1705-1727.
+-- Special Super Box (810596000) -> 912/913. ITEM_EXCHANGE araligi: BEKLIYOR (MATRIX teyit).
 if EVENT == 910 then
-	MALAY = HowmuchItem(UID, 810347000)
+	MALAY = HowmuchItem(UID, 810678000)
 	if MALAY < 1 then
 		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
 	else
@@ -555,7 +554,7 @@ if EVENT == 910 then
 end
 
 if EVENT == 911 then
-	MALAY = HowmuchItem(UID, 810347000)
+	MALAY = HowmuchItem(UID, 810678000)
 	if MALAY < 1 then
 		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
 	else
@@ -567,6 +566,28 @@ if EVENT == 911 then
 				found = Roll + 1705
 				RunRandomExchange(UID, found)
 			end
+		end
+	end
+end
+
+if EVENT == 912 then
+	SUPERBOX = HowmuchItem(UID, 810596000)
+	if SUPERBOX < 1 then
+		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
+	else
+		SelectMsg(UID, 4, 1553, 4034, NPC, 4006, 913, 27, -1)
+	end
+end
+
+if EVENT == 913 then
+	SUPERBOX = HowmuchItem(UID, 810596000)
+	if SUPERBOX < 1 then
+		SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
+	else
+		SlotCheck = CheckGiveSlot(UID, 1)
+		if SlotCheck == true then
+			-- TODO: ITEM_EXCHANGE araligi MATRIX'ten bekleniyor
+			SelectMsg(UID, 2, -1, 4032, NPC, 10, -1)
 		end
 	end
 end
