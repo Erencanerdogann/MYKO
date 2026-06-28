@@ -71,10 +71,16 @@ void CGameServerDlg::ForgettenTempleSendItem()
 
 	foreach(itr, copymap) {
 		auto* pUser = g_pMain->GetUserPtr(itr->first);
+		// FT bitiminde zonda hayatta olan = "sona kalan / kazanan". Olen/cikan elenir.
 		if (pUser == nullptr || !pUser->isInGame() || pUser->isDead() || pUser->GetZoneID() != ZONE_FORGOTTEN_TEMPLE)
 			continue;
 
 		foreach(itr2, mreward) {
+			// EVENT_REWARDS local_id=13 iki tip odul:
+			//   iswinner=0 -> normal katilim odulu (su an sona kalana gidiyor cunku olen elenir)
+			//   iswinner=1 -> KAZANAN odulu (hayatta kalana ozel item/NP/EXP/noah)
+			// Ikisi de bu donguden veriliyor (dongu zaten olenleri eliyor) -> hayatta kalan ikisini de alir,
+			// iswinner=1 satiri ekleyince kazanan ekstra odul kazanir. iswinner=0 birak = mevcut davranis.
 
 			for (int i = 0; i < 3; i++)
 				if(itr2->itemid[i])
