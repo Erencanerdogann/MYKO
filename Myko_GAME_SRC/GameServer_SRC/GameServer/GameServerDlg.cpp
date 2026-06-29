@@ -2814,37 +2814,63 @@ void CGameServerDlg::LoadForbiddenNames()
 	printf("FORBIDDEN_NAMES: %d isim yuklendi (forbidden_names.txt)\n", (int)m_ForbiddenNames.size());
 }
 
+// Isim/kelime normalize: kucuk harf + leetspeak coz + ayrac sil.
+//   "S1k.T1r" -> "siktir", "0R0$PU" -> "orospu", "f u c k" -> "fuck"
+//   Boylece araya rakam/nokta/bosluk sokan kacaklar yakalanir.
+static std::string NormalizeNameStr(const std::string &in)
+{
+	std::string out;
+	out.reserve(in.size());
+	for (unsigned char ch : in)
+	{
+		char c = (char)tolower(ch);
+		switch (c)
+		{
+		case '4': case '@': c = 'a'; break;
+		case '1': case '!': c = 'i'; break;
+		case '0':           c = 'o'; break;
+		case '5': case '$': c = 's'; break;
+		case '3':           c = 'e'; break;
+		case '7':           c = 't'; break;
+		case '9':           c = 'g'; break;
+		case ' ': case '.': case '_': case '-': case '*': case ',':
+			continue; // ayrac at
+		default: break;
+		}
+		out.push_back(c);
+	}
+	return out;
+}
+
 // true = isim yasak (karakter olusturulamaz)
+// HIBRIT (S138, whole-word + leet normalize):
+//   1) TAM-ISIM: forbidden_names.txt'te birebir (kisa kufur parcalari + rakip server)
+//   2) UZUN-KUFUR SUBSTRING: censor_words.txt'te >=5 harfli net kufurler isim icinde gecerse.
+//      Kisa (<5) censor kelimeleri isimde SUBSTRING aranmaz (Anastasia<-"anas" yanlis pozitif onlenir).
+//      Net uzun kufurler (orospu/siktir/yarrak) masum isimde nadir -> substring guvenli + "orospucocugu" yakalar.
 bool CGameServerDlg::IsNameForbidden(const std::string &name)
 {
 	if (name.empty())
 		return false;
 
-	// Kucuk harfe cevir
-	std::string lower = name;
-	for (auto &c : lower)
-		c = tolower((unsigned char)c);
+	std::string norm = NormalizeNameStr(name);
+	if (norm.empty())
+		return false;
 
-	// 1) TAM-ISIM birebir kontrol (forbidden_names.txt)
+	// 1) TAM-ISIM birebir kontrol (normalize edilmis)
 	for (auto &fname : m_ForbiddenNames)
 	{
-		std::string lf = fname;
-		for (auto &c : lf)
-			c = tolower((unsigned char)c);
-		if (lower == lf)
+		if (NormalizeNameStr(fname) == norm)
 			return true;
 	}
 
-	// 2) SUBSTRING kontrol (chat kufur listesi m_CensorWords)
-	//    isim icinde kufur gecerse engelle (orn "sikko" -> "sik" tutar)
+	// 2) UZUN-KUFUR SUBSTRING (>=5 harf, normalize edilmis censor listesi)
 	if (m_bCensorEnabled)
 	{
 		for (auto &word : m_CensorWords)
 		{
-			std::string lword = word;
-			for (auto &c : lword)
-				c = tolower((unsigned char)c);
-			if (!lword.empty() && lower.find(lword) != std::string::npos)
+			std::string nw = NormalizeNameStr(word);
+			if (nw.length() >= 5 && norm.find(nw) != std::string::npos)
 				return true;
 		}
 	}
