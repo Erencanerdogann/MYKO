@@ -3089,7 +3089,9 @@ COMMAND_HANDLER(CUser::HandleCensorReloadCommand)
 {
 	if (!isGM()) return false;
 	g_pMain->LoadCensorWords();
-	g_pMain->SendHelpDescription(this, string_format("Kufur listesi yeniden yuklendi. %d kelime.", (int)g_pMain->m_CensorWords.size()));
+	g_pMain->LoadForbiddenNames();	// S138 - yasak isim listesini de yenile
+	g_pMain->SendHelpDescription(this, string_format("Kufur listesi: %d kelime, yasak isim: %d. Yeniden yuklendi.",
+		(int)g_pMain->m_CensorWords.size(), (int)g_pMain->m_ForbiddenNames.size()));
 	return true;
 }
 
