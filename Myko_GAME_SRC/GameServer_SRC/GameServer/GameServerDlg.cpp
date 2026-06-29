@@ -207,6 +207,7 @@ bool CGameServerDlg::Startup()
 	InitServerCommands();
 	CUser::InitChatCommands();
 	LoadCensorWords();
+	LoadForbiddenNames();
 
 	ResetBeefEvent();
 	EventTimerSet();
@@ -2764,6 +2765,91 @@ bool CGameServerDlg::CensorChat(std::string &chatstr)
 		}
 	}
 	return censored;
+}
+
+// ============================================================
+// YASAK KARAKTER ISMI ENGELLEME (S138 - patron emri)
+//   forbidden_names.txt = TAM-ISIM birebir liste (yanlis pozitif yok).
+//   Ek olarak m_CensorWords (chat kufur listesi) isimde SUBSTRING aranir.
+// ============================================================
+void CGameServerDlg::LoadForbiddenNames()
+{
+	m_ForbiddenNames.clear();
+
+	FILE *fp = fopen("forbidden_names.txt", "r");
+	if (fp == nullptr)
+	{
+		// Varsayilan tam-isim yasak listesi (ornek - GM duzenler)
+		const char *defaults[] = {
+			"sikko", "amcik", "orospu", "yarrak", "pezevenk",
+			"admin", "gamemaster", "moderator", "sistem", "system",
+			nullptr
+		};
+		for (int i = 0; defaults[i] != nullptr; i++)
+			m_ForbiddenNames.push_back(defaults[i]);
+
+		// Dosyayi olustur
+		fp = fopen("forbidden_names.txt", "w");
+		if (fp)
+		{
+			for (auto &w : m_ForbiddenNames)
+				fprintf(fp, "%s\n", w.c_str());
+			fclose(fp);
+		}
+		printf("FORBIDDEN_NAMES: %d isim yuklendi (varsayilan liste olusturuldu)\n", (int)m_ForbiddenNames.size());
+		return;
+	}
+
+	char line[256];
+	while (fgets(line, sizeof(line), fp))
+	{
+		// Satir sonu temizle
+		size_t len = strlen(line);
+		while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+			line[--len] = '\0';
+		if (len > 0)
+			m_ForbiddenNames.push_back(line);
+	}
+	fclose(fp);
+	printf("FORBIDDEN_NAMES: %d isim yuklendi (forbidden_names.txt)\n", (int)m_ForbiddenNames.size());
+}
+
+// true = isim yasak (karakter olusturulamaz)
+bool CGameServerDlg::IsNameForbidden(const std::string &name)
+{
+	if (name.empty())
+		return false;
+
+	// Kucuk harfe cevir
+	std::string lower = name;
+	for (auto &c : lower)
+		c = tolower((unsigned char)c);
+
+	// 1) TAM-ISIM birebir kontrol (forbidden_names.txt)
+	for (auto &fname : m_ForbiddenNames)
+	{
+		std::string lf = fname;
+		for (auto &c : lf)
+			c = tolower((unsigned char)c);
+		if (lower == lf)
+			return true;
+	}
+
+	// 2) SUBSTRING kontrol (chat kufur listesi m_CensorWords)
+	//    isim icinde kufur gecerse engelle (orn "sikko" -> "sik" tutar)
+	if (m_bCensorEnabled)
+	{
+		for (auto &word : m_CensorWords)
+		{
+			std::string lword = word;
+			for (auto &c : lword)
+				c = tolower((unsigned char)c);
+			if (!lword.empty() && lower.find(lword) != std::string::npos)
+				return true;
+		}
+	}
+
+	return false;
 }
 
 // ============================================================

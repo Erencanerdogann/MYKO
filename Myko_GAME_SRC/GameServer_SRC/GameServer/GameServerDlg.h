@@ -1283,6 +1283,13 @@ public:
 	void LoadCensorWords();
 	bool CensorChat(std::string &chatstr);
 
+	// Yasak karakter ismi engelleme (S138 - patron emri)
+	//   - m_CensorWords: chat kufur listesi -> isimde SUBSTRING kontrol (sikko, amk vb icinde gecerse)
+	//   - m_ForbiddenNames: forbidden_names.txt -> TAM-ISIM birebir kontrol (yanlis pozitif yok)
+	std::vector<std::string> m_ForbiddenNames;
+	void LoadForbiddenNames();
+	bool IsNameForbidden(const std::string &name);
+
 	// Login brute force korumasi
 	struct LoginAttempt {
 		uint8 nFailCount;

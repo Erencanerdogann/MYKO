@@ -409,6 +409,8 @@ void CUser::NewCharToAgent(Packet & pkt)
 		errorCode = NEWCHAR_STAT_TOO_LOW;
 	else if (strUserID.empty() || strUserID.length() > MAX_ID_SIZE)
 		errorCode = NEWCHAR_INVALID_NAME;
+	else if (g_pMain->IsNameForbidden(strUserID))	// S138 - kufur/yasak isim engelleme (patron emri)
+		errorCode = NEWCHAR_INVALID_NAME;
 
 	//if (bRace == 6 || bRace == 14)
 	//errorCode = NEWCHAR_NOT_SUPPORTED_RACE;
