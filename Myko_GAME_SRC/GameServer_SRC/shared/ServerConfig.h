@@ -85,6 +85,8 @@ public:
 	int WallCheatMode() { return GetInt("SERVER.wall_cheat_mode", 1); }
 	int QueueMaxSize() { return GetInt("SERVER.queue_max_size", 10000); }
 	int SocketBufferSize() { return GetInt("SERVER.socket_buffer_kb", 64); }
+	// 0=normal (herkes girer), 1=maintenance (sadece GM girer) — acilis oncesi GM-only lock
+	int MaintenanceMode() { return GetInt("SERVER.maintenance_mode", 0); }
 
 private:
 	ServerConfig() {}

@@ -712,6 +712,18 @@ bool CDBAgent::LoadUserData(string & strAccountID, string & strCharID, CUser *pU
 		pUser->m_bAuthority = (uint8)AuthorityTypes::AUTHORITY_PLAYER;
 	}
 
+	// ACILIS ONCESI GM-ONLY: maintenance modu (GameServer.ini SERVER.maintenance_mode=1) acikken
+	// sadece GM girer. PLAYER karaktere giremez -> char data yuklenmez -> GameServer'a giris reddedilir.
+	// Acilista maintenance_mode=0 yap + restart -> herkes girer.
+	if (g_ServerConfig.MaintenanceMode() == 1
+		&& pUser->m_bAuthority != (uint8)AuthorityTypes::AUTHORITY_GAME_MASTER
+		&& pUser->m_bAuthority != (uint8)AuthorityTypes::AUTHORITY_GM_USER)
+	{
+		printf("[MAINTENANCE] GM-only mode: PLAYER giris reddedildi AccountID:(%s) Char:(%s)\n",
+			strAccountID.c_str(), strCharID.c_str());
+		return false;
+	}
+
 	if (pUser->m_bAuthority == (uint8)AuthorityTypes::AUTHORITY_GAME_MASTER || pUser->m_bAuthority == (uint8)AuthorityTypes::AUTHORITY_GM_USER)
 	{
 		if (!g_DBAgent.LoadGameMasterSetting(strCharID, pUser))
