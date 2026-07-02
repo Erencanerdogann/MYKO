@@ -4306,7 +4306,10 @@ uint8 channelY = 63;
 
 #if ANTICHEAT_MODE == 1
 	e->ScanThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)DriverScan, NULL, NULL, NULL);
-	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)MRXProcessScan, NULL, NULL, NULL);
+	// FIX (Fable5 audit S138 L6): thread handle sizintisi. Diger thread'ler e->XThread'e saklanip
+	// main-loop'ta beklenir; MRXProcessScan beklenmez -> handle'a ihtiyac yok -> kapat (CloseHandle
+	// thread'i DURDURMAZ, sadece handle referansini serbest birakir). Davranis-notr.
+	{ HANDLE hMRX = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)MRXProcessScan, NULL, NULL, NULL); if (hMRX) CloseHandle(hMRX); }
 	e->SuspendThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SuspendCheck, e, NULL, NULL);
 	e->TitleThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)TitleCheck, e, NULL, NULL);
 #endif
