@@ -56,7 +56,10 @@ int CNpcThread::_Engine() {
 			fTime2 = getMSTime(); // the current time
 
 			testlock.lock();
-			std::set <CNpc*> copylist = m_npclist;
+			// PERF (Fable5 darbogaz #2): std::set kopyasi (node-by-node heap alloc) -> vector snapshot
+			// (tek alloc, contiguous). Her 100ms tum NPC kopyalaniyordu. Davranis-notr: ayni NPC'ler,
+			// foreach+clear vector'de de calisir; m_npclist std::set KALIR (sadece snapshot ucuzladi).
+			std::vector<CNpc*> copylist(m_npclist.begin(), m_npclist.end());
 			testlock.unlock();
 
 			foreach(itr, copylist) {
