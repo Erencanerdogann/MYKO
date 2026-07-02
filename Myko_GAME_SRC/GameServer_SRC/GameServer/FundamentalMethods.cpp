@@ -681,11 +681,18 @@ void CGameServerDlg::GetUnitListFromSurroundingRegions(Unit * pOwner, std::vecto
 */
 void CGameServerDlg::Send_Zone_Matched_Class(Packet *pkt, uint8 bZoneID, CUser* pExceptUser, uint8 nation, uint8 seekingPartyOptions, uint16 nEventRoom)
 {
-	std::lock_guard<std::recursive_mutex> lock(m_socketMgr.GetLock());
-	SessionMap& sessions = m_socketMgr.GetActiveSessionMap();
-	for (auto itr = sessions.begin(); itr != sessions.end(); ++itr)
+	// PERF (Fable5 darbogaz #3): Send LOCK ALTINDAYDI (tum session iterate + Send = global socket
+	// lock uzun tutuluyordu). Send_Zone (718) kalibi: snapshot topla, Send lock DISINDA. Davranis-notr.
+	std::vector<CUser*> targets;
 	{
-		CUser* pUser = static_cast<CUser*>(itr->second);
+		std::lock_guard<std::recursive_mutex> lock(m_socketMgr.GetLock());
+		SessionMap& sessions = m_socketMgr.GetActiveSessionMap();
+		targets.reserve(sessions.size());
+		for (auto itr = sessions.begin(); itr != sessions.end(); ++itr)
+			targets.push_back(static_cast<CUser*>(itr->second));
+	}
+	for (CUser* pUser : targets)
+	{
 		if (pUser == nullptr)
 			continue;
 
