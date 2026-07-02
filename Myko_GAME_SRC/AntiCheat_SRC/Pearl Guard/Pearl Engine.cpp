@@ -8467,7 +8467,11 @@ PearlEngine::PearlEngine(std::string basePath)
 	power = true;
 	m_BasePath = basePath;
 	hpBarAdress = 0;
-	ScanThread = NULL;
+	// FIX (Fable5 audit S138 H1): thread handle'lari NULL'la. LisansThread hicbir yerde CreateThread
+	// ile atanMIYOR ama main loop 4333'te her 16ms WaitForSingleObject'e veriliyordu. Engine = new
+	// PearlEngine (heap) -> uyeler otomatik sifirlanmaz -> garbage handle -> kotu durumda sebepsiz
+	// Shutdown("All the pieces..."). NULL init -> WAIT_FAILED garantili -> asla tetiklenmez.
+	MainThread = ScanThread = SuspendThread = LisansThread = AliveThread = NULL;
 	IsCRActive = false;
 	isSiegeWarStart = isSiegeWarActive = false;
 	Loading = false;
