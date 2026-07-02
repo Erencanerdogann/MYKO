@@ -1399,9 +1399,10 @@ bool CUser::RunRandomExchange(int nExchangeID) {
 	}
 
 	// Pull our exchange item slot out of our hat (the array we generated).
-	// Not: myrand ust-sinir DAHIL (uniform_int_distribution), dolu bolge = [0, offset-1].
-	int fillLen = offset > 0 ? offset : 1;
-	uint8 bRandSlot = bRandArray[myrand(0, fillLen - 1)];
+	// Not: myrand(0,9999) ESKI DAVRANIS korunur (toplam<10000 box'larda bos bolge=slot0,
+	//   "ilk item sansi artar" tasarimi bozulmaz — 285 box etkilenmez). Fix SADECE
+	//   yukaridaki memset clamp'i (crash engeli), secim mantigi degismedi.
+	uint8 bRandSlot = bRandArray[myrand(0, 9999)];
 	uint32 nItemID = pExchange->nExchangeItemNum[bRandSlot];
 	auto pTable = g_pMain->GetItemPtr(nItemID);
 	if (pTable.isnull() || pTable.m_bCountable == 2)
