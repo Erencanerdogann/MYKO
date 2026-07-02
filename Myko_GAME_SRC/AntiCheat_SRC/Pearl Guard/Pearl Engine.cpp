@@ -9584,7 +9584,7 @@ std::string PearlEngine::dcpUIF(std::string path)
 			DWORD dwCount;
 			LARGE_INTEGER size;
 			GetFileSizeEx(hSourceFile, &size);
-			LONG len = (size.u.HighPart << HighPartAdd) | size.u.LowPart;
+			ULONGLONG len = ((ULONGLONG)size.u.HighPart << HighPartAdd) | (ULONGLONG)size.u.LowPart; // FIX (Fable5 audit S138 L3): LONG<<32 UB -> ULONGLONG. len sadece len%2 icin; UIF <4GB (HighPart=0) -> sonuc AYNI
 			DWORD dwBlockLen = len % 2 == 0 ? 32 : 31;
 			DWORD dwBufferLen = dwBlockLen;
 			if ((pbBuffer = (PBYTE)malloc(dwBufferLen)))
@@ -9615,11 +9615,11 @@ std::string PearlEngine::dcpUIF(std::string path)
 		{
 			free(pbBuffer);
 		}
-		if (hSourceFile)
+		if (hSourceFile != INVALID_HANDLE_VALUE) // FIX (Fable5 audit S138 L3): CreateFileA fail=-1 (0 degil); CloseHandle(-1) no-op'tu -> dogru kontrol (davranis-notr)
 		{
 			CloseHandle(hSourceFile);
 		}
-		if (hDestinationFile)
+		if (hDestinationFile != INVALID_HANDLE_VALUE) // FIX (Fable5 audit S138 L3): INVALID handle kontrolu (davranis-notr)
 		{
 			CloseHandle(hDestinationFile);
 		}
