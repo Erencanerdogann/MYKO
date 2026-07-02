@@ -246,7 +246,10 @@ bool PearlEngine::WordGuardSystem(std::string Word, uint8 WordStr)
 	bool bGuard[32] = { false };
 	std::string WordGuard = "qwertyuopadfhsgcijklzxvbnmQWERTYUOPSGICADFHJKLZXVBNM1234567890";
 	char* pWordGuard = &WordGuard[0];
-	for (uint8 i = 0; i < WordStr; i++)
+	// FIX (Fable5 audit S138 L1): bGuard[32] sabit boyut. WordStr uint8 (0..255), >32 ise OOB stack
+	// write. Tek caller (hPowerUpStore.cpp:179) length==20 ile korunuyor -> i<32 sartinda mevcut
+	// davranis AYNEN korunur (20<32), sadece hipotetik >32 girdide OOB engellenir.
+	for (uint8 i = 0; i < WordStr && i < 32; i++)
 	{
 		for (uint8 j = 0; j < strlen(pWordGuard); j++)
 			if (pword[i] == pWordGuard[j])
