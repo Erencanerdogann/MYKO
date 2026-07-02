@@ -1382,16 +1382,26 @@ bool CUser::RunRandomExchange(int nExchangeID) {
 	memcpy(&sExchangeCount, &pExchange->sExchangeItemCount, sizeof(pExchange->sExchangeItemCount));
 
 	// Build array of exchange item slots (0-4)
+	// #FIX (crash 0xc0000409 STACK_BUFFER_OVERRUN, WER offset 0x2d0c11 __report_gsfailure):
+	//   DB'de bazi 101-flag satirlarinda sExchangeItemCount TOPLAMI > 10000 (or. nIndex 22044-63=20000,
+	//   MalaysiaKo Box kaynagi 1727=12000). offset > 10000 olunca memset(&bRandArray[offset]) STACK TASAR
+	//   -> /GS cookie bozulur -> __fastfail -> GameServer crash. Cozum: offset sinir clamp (sizeof-1).
+	const int kRandCap = (int)sizeof(bRandArray); // 10000
 	int offset = 0;
 	for (int n = 0, i = 0; n < ITEMS_IN_EXCHANGE_GROUP; n++) {
 		if (sExchangeCount[n] > 0) {
-			memset(&bRandArray[offset], n, sExchangeCount[n]);
-			offset += sExchangeCount[n];
+			if (offset >= kRandCap) break; // dizi doldu, taşma engeli
+			int cnt = (int)sExchangeCount[n];
+			if (offset + cnt > kRandCap) cnt = kRandCap - offset; // son parcayi kirp
+			memset(&bRandArray[offset], n, cnt);
+			offset += cnt;
 		}
 	}
 
 	// Pull our exchange item slot out of our hat (the array we generated).
-	uint8 bRandSlot = bRandArray[myrand(0, 9999)];
+	// Not: myrand ust-sinir DAHIL (uniform_int_distribution), dolu bolge = [0, offset-1].
+	int fillLen = offset > 0 ? offset : 1;
+	uint8 bRandSlot = bRandArray[myrand(0, fillLen - 1)];
 	uint32 nItemID = pExchange->nExchangeItemNum[bRandSlot];
 	auto pTable = g_pMain->GetItemPtr(nItemID);
 	if (pTable.isnull() || pTable.m_bCountable == 2)
