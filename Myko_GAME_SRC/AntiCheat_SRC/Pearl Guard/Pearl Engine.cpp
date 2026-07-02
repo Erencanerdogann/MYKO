@@ -9550,10 +9550,13 @@ std::vector<std::string> PearlEngine::str_split(std::string str, std::string reg
 
 std::string PearlEngine::KoRandomNameUIF(std::string uif)
 {
-	srand((unsigned)time(NULL) * getpid());
-	int random1 = rand() % 10000;
-	int random2 = rand() % 100;
-	std::string text = string_format("%s_%d%d.uif", uif.c_str(), random1, random2);
+	// FIX (Fable5 audit S138 M1): srand HER cagrida yeniden tohumlaniyordu -> ayni saniyede
+	// (getpid sabit + time 1sn cozunurluk) AYNI random1/random2 -> AYNI temp ad. dcpUIF ~30 yerden
+	// acilista ayni saniyede cagriliyor + OPEN_ALWAYS -> temp .uif cakismasi (uzerine yazma/race).
+	// Benzersizlik GetTickCount + monoton InterlockedIncrement counter ile garanti (rand kaldirildi).
+	static LONG s_uifCounter = 0;
+	LONG c = InterlockedIncrement(&s_uifCounter);
+	std::string text = string_format("%s_%lu_%ld.uif", uif.c_str(), (unsigned long)GetTickCount(), (long)c);
 	return text;
 }
 
