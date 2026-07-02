@@ -312,11 +312,17 @@ void CGameServerDlg::SendGameNotice(ChatType chattype,
 		return;
 	}
 
-	g_pMain->m_socketMgr.GetLock().lock();
-	SessionMap sessMap = g_pMain->m_socketMgr.GetActiveSessionMap();
-	g_pMain->m_socketMgr.GetLock().unlock();
-	foreach(itr, sessMap) {
-		CUser* user = TO_USER(itr->second);
+	// PERF (Fable5 darbogaz #4): SessionMap (std::map, 3000-entry) kopyasi -> vector<CUser*> snapshot
+	// (Send_Zone kalibi). Davranis-notr: ayni user'lar, ayni filtre/Send; lock kisa (sadece topla).
+	std::vector<CUser*> targets;
+	{
+		std::lock_guard<std::recursive_mutex> lock(g_pMain->m_socketMgr.GetLock());
+		SessionMap& sessions = g_pMain->m_socketMgr.GetActiveSessionMap();
+		targets.reserve(sessions.size());
+		for (auto it = sessions.begin(); it != sessions.end(); ++it)
+			targets.push_back(TO_USER(it->second));
+	}
+	for (CUser* user : targets) {
 		if (user == nullptr || !user->isInGame())
 			continue;
 
