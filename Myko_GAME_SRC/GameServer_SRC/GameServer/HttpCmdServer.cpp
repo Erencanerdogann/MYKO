@@ -43,6 +43,8 @@ static const std::set<std::string> s_whitelist = {
 	"lottery", "lotteryclose",
 	// Diger
 	"count", "aireset", "bug",
+	// Event orani (WEBRA MSG7520 — server-form, global g_pMain oran, online mutate ETMEZ = guvenli)
+	"exp_add", "drop_add",
 	// GM_MOD (MATRIX — turnuva/lig/bracket otomasyon, server-form CGameServerDlg'de hazir)
 	"bracketcreate", "bracketstart", "bracketcancel", "bracketstatus",
 	"leaguecreate", "leaguestart", "leaguecancel", "leaguestatus",

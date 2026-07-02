@@ -52,6 +52,8 @@ void CGameServerDlg::InitServerCommands()
 		{ "reloadquests",		&CGameServerDlg::HandleReloadQuestCommand,			"Gorev tablolarini yeniler" },
 		{ "reloadranks",		&CGameServerDlg::HandleReloadRanksCommand,			"Siralama tablolarini yeniler" },
 		{ "reloaddrops",		&CGameServerDlg::HandleReloadDropsCommand,			"Drop tablolarini yeniler" },
+		{ "exp_add",			&CGameServerDlg::HandleExpAddCommand,				"XP event orani (server-form, HttpCmd panel). 0=kapat. Arg: yuzde" },
+		{ "drop_add",			&CGameServerDlg::HandleDropAddCommand,				"Drop event orani (server-form, HttpCmd panel). 0=kapat. Arg: yuzde" },
 		{ "reloaddrops2",		&CGameServerDlg::HandleReloadDropsRandomCommand,	"Drop tablolarini yeniler" },
 		{ "reloadkings",		&CGameServerDlg::HandleReloadKingsCommand,			"Kral tablolarini yeniler" },
 		{ "reloadtitle",		&CGameServerDlg::HandleReloadRightTopTitleCommand,	"Baslik tablolarini yeniler" }, 
@@ -2211,6 +2213,28 @@ COMMAND_HANDLER(CGameServerDlg::HandleReloadDropsRandomCommand)
 	m_MakeItemGroupRandomArray.DeleteAllData();
 	LoadMakeItemGroupRandomTable();
 	m_randomtable_reload = false;
+	return true;
+}
+
+// WEBRA MSG7520 (patron onayli): panelden exp/drop event orani. HttpCmd -> ProcessServerCommand
+// SADECE CGameServerDlg tablosuna bakar (ChatHandler.cpp:927) -> CUser::HandleExpAddCommand'a
+// erisemez. Bu server-form kopyalari o yuzden gerekli. S120 GUVENLI: sadece g_pMain global oran
+// (uint16/uint8) yazilir + console printf. CUser versiyonundaki 'for MAX_USER SendNotice()' online
+// dongusu BILINCLI ATLANDI (HttpCmd ListenerThread + IOCP worker race = S120). Event aktif olur,
+// oyuncu sonraki kill'de bonus alir; duyuru istenirse GM ayrica notice atabilir.
+COMMAND_HANDLER(CGameServerDlg::HandleExpAddCommand)
+{
+	if (vargs.empty()) { printf("[HttpCmd] Kullanim: exp_add <yuzde 0-1000>\n"); return true; }
+	g_pMain->m_byExpEventAmount = (uint16)SafeAtoi(vargs.front(), 0, 1000);
+	printf("[HttpCmd] EXP event orani = %d%% (0 = event kapali)\n", (int)g_pMain->m_byExpEventAmount);
+	return true;
+}
+
+COMMAND_HANDLER(CGameServerDlg::HandleDropAddCommand)
+{
+	if (vargs.empty()) { printf("[HttpCmd] Kullanim: drop_add <yuzde 0-255>\n"); return true; }
+	g_pMain->m_byDropEventAmount = (uint8)SafeAtoi(vargs.front(), 0, 255);
+	printf("[HttpCmd] DROP event orani = %d%% (0 = event kapali)\n", (int)g_pMain->m_byDropEventAmount);
 	return true;
 }
 
