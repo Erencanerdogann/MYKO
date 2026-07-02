@@ -113,7 +113,10 @@ private:
         header[2] = (uint8_t)((payloadLen >> 8) & 0xFF);
 
         // Header + payload tek seferde gonder
-        uint8_t buf[65536];
+        // FIX (Fable5 audit S138 L4): 65536 stack buffer -> 4096. Tum caller <=1024+header payload
+        // gonderiyor (en buyuk Chat=1021) -> 4096 fazlasiyla yeter. sizeof(buf) guard payloadLen'i
+        // otomatik sinirlar. NOT: PearlPipe dormant (Init hic cagrilmiyor) -> runtime etki sifir.
+        uint8_t buf[4096];
         if (3 + payloadLen > sizeof(buf)) return false;
         memcpy(buf, header, 3);
         if (payloadLen > 0 && payload)
