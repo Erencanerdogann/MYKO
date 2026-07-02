@@ -58,7 +58,7 @@ void CGameServerDlg::UserInOutForMe(CUser *pSendUser)
 			continue;
 		}
 
-		ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+		std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr, sadece foreach+size)
 		pRegion->m_lockUserArray.unlock_shared();
 
 		foreach(itr, cm_RegionUserArray)
@@ -318,7 +318,7 @@ void CGameServerDlg::GetRegionUserList(C3DMap* pMap, uint16 region_x, uint16 reg
 	}
 
 	std::vector<CUser*> mList;
-	ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+	std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr, sadece foreach+size)
 	pRegion->m_lockUserArray.unlock_shared();
 	foreach(itr, cm_RegionUserArray)
 	{
@@ -383,7 +383,7 @@ void CGameServerDlg::GetRegionMerchantUserIn(C3DMap *pMap, uint16 region_x, uint
 		return;
 	
 	pRegion->m_lockUserArray.lock_shared();
-	ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+	std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr, sadece foreach+size)
 	pRegion->m_lockUserArray.unlock_shared();
 	foreach(itr, cm_RegionUserArray) {
 		CUser* pUser = GetUserPtr(*itr);
@@ -647,7 +647,7 @@ void CGameServerDlg::GetUnitListFromSurroundingRegions(Unit * pOwner, std::vecto
 			continue;
 		}
 
-		ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+		std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr, sadece foreach+size)
 		pRegion->m_lockUserArray.unlock_shared();
 		foreach(itr, cm_RegionUserArray)
 		{
@@ -902,7 +902,7 @@ void CGameServerDlg::Send_UnitRegion(Packet *pkt, C3DMap *pMap, int x, int z, CU
 		return;
 	}
 	
-	ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+	std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr, sadece foreach+size)
 	pRegion->m_lockUserArray.unlock_shared();
 	foreach(itr, cm_RegionUserArray)
 	{
@@ -1048,7 +1048,7 @@ void CGameServerDlg::Send_FilterUnitRegion(Packet *pkt, C3DMap *pMap, int x, int
 		return;
 	}
 
-	ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+	std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr, sadece foreach+size)
 	pRegion->m_lockUserArray.unlock_shared();
 	foreach(itr, cm_RegionUserArray)
 	{

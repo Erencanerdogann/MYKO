@@ -204,7 +204,7 @@ void CNpc::SendInOut(uint8 bType, float fX, float fZ, float fY)
 				continue;
 			}
 
-			ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+			std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr)
 			pRegion->m_lockUserArray.unlock_shared();
 
 			foreach(itr, cm_RegionUserArray) {
@@ -4666,7 +4666,7 @@ bool CNpc::CheckFindEnemy()
 //			if (pRegion == nullptr || pRegion->m_RegionUserArray.size() <= 0) continue;
 //
 //			pRegion->m_lockUserArray.lock_shared();
-//			ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+//			std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr)
 //			pRegion->m_lockUserArray.unlock_shared();
 //			foreach(itr, cm_RegionUserArray)
 //			{
@@ -4787,7 +4787,7 @@ float CNpc::FindEnemyExpand(int nRX, int nRZ, float fCompDis, UnitType unitType)
 				continue;
 			}
 
-			ZoneUserArray cm_RegionUserArray = pRegion->m_RegionUserArray;
+			std::vector<uint16> cm_RegionUserArray(pRegion->m_RegionUserArray.begin(), pRegion->m_RegionUserArray.end()); // PERF (Fable5 #1): set-kopya -> vector snapshot (davranis-notr)
 			pRegion->m_lockUserArray.unlock_shared();
 			foreach(itr, cm_RegionUserArray)
 			{
