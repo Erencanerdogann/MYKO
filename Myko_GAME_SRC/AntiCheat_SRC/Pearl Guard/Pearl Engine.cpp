@@ -2279,9 +2279,9 @@ bool InifinityArrow = false;
 extern HWND gameWindow; // UIManager.cpp:139 file-scope global (D3D hFocusWindow)
 
 typedef BOOL    (WINAPI* tGetCursorPos)(LPPOINT);
-typedef SHORT   (WINAPI* tGetAsyncKeyState)(int);
+// typedef SHORT   (WINAPI* tGetAsyncKeyState)(int);  // OLU (Fable5 audit S138 L5): GetAsyncKeyState detour kaldirildi (bkz 2346-2358), typedef+degisken kullanilmiyor
 static tGetCursorPos     g_origGetCursorPos = NULL;
-static tGetAsyncKeyState g_origGetAsyncKeyState = NULL;
+// static tGetAsyncKeyState g_origGetAsyncKeyState = NULL;  // OLU (Fable5 audit S138 L5): kullanilmiyor, yoruma alindi (KURAL 0-B)
 
 // arka plan mi? (oyun penceresi sistemde ONDE degil). gameWindow NULL ise GUVENLI taraf: arka plan DEGIL say.
 //
