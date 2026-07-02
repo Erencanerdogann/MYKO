@@ -23,18 +23,27 @@ void __fastcall ItemMove(DWORD ItemSkillIcon)
 				result << uint8(RightClickExchangeSubcode::GetCurrentItemList) << uint32(nItemID);
 				Engine->Send(&result);
 			}
+			// KAPATILDI (2026-07-02, patron emri: gem sag-tik yuzde/drop gosterimi iptal) — geri acmak icin yorumdan cikar
+			// ItemOfGemArray (19 gem item) sag-tiklaninca exchange yuzde listesi penceresi acilmasin.
+			/*
 			else if (std::find(std::begin(ItemOfGemArray), std::end(ItemOfGemArray), nItemID) != std::end(ItemOfGemArray))
 			{
 				Packet result(XSafe, uint8(XSafeOpCodes::RIGHT_CLICK_EXCHANGE));
 				result << uint8(RightClickExchangeSubcode::GetExchangeInformation) << uint32(nItemID);
 				Engine->Send(&result);
 				}
+			*/
+			// KAPATILDI (2026-07-02, patron emri: kutu sag-tik drop gosterimi iptal) — geri acmak icin yorumdan cikar
+			// 3 kutu (Mavi 379156000 / Yesil 379155000 / Kirmizi 379154000 + 379097000) sag-tiklaninca
+			// drop listesi penceresi acilmasin. ChestOfArray'e giden paket gonderimi durduruldu.
+			/*
 			else if (std::find(std::begin(ChestOfArray), std::end(ChestOfArray), nItemID) != std::end(ChestOfArray))
 			{
 				Packet result(XSafe, uint8(XSafeOpCodes::RIGHT_CLICK_EXCHANGE));
 				result << uint8(RightClickExchangeSubcode::GetExchangeChestInformation) << uint32(nItemID);
 				Engine->Send(&result);
 			}
+			*/
 		}
 	}
 }
